@@ -27,7 +27,7 @@ export const ScorchingDesertMap: MapData = {
     { col: 60, row: 65, monsterId: 'sandworm', count: 3 },
   ],
   camps: [
-    { col: 10, row: 10, npcs: ['blacksmith_advanced', 'merchant_desert', 'stash'] },
+    { col: 10, row: 10, npcs: ['blacksmith_advanced', 'merchant_desert', 'stash', 'quest_nomad'] },
     { col: 64, row: 64, npcs: ['merchant_desert'] },
   ],
   playerStart: { col: 3, row: 38 },

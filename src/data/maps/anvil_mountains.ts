@@ -27,7 +27,7 @@ export const AnvilMountainsMap: MapData = {
     { col: 12, row: 58, monsterId: 'mountain_troll', count: 1 },
   ],
   camps: [
-    { col: 10, row: 32, npcs: ['blacksmith_advanced', 'merchant', 'stash'] },
+    { col: 10, row: 32, npcs: ['blacksmith_advanced', 'merchant', 'stash', 'quest_dwarf'] },
     { col: 58, row: 67, npcs: ['merchant'] },
   ],
   playerStart: { col: 3, row: 38 },

@@ -26,7 +26,7 @@ export const EmeraldPlainsMap: MapData = {
     { col: 25, row: 65, monsterId: 'goblin_chief', count: 1 },
   ],
   camps: [
-    { col: 12, row: 12, npcs: ['blacksmith', 'merchant'] },
+    { col: 12, row: 12, npcs: ['blacksmith', 'merchant', 'quest_elder'] },
     { col: 64, row: 68, npcs: ['merchant'] },
   ],
   playerStart: { col: 12, row: 16 },

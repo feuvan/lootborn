@@ -147,6 +147,7 @@ export class ZoneScene extends Phaser.Scene {
         M: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
         H: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H),
         C: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C),
+        J: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J),
       };
     }
 
@@ -249,6 +250,12 @@ export class ZoneScene extends Phaser.Scene {
     // Throttled fog update
     if (Math.floor(time / 200) !== Math.floor((time - delta) / 200)) {
       this.fogOfWar.update(Math.round(this.player.tileCol), Math.round(this.player.tileRow));
+    }
+
+    // Throttled explore quest check + NPC quest marker update
+    if (Math.floor(time / 500) !== Math.floor((time - delta) / 500)) {
+      this.checkExploreQuests();
+      this.updateNPCQuestMarkers();
     }
 
     EventBus.emit(GameEvents.PLAYER_HEALTH_CHANGED, { hp: this.player.hp, maxHp: this.player.maxHp });
@@ -397,6 +404,9 @@ export class ZoneScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.wasd.C)) {
       EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'character' });
     }
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.J)) {
+      EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'quest' });
+    }
 
     const skillKeys = [this.wasd.ONE, this.wasd.TWO, this.wasd.THREE, this.wasd.FOUR, this.wasd.FIVE, this.wasd.SIX];
     const skills = this.player.classData.skills;
@@ -527,6 +537,70 @@ export class ZoneScene extends Phaser.Scene {
     }
   }
 
+  private updateNPCQuestMarkers(): void {
+    for (const npc of this.npcs) {
+      const def = npc.definition;
+      if (def.type !== 'quest' || !def.quests) continue;
+
+      let hasCompletedQuest = false;
+      let hasActiveQuest = false;
+      let hasAvailableQuest = false;
+      let isMainQuest = false;
+
+      for (const qid of def.quests) {
+        const prog = this.questSystem.progress.get(qid);
+        if (prog) {
+          if (prog.status === 'completed') hasCompletedQuest = true;
+          else if (prog.status === 'active') hasActiveQuest = true;
+        }
+      }
+
+      if (!hasCompletedQuest) {
+        const available = this.questSystem.getAvailableQuests(def.quests, this.player.level);
+        for (const q of available) {
+          if (!this.questSystem.progress.has(q.id)) {
+            hasAvailableQuest = true;
+            if (q.category === 'main') isMainQuest = true;
+            break;
+          }
+        }
+      }
+
+      if (hasCompletedQuest) {
+        npc.setQuestMarker('?', '#f1c40f');
+      } else if (hasAvailableQuest) {
+        npc.setQuestMarker('!', isMainQuest ? '#f1c40f' : '#95a5a6');
+      } else if (hasActiveQuest) {
+        npc.setQuestMarker('?', '#888888');
+      } else {
+        npc.setQuestMarker('', '');
+      }
+    }
+  }
+
+  private checkExploreQuests(): void {
+    const activeQuests = this.questSystem.getActiveQuests();
+    for (const { quest, progress } of activeQuests) {
+      if (progress.status !== 'active') continue;
+      if (quest.zone !== this.currentMapId) continue;
+      for (let i = 0; i < quest.objectives.length; i++) {
+        const obj = quest.objectives[i];
+        if (obj.type === 'explore' && obj.location && progress.objectives[i].current < obj.required) {
+          const dx = this.player.tileCol - obj.location.col;
+          const dy = this.player.tileRow - obj.location.row;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= obj.location.radius) {
+            this.questSystem.updateProgress('explore', obj.targetId);
+            EventBus.emit(GameEvents.LOG_MESSAGE, {
+              text: `发现: ${obj.targetName}`,
+              type: 'system',
+            });
+          }
+        }
+      }
+    }
+  }
+
   private onMonsterKilled(monster: Monster): void {
     const diffMult = this.difficulty === 'hell' ? 3 : this.difficulty === 'nightmare' ? 2 : 1;
     const homeBonus = this.homesteadSystem.getTotalBonuses();
@@ -542,6 +616,22 @@ export class ZoneScene extends Phaser.Scene {
     this.achievementSystem.checkLevel(this.player.level);
 
     this.questSystem.updateProgress('kill', monster.definition.id);
+
+    // Progress collect quests: monsters in this zone drop quest collectibles
+    const activeQuests = this.questSystem.getActiveQuests();
+    for (const { quest, progress } of activeQuests) {
+      if (progress.status !== 'active') continue;
+      if (quest.zone !== this.currentMapId) continue;
+      for (let i = 0; i < quest.objectives.length; i++) {
+        const obj = quest.objectives[i];
+        if (obj.type === 'collect' && progress.objectives[i].current < obj.required) {
+          if (Math.random() < 0.4) {
+            this.questSystem.updateProgress('collect', obj.targetId);
+          }
+          break;
+        }
+      }
+    }
 
     const luckBonus = this.player.stats.lck + (homeBonus['magicFind'] ?? 0);
     const loot = this.lootSystem.generateLoot(monster.definition, luckBonus);
@@ -625,6 +715,9 @@ export class ZoneScene extends Phaser.Scene {
   private interactNPC(npc: NPC): void {
     const def = npc.definition;
     EventBus.emit(GameEvents.LOG_MESSAGE, { text: def.dialogue[0], type: 'info' });
+
+    // Progress talk quests
+    this.questSystem.updateProgress('talk', def.id);
 
     switch (def.type) {
       case 'blacksmith':

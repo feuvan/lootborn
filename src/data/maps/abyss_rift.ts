@@ -27,7 +27,7 @@ export const AbyssRiftMap: MapData = {
     { col: 15, row: 65, monsterId: 'succubus', count: 3 },
   ],
   camps: [
-    { col: 6, row: 16, npcs: ['blacksmith_advanced', 'merchant_desert', 'stash'] },
+    { col: 6, row: 16, npcs: ['blacksmith_advanced', 'merchant_desert', 'stash', 'quest_warden'] },
     { col: 58, row: 67, npcs: ['merchant_desert'] },
   ],
   playerStart: { col: 3, row: 38 },

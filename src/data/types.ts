@@ -197,10 +197,12 @@ export interface QuestDefinition {
   description: string;
   zone: string;
   type: 'kill' | 'collect' | 'explore' | 'talk';
+  category: 'main' | 'side';
   objectives: QuestObjective[];
   rewards: QuestReward;
   prereqQuests?: string[];
   level: number;
+  questArea?: { col: number; row: number; radius: number };
 }
 
 export interface QuestObjective {
@@ -209,6 +211,7 @@ export interface QuestObjective {
   targetName: string;
   required: number;
   current: number;
+  location?: { col: number; row: number; radius: number };
 }
 
 export interface QuestReward {

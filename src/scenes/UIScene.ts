@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { getItemBase } from '../data/items/bases';
 import { AllMaps, MapOrder } from '../data/maps/index';
+import { NPCDefinitions } from '../data/npcs';
 import { audioSystem } from '../systems/AudioSystem';
 import type { Player } from '../entities/Player';
 import type { ZoneScene } from './ZoneScene';
@@ -38,6 +39,10 @@ export class UIScene extends Phaser.Scene {
   private homesteadPanel: Phaser.GameObjects.Container | null = null;
   private dialoguePanel: Phaser.GameObjects.Container | null = null;
   private dialogueBackdrop: Phaser.GameObjects.Rectangle | null = null;
+  private questLogPanel: Phaser.GameObjects.Container | null = null;
+  private questLogTab: 'active' | 'completed' = 'active';
+  private questLogPage = 0;
+  private questLogSelectedIndex = 0;
   private minimap!: Phaser.GameObjects.Graphics;
 
   constructor() {
@@ -200,6 +205,7 @@ export class UIScene extends Phaser.Scene {
       if (data.panel === 'skills') this.toggleSkillTree();
       if (data.panel === 'character') this.toggleCharacter();
       if (data.panel === 'homestead') this.toggleHomestead();
+      if (data.panel === 'quest') this.toggleQuestLog();
     });
     EventBus.on('ui:refresh', (data: { player: Player; zone: ZoneScene }) => {
       this.player = data.player;
@@ -644,6 +650,57 @@ export class UIScene extends Phaser.Scene {
       this.minimap.fillStyle(0x00e676);
       this.minimap.fillRect(exit.col * sx - 1.5, exit.row * sy - 1.5, 4, 4);
     }
+
+    // Quest NPC markers on minimap
+    if (this.zone?.questSystem) {
+      for (const camp of mapData.camps) {
+        for (const npcId of camp.npcs) {
+          const npcDef = NPCDefinitions[npcId];
+          if (!npcDef || npcDef.type !== 'quest' || !npcDef.quests) continue;
+          let hasAvailable = false;
+          let hasCompleted = false;
+          for (const qid of npcDef.quests) {
+            const prog = this.zone.questSystem.progress.get(qid);
+            if (prog && prog.status === 'completed') hasCompleted = true;
+          }
+          if (!hasCompleted) {
+            const avail = this.zone.questSystem.getAvailableQuests(npcDef.quests, this.player.level);
+            for (const q of avail) {
+              if (!this.zone.questSystem.progress.has(q.id)) { hasAvailable = true; break; }
+            }
+          }
+          if (hasCompleted || hasAvailable) {
+            const color = hasCompleted ? 0xf1c40f : 0xf1c40f;
+            this.minimap.fillStyle(color);
+            this.minimap.fillCircle(camp.col * sx, camp.row * sy, 2.5);
+          }
+        }
+      }
+
+      // Active quest target area markers
+      const activeQuests = this.zone.questSystem.getActiveQuests();
+      for (const { quest, progress } of activeQuests) {
+        if (progress.status !== 'active') continue;
+        if (quest.zone !== (this.zone as any).currentMapId) continue;
+        // Quest area marker
+        if (quest.questArea) {
+          const qa = quest.questArea;
+          const qColor = quest.category === 'main' ? 0xf1c40f : 0x95a5a6;
+          this.minimap.fillStyle(qColor, 0.25);
+          this.minimap.fillCircle(qa.col * sx, qa.row * sy, qa.radius * sx);
+          this.minimap.lineStyle(1, qColor, 0.6);
+          this.minimap.strokeCircle(qa.col * sx, qa.row * sy, qa.radius * sx);
+        }
+        // Explore objective markers
+        for (let i = 0; i < quest.objectives.length; i++) {
+          const obj = quest.objectives[i];
+          if (obj.type === 'explore' && obj.location && progress.objectives[i].current < obj.required) {
+            this.minimap.fillStyle(0xf39c12, 0.5);
+            this.minimap.fillRect(obj.location.col * sx - 1.5, obj.location.row * sy - 1.5, 3, 3);
+          }
+        }
+      }
+    }
   }
 
   // --- NPC Dialogue Panel ---
@@ -700,6 +757,241 @@ export class UIScene extends Phaser.Scene {
     if (this.dialoguePanel) { this.dialoguePanel.destroy(); this.dialoguePanel = null; }
   }
 
+  // --- Quest Log Panel ---
+  private toggleQuestLog(): void {
+    if (this.questLogPanel) {
+      this.questLogPanel.destroy();
+      this.questLogPanel = null;
+      return;
+    }
+    this.closeAllPanels();
+    this.createQuestLogPanel();
+  }
+
+  private createQuestLogPanel(): void {
+    const pw = 700, ph = 480;
+    const px = (GAME_WIDTH - pw) / 2, py = (GAME_HEIGHT - ph) / 2;
+    this.questLogPanel = this.add.container(px, py).setDepth(4000);
+
+    // Background
+    const bg = this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0xc0934a);
+    this.questLogPanel.add(bg);
+
+    // Title
+    this.questLogPanel.add(this.add.text(pw / 2, 14, '任务日志', {
+      fontSize: '16px', color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
+    }).setOrigin(0.5, 0));
+
+    // Close button
+    const closeBtn = this.add.text(pw - 16, 10, '✕', {
+      fontSize: '16px', color: '#c0392b', fontFamily: FONT,
+    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.toggleQuestLog());
+    this.questLogPanel.add(closeBtn);
+
+    // Tab buttons
+    const tabY = 38;
+    const activeTab = this.add.rectangle(100, tabY, 160, 24, this.questLogTab === 'active' ? 0x1a2a3a : 0x111122)
+      .setStrokeStyle(1, 0x2471a3).setInteractive({ useHandCursor: true });
+    activeTab.on('pointerdown', () => { this.questLogTab = 'active'; this.questLogPage = 0; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
+    this.questLogPanel.add(activeTab);
+    this.questLogPanel.add(this.add.text(100, tabY, '进行中', {
+      fontSize: '12px', color: this.questLogTab === 'active' ? '#5dade2' : '#666', fontFamily: FONT,
+    }).setOrigin(0.5));
+
+    const completedTab = this.add.rectangle(270, tabY, 160, 24, this.questLogTab === 'completed' ? 0x1a2a3a : 0x111122)
+      .setStrokeStyle(1, 0x2471a3).setInteractive({ useHandCursor: true });
+    completedTab.on('pointerdown', () => { this.questLogTab = 'completed'; this.questLogPage = 0; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
+    this.questLogPanel.add(completedTab);
+    this.questLogPanel.add(this.add.text(270, tabY, '已完成', {
+      fontSize: '12px', color: this.questLogTab === 'completed' ? '#5dade2' : '#666', fontFamily: FONT,
+    }).setOrigin(0.5));
+
+    // Render quest content
+    this.renderQuestLogContent();
+  }
+
+  private refreshQuestLog(): void {
+    if (!this.questLogPanel) return;
+    this.questLogPanel.destroy();
+    this.questLogPanel = null;
+    this.createQuestLogPanel();
+  }
+
+  private renderQuestLogContent(): void {
+    if (!this.questLogPanel || !this.zone?.questSystem) return;
+
+    const pw = 700, listW = 240, detailX = 255, detailW = 430;
+    const listStartY = 58, itemH = 28, maxItems = 14;
+
+    // Get quest list
+    let quests: { quest: import('../data/types').QuestDefinition; progress: import('../data/types').QuestProgress }[];
+    if (this.questLogTab === 'active') {
+      quests = this.zone.questSystem.getActiveQuests();
+    } else {
+      quests = [];
+      for (const [id, prog] of this.zone.questSystem.progress.entries()) {
+        if (prog.status === 'turned_in') {
+          const q = this.zone.questSystem.quests.get(id);
+          if (q) quests.push({ quest: q, progress: prog });
+        }
+      }
+    }
+
+    // Sort: main first
+    quests.sort((a, b) => {
+      if (a.quest.category === 'main' && b.quest.category !== 'main') return -1;
+      if (a.quest.category !== 'main' && b.quest.category === 'main') return 1;
+      return a.quest.level - b.quest.level;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(quests.length / maxItems));
+    const pageQuests = quests.slice(this.questLogPage * maxItems, (this.questLogPage + 1) * maxItems);
+
+    // Divider line
+    this.questLogPanel.add(this.add.rectangle(listW + 7, 58, 1, 400, 0x333344).setOrigin(0, 0));
+
+    // Quest list
+    pageQuests.forEach((entry, i) => {
+      const y = listStartY + i * itemH;
+      const isSelected = i === this.questLogSelectedIndex;
+      const listBg = this.add.rectangle(5, y, listW, itemH - 2, isSelected ? 0x1a2a3a : 0x0f0f1e)
+        .setOrigin(0, 0).setStrokeStyle(isSelected ? 1 : 0, 0x2471a3)
+        .setInteractive({ useHandCursor: true });
+      listBg.on('pointerdown', () => { this.questLogSelectedIndex = i; this.refreshQuestLog(); });
+      this.questLogPanel!.add(listBg);
+
+      const tagColor = entry.quest.category === 'main' ? '#c0934a' : '#95a5a6';
+      const tag = entry.quest.category === 'main' ? '[主]' : '[支]';
+      this.questLogPanel!.add(this.add.text(12, y + 5, tag, {
+        fontSize: '10px', color: tagColor, fontFamily: FONT, fontStyle: 'bold',
+      }));
+      const nameColor = this.questLogTab === 'completed' ? '#555' : (isSelected ? '#e0d8cc' : '#aaa');
+      this.questLogPanel!.add(this.add.text(36, y + 5, `${entry.quest.name} Lv.${entry.quest.level}`, {
+        fontSize: '10px', color: nameColor, fontFamily: FONT,
+      }));
+    });
+
+    // Pagination
+    if (totalPages > 1) {
+      const pageY = listStartY + maxItems * itemH + 4;
+      if (this.questLogPage > 0) {
+        const prevBtn = this.add.text(40, pageY, '◀ 上一页', {
+          fontSize: '10px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        prevBtn.on('pointerdown', () => { this.questLogPage--; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
+        this.questLogPanel.add(prevBtn);
+      }
+      this.questLogPanel.add(this.add.text(120, pageY, `${this.questLogPage + 1}/${totalPages}`, {
+        fontSize: '10px', color: '#666', fontFamily: FONT,
+      }));
+      if (this.questLogPage < totalPages - 1) {
+        const nextBtn = this.add.text(160, pageY, '下一页 ▶', {
+          fontSize: '10px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        nextBtn.on('pointerdown', () => { this.questLogPage++; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
+        this.questLogPanel.add(nextBtn);
+      }
+    }
+
+    // No quests message
+    if (pageQuests.length === 0) {
+      this.questLogPanel.add(this.add.text(120, 120, this.questLogTab === 'active' ? '暂无进行中的任务' : '暂无已完成的任务', {
+        fontSize: '12px', color: '#555', fontFamily: FONT,
+      }).setOrigin(0.5, 0));
+      return;
+    }
+
+    // Quest detail (right side)
+    const selected = pageQuests[this.questLogSelectedIndex] ?? pageQuests[0];
+    if (!selected) return;
+
+    let dy = listStartY;
+
+    // Quest name
+    this.questLogPanel.add(this.add.text(detailX + detailW / 2, dy, selected.quest.name, {
+      fontSize: '15px', color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
+    }).setOrigin(0.5, 0));
+    dy += 24;
+
+    // Category + Level + Zone
+    const zoneNames: Record<string, string> = {
+      emerald_plains: '翡翠平原', twilight_forest: '暮色森林',
+      anvil_mountains: '铁砧山脉', scorching_desert: '灼热沙漠', abyss_rift: '深渊裂隙',
+    };
+    const catText = selected.quest.category === 'main' ? '主线任务' : '支线任务';
+    const catColor = selected.quest.category === 'main' ? '#c0934a' : '#95a5a6';
+    this.questLogPanel.add(this.add.text(detailX + 5, dy, `${catText}  |  Lv.${selected.quest.level}  |  ${zoneNames[selected.quest.zone] ?? selected.quest.zone}`, {
+      fontSize: '10px', color: catColor, fontFamily: FONT,
+    }));
+    dy += 20;
+
+    // Description
+    this.questLogPanel.add(this.add.text(detailX + 5, dy, selected.quest.description, {
+      fontSize: '11px', color: '#bbb', fontFamily: FONT, wordWrap: { width: detailW - 20 },
+    }));
+    dy += 40;
+
+    // Objectives header
+    this.questLogPanel.add(this.add.text(detailX + 5, dy, '目标:', {
+      fontSize: '11px', color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
+    }));
+    dy += 18;
+
+    // Objectives with progress
+    for (let i = 0; i < selected.quest.objectives.length; i++) {
+      const obj = selected.quest.objectives[i];
+      const cur = selected.progress.objectives[i]?.current ?? 0;
+      const done = cur >= obj.required;
+      const statusText = done ? '✓' : `${cur}/${obj.required}`;
+      const objColor = done ? '#27ae60' : '#e0d8cc';
+
+      this.questLogPanel.add(this.add.text(detailX + 15, dy, `• ${obj.targetName}  ${statusText}`, {
+        fontSize: '10px', color: objColor, fontFamily: FONT,
+      }));
+
+      // Progress bar
+      const barX = detailX + 15, barY = dy + 14, barW = detailW - 40, barH = 4;
+      this.questLogPanel.add(this.add.rectangle(barX, barY, barW, barH, 0x1a1a2e).setOrigin(0, 0).setStrokeStyle(1, 0x333344));
+      const fillW = Math.min(barW * (cur / obj.required), barW);
+      if (fillW > 0) {
+        this.questLogPanel.add(this.add.rectangle(barX, barY, fillW, barH, done ? 0x27ae60 : 0x2471a3).setOrigin(0, 0));
+      }
+      dy += 24;
+    }
+
+    dy += 8;
+
+    // Rewards
+    this.questLogPanel.add(this.add.text(detailX + 5, dy, '奖励:', {
+      fontSize: '11px', color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
+    }));
+    dy += 18;
+
+    const rewardParts: string[] = [];
+    rewardParts.push(`经验 +${selected.quest.rewards.exp}`);
+    rewardParts.push(`金币 +${selected.quest.rewards.gold}`);
+    if (selected.quest.rewards.items) {
+      rewardParts.push(`物品 x${selected.quest.rewards.items.length}`);
+    }
+    this.questLogPanel.add(this.add.text(detailX + 15, dy, rewardParts.join('  |  '), {
+      fontSize: '10px', color: '#f1c40f', fontFamily: FONT,
+    }));
+    dy += 20;
+
+    // Prereqs
+    if (selected.quest.prereqQuests && selected.quest.prereqQuests.length > 0) {
+      dy += 4;
+      const prereqNames = selected.quest.prereqQuests.map(pid => {
+        const pq = this.zone!.questSystem.quests.get(pid);
+        return pq ? pq.name : pid;
+      });
+      this.questLogPanel.add(this.add.text(detailX + 5, dy, `前置任务: ${prereqNames.join(', ')}`, {
+        fontSize: '9px', color: '#666', fontFamily: FONT,
+      }));
+    }
+  }
+
   private closeAllPanels(): void {
     if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; }
     if (this.shopPanel) { this.shopPanel.destroy(); this.shopPanel = null; }
@@ -707,6 +999,7 @@ export class UIScene extends Phaser.Scene {
     if (this.skillPanel) { this.skillPanel.destroy(); this.skillPanel = null; }
     if (this.charPanel) { this.charPanel.destroy(); this.charPanel = null; }
     if (this.homesteadPanel) { this.homesteadPanel.destroy(); this.homesteadPanel = null; }
+    if (this.questLogPanel) { this.questLogPanel.destroy(); this.questLogPanel = null; }
     this.closeDialogue();
   }
 
@@ -751,12 +1044,25 @@ export class UIScene extends Phaser.Scene {
 
     if (this.zone?.questSystem) {
       const active = this.zone.questSystem.getActiveQuests();
-      const lines = active.slice(0, 3).map(({ quest, progress }) => {
-        const obj = quest.objectives[0];
-        const cur = progress.objectives[0]?.current ?? 0;
-        const status = progress.status === 'completed' ? '[完成]' : `(${cur}/${obj.required})`;
-        return `${quest.name} ${status}`;
+      const lines: string[] = [];
+      // Sort: main quests first
+      const sorted = active.sort((a, b) => {
+        if (a.quest.category === 'main' && b.quest.category !== 'main') return -1;
+        if (a.quest.category !== 'main' && b.quest.category === 'main') return 1;
+        return 0;
       });
+      for (const { quest, progress } of sorted) {
+        const tag = quest.category === 'main' ? '[主线]' : '[支线]';
+        const statusTag = progress.status === 'completed' ? ' [完成]' : '';
+        lines.push(`${tag} ${quest.name}${statusTag}`);
+        for (let i = 0; i < quest.objectives.length; i++) {
+          const obj = quest.objectives[i];
+          const cur = progress.objectives[i]?.current ?? 0;
+          const done = cur >= obj.required;
+          const mark = done ? '✓' : `${cur}/${obj.required}`;
+          lines.push(`  ${obj.targetName} ${mark}`);
+        }
+      }
       this.questTracker.setText(lines.join('\n'));
     }
   }

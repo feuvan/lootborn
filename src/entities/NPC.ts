@@ -9,6 +9,8 @@ export class NPC {
   tileCol: number;
   tileRow: number;
   nameLabel: Phaser.GameObjects.Text;
+  questMarker: Phaser.GameObjects.Text | null = null;
+  private questMarkerTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, definition: NPCDefinition, col: number, row: number) {
     this.scene = scene;
@@ -29,9 +31,9 @@ export class NPC {
       this.drawProceduralNPC(scene);
     }
 
-    // Exclamation mark for quest NPCs
+    // Quest marker (created for quest NPCs, updated dynamically)
     if (definition.type === 'quest') {
-      const marker = scene.add.text(0, -68, '!', {
+      this.questMarker = scene.add.text(0, -68, '!', {
         fontSize: '18px',
         color: '#f1c40f',
         fontFamily: '"Cinzel", serif',
@@ -39,10 +41,9 @@ export class NPC {
         stroke: '#000000',
         strokeThickness: 3,
       }).setOrigin(0.5);
-      this.sprite.add(marker);
-      // Bounce animation
-      scene.tweens.add({
-        targets: marker, y: marker.y - 4, duration: 600,
+      this.sprite.add(this.questMarker);
+      this.questMarkerTween = scene.tweens.add({
+        targets: this.questMarker, y: this.questMarker.y - 4, duration: 600,
         yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
       });
     }
@@ -111,6 +112,15 @@ export class NPC {
     const eye2 = scene.add.circle(4, -46, 1.5, 0x2c3e50);
     this.sprite.add(eye1);
     this.sprite.add(eye2);
+  }
+
+  setQuestMarker(text: string, color: string): void {
+    if (!this.questMarker) return;
+    if (text) {
+      this.questMarker.setText(text).setColor(color).setVisible(true);
+    } else {
+      this.questMarker.setVisible(false);
+    }
   }
 
   isNearPlayer(playerCol: number, playerRow: number, range = 2): boolean {

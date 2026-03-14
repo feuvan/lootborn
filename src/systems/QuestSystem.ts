@@ -2,7 +2,7 @@ import { EventBus, GameEvents } from '../utils/EventBus';
 import type { QuestDefinition, QuestProgress, QuestReward } from '../data/types';
 
 export class QuestSystem {
-  private quests: Map<string, QuestDefinition> = new Map();
+  quests: Map<string, QuestDefinition> = new Map();
   progress: Map<string, QuestProgress> = new Map();
 
   registerQuest(quest: QuestDefinition): void {

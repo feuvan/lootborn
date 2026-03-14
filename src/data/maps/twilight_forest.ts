@@ -29,6 +29,7 @@ export const TwilightForestMap: MapData = {
   camps: [
     { col: 13, row: 35, npcs: ['blacksmith', 'merchant', 'quest_scout'] },
     { col: 70, row: 67, npcs: ['merchant'] },
+    { col: 66, row: 42, npcs: ['forest_hermit'] },
   ],
   playerStart: { col: 3, row: 38 },
   exits: [
