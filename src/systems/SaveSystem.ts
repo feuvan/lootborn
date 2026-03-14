@@ -1,18 +1,18 @@
 import Dexie from 'dexie';
 import type { SaveData } from '../data/types';
 
-class PixelMudDB extends Dexie {
+class LootbornDB extends Dexie {
   saves!: Dexie.Table<SaveData, string>;
 
   constructor() {
-    super('PixelMudDB');
+    super('LootbornDB');
     this.version(1).stores({
       saves: 'id, timestamp',
     });
   }
 }
 
-const db = new PixelMudDB();
+const db = new LootbornDB();
 
 export class SaveSystem {
   async save(data: SaveData): Promise<void> {
