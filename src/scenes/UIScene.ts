@@ -7,6 +7,7 @@ import { NPCDefinitions } from '../data/npcs';
 import { audioSystem } from '../systems/AudioSystem';
 import type { Player } from '../entities/Player';
 import type { ZoneScene } from './ZoneScene';
+import type { ItemInstance, WeaponBase, ArmorBase } from '../data/types';
 
 const FONT = '"Noto Sans SC", sans-serif';
 const TITLE_FONT = '"Cinzel", "Noto Sans SC", serif';
@@ -44,6 +45,12 @@ export class UIScene extends Phaser.Scene {
   private questLogPage = 0;
   private questLogSelectedIndex = 0;
   private minimap!: Phaser.GameObjects.Graphics;
+  private tooltipContainer: Phaser.GameObjects.Container | null = null;
+  private inventoryPage = 0;
+  private shopInventoryPage = 0;
+  private autoLootText!: Phaser.GameObjects.Text;
+  private autoLootMode: 'off' | 'all' | 'magic' | 'rare' = 'off';
+  private contextPopup: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -108,7 +115,7 @@ export class UIScene extends Phaser.Scene {
     const y = GAME_HEIGHT - 50;
 
     // Skill bar background
-    this.add.rectangle(GAME_WIDTH / 2 - 20, y, totalW + 140, slotSize + 10, 0x0a0a14, 0.7)
+    this.add.rectangle(GAME_WIDTH / 2 + 8, y, totalW + 196, slotSize + 10, 0x0a0a14, 0.7)
       .setStrokeStyle(1, 0x333344).setDepth(2999);
 
     this.skillSlots = [];
@@ -146,8 +153,22 @@ export class UIScene extends Phaser.Scene {
       EventBus.emit(GameEvents.LOG_MESSAGE, { text: `自动战斗: ${this.player.autoCombat ? '开启' : '关闭'}`, type: 'system' });
     });
 
+    // Auto-loot button
+    const alX = acX + 56;
+    const alBg = this.add.rectangle(alX, y, 50, slotSize, 0x1a1a2e)
+      .setStrokeStyle(1.5, 0x555566).setInteractive({ useHandCursor: true }).setDepth(3000);
+    this.autoLootText = this.add.text(alX, y, '拾取\nOFF', {
+      fontSize: '10px', color: '#666680', fontFamily: FONT, align: 'center',
+    }).setOrigin(0.5).setDepth(3001);
+    alBg.on('pointerdown', () => {
+      const modes: Array<'off' | 'all' | 'magic' | 'rare'> = ['off', 'all', 'magic', 'rare'];
+      const idx = modes.indexOf(this.autoLootMode);
+      this.autoLootMode = modes[(idx + 1) % modes.length];
+      EventBus.emit(GameEvents.AUTOLOOT_CHANGED, { mode: this.autoLootMode });
+    });
+
     // Inventory button
-    const invX = acX + 56;
+    const invX = alX + 56;
     const invBg = this.add.rectangle(invX, y, 50, slotSize, 0x1a1a2e)
       .setStrokeStyle(1.5, 0x8e44ad).setInteractive({ useHandCursor: true }).setDepth(3000);
     this.add.text(invX, y, '背包\n(I)', {
@@ -226,130 +247,206 @@ export class UIScene extends Phaser.Scene {
 
   // --- Inventory Panel ---
   private toggleInventory(): void {
-    if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; return; }
+    if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; this.hideItemTooltip(); this.hideContextPopup(); return; }
     this.closeAllPanels();
     audioSystem.playSFX('click');
-    const pw = 400, ph = 440, px = (GAME_WIDTH - pw) / 2, py = 20;
+    const pw = 520, ph = 500, px = (GAME_WIDTH - pw) / 2, py = 10;
+    const inv = this.zone.inventorySystem.inventory;
+    const itemsPerPage = 50;
+    const totalPages = Math.max(1, Math.ceil(inv.length / itemsPerPage));
+    if (this.inventoryPage >= totalPages) this.inventoryPage = totalPages - 1;
+
     this.inventoryPanel = this.add.container(px, py).setDepth(4000);
     const bg = this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0xc0934a);
     this.inventoryPanel.add(bg);
-    this.inventoryPanel.add(this.add.text(pw / 2, 12, '背包', {
-      fontSize: '16px', color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
-    }).setOrigin(0.5, 0));
-    const closeBtn = this.add.text(pw - 16, 8, 'X', {
-      fontSize: '16px', color: '#e74c3c', fontFamily: FONT,
+
+    // Title with item count and page
+    this.inventoryPanel.add(this.add.text(14, 12, `背包 (${inv.length}/${100})`, {
+      fontSize: '14px', color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
+    }));
+
+    // Sort button
+    const sortBtn = this.add.text(pw - 120, 10, '[整理]', {
+      fontSize: '12px', color: '#5dade2', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    sortBtn.on('pointerdown', () => {
+      this.zone.inventorySystem.sortInventory();
+      this.refreshInventory();
+    });
+    this.inventoryPanel.add(sortBtn);
+
+    // Destroy normal items button
+    const destroyBtn = this.add.text(pw - 68, 10, '[销毁]', {
+      fontSize: '12px', color: '#e74c3c', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    destroyBtn.on('pointerdown', () => {
+      this.zone.inventorySystem.destroyNormalItems();
+      this.inventoryPage = 0;
+      this.refreshInventory();
+    });
+    this.inventoryPanel.add(destroyBtn);
+
+    // Close button
+    const closeBtn = this.add.text(pw - 16, 10, 'X', {
+      fontSize: '14px', color: '#e74c3c', fontFamily: FONT,
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => this.toggleInventory());
     this.inventoryPanel.add(closeBtn);
 
-    // Equipment slots
+    // Equipment slots — 5x2 grid
     const equipSlots = ['helmet', 'armor', 'gloves', 'boots', 'weapon', 'offhand', 'necklace', 'ring1', 'ring2', 'belt'];
     const slotNames = ['头盔', '铠甲', '手套', '鞋子', '武器', '副手', '项链', '戒指1', '戒指2', '腰带'];
-    const slotSize = 32;
+    const eqSlotSize = 36;
+    const eqGap = 6;
+    const eqStartX = 14;
+    const eqStartY = 36;
     equipSlots.forEach((slot, i) => {
-      const sx = 12 + (i % 5) * (slotSize + 8);
-      const sy = 36 + Math.floor(i / 5) * (slotSize + 16);
+      const sx = eqStartX + (i % 5) * (eqSlotSize + eqGap);
+      const sy = eqStartY + Math.floor(i / 5) * (eqSlotSize + 16);
       const eq = this.zone.inventorySystem.equipment[slot as keyof typeof this.zone.inventorySystem.equipment];
-      const slotBg = this.add.rectangle(sx + slotSize / 2, sy + slotSize / 2, slotSize, slotSize, eq ? this.getQualityColorNum(eq.quality) : 0x222233)
-        .setStrokeStyle(1, 0x444455);
+      const slotBg = this.add.rectangle(sx + eqSlotSize / 2, sy + eqSlotSize / 2, eqSlotSize, eqSlotSize, eq ? this.getQualityColorNum(eq.quality) : 0x222233)
+        .setStrokeStyle(1, 0x444455).setInteractive({ useHandCursor: true });
       this.inventoryPanel!.add(slotBg);
-      this.inventoryPanel!.add(this.add.text(sx + slotSize / 2, sy + slotSize + 3, slotNames[i], {
+      this.inventoryPanel!.add(this.add.text(sx + eqSlotSize / 2, sy + eqSlotSize + 2, slotNames[i], {
         fontSize: '8px', color: '#777788', fontFamily: FONT,
       }).setOrigin(0.5, 0));
       if (eq) {
-        this.inventoryPanel!.add(this.add.text(sx + slotSize / 2, sy + slotSize / 2, eq.name.charAt(0), {
-          fontSize: '12px', color: '#fff', fontFamily: FONT, fontStyle: 'bold',
+        this.inventoryPanel!.add(this.add.text(sx + eqSlotSize / 2, sy + eqSlotSize / 2, eq.name.charAt(0), {
+          fontSize: '13px', color: '#fff', fontFamily: FONT, fontStyle: 'bold',
         }).setOrigin(0.5));
+        slotBg.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+          this.showItemTooltip(eq, pointer.x, pointer.y);
+        });
+        slotBg.on('pointerout', () => this.hideItemTooltip());
+        slotBg.on('pointerdown', () => {
+          this.zone.inventorySystem.unequip(slot as any);
+          this.refreshInventory();
+        });
       }
     });
 
-    // Inventory grid
-    const inv = this.zone.inventorySystem.inventory;
-    const gridStartY = 110;
-    const cols = 8;
-    inv.forEach((item, i) => {
-      const ix = 12 + (i % cols) * (slotSize + 6);
-      const iy = gridStartY + Math.floor(i / cols) * (slotSize + 6);
+    // Divider
+    const divY = eqStartY + 2 * (eqSlotSize + 16) + 2;
+    this.inventoryPanel.add(this.add.rectangle(pw / 2, divY, pw - 20, 1, 0x333344));
+
+    // Inventory grid — 10 cols x 5 rows per page
+    const gridStartY = divY + 6;
+    const cols = 10;
+    const slotSize = 36;
+    const gap = 4;
+    const pageItems = inv.slice(this.inventoryPage * itemsPerPage, (this.inventoryPage + 1) * itemsPerPage);
+    pageItems.forEach((item, i) => {
+      const ix = 14 + (i % cols) * (slotSize + gap);
+      const iy = gridStartY + Math.floor(i / cols) * (slotSize + gap);
       const itemBg = this.add.rectangle(ix + slotSize / 2, iy + slotSize / 2, slotSize, slotSize, this.getQualityColorNum(item.quality))
         .setStrokeStyle(1, 0x555566).setInteractive({ useHandCursor: true });
       this.inventoryPanel!.add(itemBg);
       this.inventoryPanel!.add(this.add.text(ix + slotSize / 2, iy + slotSize / 2, item.name.charAt(0), {
-        fontSize: '12px', color: '#fff', fontFamily: FONT, fontStyle: 'bold',
+        fontSize: '13px', color: '#fff', fontFamily: FONT, fontStyle: 'bold',
       }).setOrigin(0.5));
       if (item.quantity > 1) {
         this.inventoryPanel!.add(this.add.text(ix + slotSize - 2, iy + slotSize - 2, `${item.quantity}`, {
           fontSize: '9px', color: '#ffd700', fontFamily: FONT,
         }).setOrigin(1, 1));
       }
-      itemBg.on('pointerdown', () => {
-        const base = getItemBase(item.baseId);
-        if (base && base.slot) {
-          this.zone.inventorySystem.equip(item.uid);
-        } else if (base && (base.type === 'consumable' || base.type === 'scroll')) {
-          const result = this.zone.inventorySystem.useConsumable(item.uid);
-          if (result) {
-            if (result.effect === 'heal') this.player.hp = Math.min(this.player.maxHp, this.player.hp + result.value);
-            if (result.effect === 'mana') this.player.mana = Math.min(this.player.maxMana, this.player.mana + result.value);
-          }
-        }
-        this.toggleInventory(); this.toggleInventory();
+      itemBg.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        this.showItemTooltip(item, pointer.x, pointer.y);
+      });
+      itemBg.on('pointerout', () => this.hideItemTooltip());
+      itemBg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        this.hideItemTooltip();
+        this.showContextPopup(item, pointer.x, pointer.y);
       });
     });
 
-    const statsY = gridStartY + Math.ceil(inv.length / cols) * (slotSize + 6) + 10;
+    // Pagination
+    const pageY = gridStartY + 5 * (slotSize + gap) + 4;
+    if (totalPages > 1) {
+      if (this.inventoryPage > 0) {
+        const prevBtn = this.add.text(pw / 2 - 80, pageY, '< 上一页', {
+          fontSize: '11px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        prevBtn.on('pointerdown', () => { this.inventoryPage--; this.refreshInventory(); });
+        this.inventoryPanel.add(prevBtn);
+      }
+      this.inventoryPanel.add(this.add.text(pw / 2, pageY, `第${this.inventoryPage + 1}/${totalPages}页`, {
+        fontSize: '11px', color: '#888', fontFamily: FONT,
+      }).setOrigin(0.5, 0));
+      if (this.inventoryPage < totalPages - 1) {
+        const nextBtn = this.add.text(pw / 2 + 40, pageY, '下一页 >', {
+          fontSize: '11px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        nextBtn.on('pointerdown', () => { this.inventoryPage++; this.refreshInventory(); });
+        this.inventoryPanel.add(nextBtn);
+      }
+    }
+
+    // Equipment stats at bottom
     const eqStats = this.zone.inventorySystem.getEquipmentStats();
     const statText = Object.entries(eqStats).map(([k, v]) => `${k}: +${v}`).join('  ');
-    this.inventoryPanel.add(this.add.text(12, Math.min(statsY, ph - 30), `装备加成: ${statText || '无'}`, {
-      fontSize: '9px', color: '#777788', fontFamily: FONT, wordWrap: { width: pw - 24 },
+    this.inventoryPanel.add(this.add.text(14, ph - 22, `装备加成: ${statText || '无'}`, {
+      fontSize: '9px', color: '#777788', fontFamily: FONT, wordWrap: { width: pw - 28 },
     }));
   }
 
-  // --- Shop Panel ---
+  // --- Shop Panel (Diablo-style split) ---
   private openShop(data: { npcId: string; shopItems: string[]; type: string }): void {
     this.closeAllPanels();
     audioSystem.playSFX('click');
+    this.shopInventoryPage = 0;
 
     // Backdrop for outside-click dismiss
     this.dialogueBackdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.3)
       .setInteractive().setDepth(3999);
     this.dialogueBackdrop.on('pointerdown', () => {
+      this.hideItemTooltip();
       if (this.shopPanel) { this.shopPanel.destroy(); this.shopPanel = null; }
       if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
     });
 
-    const pw = 340, ph = 380, px = (GAME_WIDTH - pw) / 2, py = 40;
+    const pw = 700, ph = 460, px = (GAME_WIDTH - pw) / 2, py = 40;
+    const dividerX = 320;
     this.shopPanel = this.add.container(px, py).setDepth(4000);
     this.shopPanel.add(this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0xc0934a));
     const title = data.type === 'blacksmith' ? '铁匠铺' : '商店';
     this.shopPanel.add(this.add.text(pw / 2, 12, title, {
       fontSize: '16px', color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
     }).setOrigin(0.5, 0));
-    const closeBtn = this.add.text(pw - 16, 8, 'X', {
-      fontSize: '16px', color: '#e74c3c', fontFamily: FONT,
+    const closeBtn = this.add.text(pw - 16, 10, 'X', {
+      fontSize: '14px', color: '#e74c3c', fontFamily: FONT,
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
     closeBtn.on('pointerdown', () => {
+      this.hideItemTooltip();
       if (this.shopPanel) { this.shopPanel.destroy(); this.shopPanel = null; }
       if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
     });
     this.shopPanel.add(closeBtn);
 
+    // Divider
+    this.shopPanel.add(this.add.rectangle(dividerX, 36, 1, ph - 56, 0x333344).setOrigin(0, 0));
+
+    // --- LEFT: Merchant items ---
+    this.shopPanel.add(this.add.text(dividerX / 2, 38, '商品列表', {
+      fontSize: '12px', color: '#c0934a', fontFamily: FONT,
+    }).setOrigin(0.5, 0));
+
     data.shopItems.forEach((itemId, i) => {
       const base = getItemBase(itemId);
       if (!base) return;
-      const iy = 40 + i * 28;
-      if (iy > ph - 30) return;
+      const iy = 58 + i * 28;
+      if (iy > ph - 50) return;
       const buyPrice = base.sellPrice * 3;
       const canAfford = this.player.gold >= buyPrice;
       this.shopPanel!.add(this.add.text(14, iy, base.name, {
         fontSize: '11px', color: canAfford ? '#e0d8cc' : '#555', fontFamily: FONT,
       }));
-      this.shopPanel!.add(this.add.text(pw - 14, iy, `${buyPrice}G`, {
+      this.shopPanel!.add(this.add.text(dividerX - 60, iy, `${buyPrice}G`, {
         fontSize: '11px', color: canAfford ? '#f1c40f' : '#555', fontFamily: FONT,
       }).setOrigin(1, 0));
       if (canAfford) {
-        const buyBtn = this.add.text(pw - 60, iy, '[买]', {
+        const buyBtn = this.add.text(dividerX - 14, iy, '[买]', {
           fontSize: '11px', color: '#27ae60', fontFamily: FONT,
-        }).setInteractive({ useHandCursor: true });
+        }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
         buyBtn.on('pointerdown', () => {
           if (this.player.gold >= buyPrice) {
             this.player.gold -= buyPrice;
@@ -357,15 +454,135 @@ export class UIScene extends Phaser.Scene {
             const item = this.zone.lootSystem.createItem(itemId, this.player.level, 'normal');
             if (item) { item.identified = true; this.zone.inventorySystem.addItem(item); }
             this.shopPanel?.destroy(); this.shopPanel = null;
+            if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
             this.openShop(data);
           }
         });
         this.shopPanel!.add(buyBtn);
       }
     });
-    this.shopPanel.add(this.add.text(14, ph - 22, `金币: ${this.player.gold}G`, {
+    this.shopPanel.add(this.add.text(14, ph - 26, `金币: ${this.player.gold}G`, {
       fontSize: '11px', color: '#f1c40f', fontFamily: FONT,
     }));
+
+    // --- RIGHT: Player inventory for selling ---
+    const rightX = dividerX + 10;
+    const rightW = pw - dividerX - 20;
+    this.shopPanel.add(this.add.text(dividerX + rightW / 2 + 10, 38, '你的背包', {
+      fontSize: '12px', color: '#c0934a', fontFamily: FONT,
+    }).setOrigin(0.5, 0));
+
+    const inv = this.zone.inventorySystem.inventory;
+    const shopSlotSize = 32;
+    const shopCols = 8;
+    const shopGap = 4;
+    const shopItemsPerPage = 40;
+    const shopTotalPages = Math.max(1, Math.ceil(inv.length / shopItemsPerPage));
+    if (this.shopInventoryPage >= shopTotalPages) this.shopInventoryPage = shopTotalPages - 1;
+    const shopPageItems = inv.slice(this.shopInventoryPage * shopItemsPerPage, (this.shopInventoryPage + 1) * shopItemsPerPage);
+    const shopGridY = 58;
+
+    shopPageItems.forEach((item, i) => {
+      const ix = rightX + (i % shopCols) * (shopSlotSize + shopGap);
+      const iy = shopGridY + Math.floor(i / shopCols) * (shopSlotSize + shopGap);
+      const itemBg = this.add.rectangle(ix + shopSlotSize / 2, iy + shopSlotSize / 2, shopSlotSize, shopSlotSize, this.getQualityColorNum(item.quality))
+        .setStrokeStyle(1, 0x555566).setInteractive({ useHandCursor: true });
+      this.shopPanel!.add(itemBg);
+      this.shopPanel!.add(this.add.text(ix + shopSlotSize / 2, iy + shopSlotSize / 2, item.name.charAt(0), {
+        fontSize: '11px', color: '#fff', fontFamily: FONT, fontStyle: 'bold',
+      }).setOrigin(0.5));
+      if (item.quantity > 1) {
+        this.shopPanel!.add(this.add.text(ix + shopSlotSize - 1, iy + shopSlotSize - 1, `${item.quantity}`, {
+          fontSize: '8px', color: '#ffd700', fontFamily: FONT,
+        }).setOrigin(1, 1));
+      }
+      itemBg.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        this.showItemTooltip(item, pointer.x, pointer.y);
+      });
+      itemBg.on('pointerout', () => this.hideItemTooltip());
+      itemBg.on('pointerdown', () => {
+        this.hideItemTooltip();
+        const needsConfirm = item.quality === 'rare' || item.quality === 'legendary' || item.quality === 'set';
+        if (needsConfirm) {
+          this.showSellConfirm(item, data);
+        } else {
+          const gold = this.zone.inventorySystem.sellItem(item.uid);
+          this.player.gold += gold;
+          audioSystem.playSFX('buy');
+          this.shopPanel?.destroy(); this.shopPanel = null;
+          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
+          this.openShop(data);
+        }
+      });
+    });
+
+    // Shop inventory pagination
+    if (shopTotalPages > 1) {
+      const pageY = ph - 50;
+      if (this.shopInventoryPage > 0) {
+        const prevBtn = this.add.text(rightX + rightW / 2 - 60, pageY, '< 上页', {
+          fontSize: '10px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        prevBtn.on('pointerdown', () => {
+          this.shopInventoryPage--;
+          this.shopPanel?.destroy(); this.shopPanel = null;
+          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
+          this.openShop(data);
+        });
+        this.shopPanel.add(prevBtn);
+      }
+      this.shopPanel.add(this.add.text(rightX + rightW / 2, pageY, `${this.shopInventoryPage + 1}/${shopTotalPages}`, {
+        fontSize: '10px', color: '#888', fontFamily: FONT,
+      }).setOrigin(0.5, 0));
+      if (this.shopInventoryPage < shopTotalPages - 1) {
+        const nextBtn = this.add.text(rightX + rightW / 2 + 30, pageY, '下页 >', {
+          fontSize: '10px', color: '#5dade2', fontFamily: FONT,
+        }).setInteractive({ useHandCursor: true });
+        nextBtn.on('pointerdown', () => {
+          this.shopInventoryPage++;
+          this.shopPanel?.destroy(); this.shopPanel = null;
+          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
+          this.openShop(data);
+        });
+        this.shopPanel.add(nextBtn);
+      }
+    }
+
+    // Gold on right side too
+    this.shopPanel.add(this.add.text(rightX, ph - 26, `金币: ${this.player.gold}G`, {
+      fontSize: '11px', color: '#f1c40f', fontFamily: FONT,
+    }));
+  }
+
+  private showSellConfirm(item: ItemInstance, shopData: { npcId: string; shopItems: string[]; type: string }): void {
+    this.hideContextPopup();
+    const base = getItemBase(item.baseId);
+    const sellPrice = base ? base.sellPrice * item.quantity : 1;
+    const popW = 180, popH = 60;
+    const px = (GAME_WIDTH - popW) / 2, py = (GAME_HEIGHT - popH) / 2;
+    this.contextPopup = this.add.container(px, py).setDepth(5002);
+    this.contextPopup.add(this.add.rectangle(0, 0, popW, popH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1, 0xc0934a));
+    this.contextPopup.add(this.add.text(popW / 2, 8, `卖出 ${item.name} (${sellPrice}G)?`, {
+      fontSize: '10px', color: '#e0d8cc', fontFamily: FONT, wordWrap: { width: popW - 16 },
+    }).setOrigin(0.5, 0));
+    const yesBtn = this.add.text(popW / 2 - 30, 38, '[确定]', {
+      fontSize: '11px', color: '#27ae60', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    yesBtn.on('pointerdown', () => {
+      const gold = this.zone.inventorySystem.sellItem(item.uid);
+      this.player.gold += gold;
+      audioSystem.playSFX('buy');
+      this.hideContextPopup();
+      this.shopPanel?.destroy(); this.shopPanel = null;
+      if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
+      this.openShop(shopData);
+    });
+    this.contextPopup.add(yesBtn);
+    const noBtn = this.add.text(popW / 2 + 30, 38, '[取消]', {
+      fontSize: '11px', color: '#888', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    noBtn.on('pointerdown', () => this.hideContextPopup());
+    this.contextPopup.add(noBtn);
   }
 
   // --- World Map ---
@@ -375,7 +592,7 @@ export class UIScene extends Phaser.Scene {
     const pw = 480, ph = 220, px = (GAME_WIDTH - pw) / 2, py = 80;
     this.mapPanel = this.add.container(px, py).setDepth(4000);
     this.mapPanel.add(this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0x27ae60));
-    this.mapPanel.add(this.add.text(pw / 2, 10, '掠生大陆', {
+    this.mapPanel.add(this.add.text(pw / 2, 10, '渊火', {
       fontSize: '16px', color: '#27ae60', fontFamily: TITLE_FONT, fontStyle: 'bold',
     }).setOrigin(0.5, 0));
     const closeBtn = this.add.text(pw - 16, 8, 'X', {
@@ -992,6 +1209,169 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
+  // --- Item Tooltip ---
+  private showItemTooltip(item: ItemInstance, screenX: number, screenY: number): void {
+    this.hideItemTooltip();
+    const base = getItemBase(item.baseId);
+    const tipW = 200;
+    const lines: { text: string; color: string; size: string }[] = [];
+    const qualityColors: Record<string, string> = {
+      normal: '#cccccc', magic: '#5dade2', rare: '#f1c40f', legendary: '#e67e22', set: '#2ecc71',
+    };
+    const qualityLabels: Record<string, string> = {
+      normal: '普通', magic: '魔法', rare: '稀有', legendary: '传奇', set: '套装',
+    };
+    lines.push({ text: item.name, color: qualityColors[item.quality] ?? '#ccc', size: '12px' });
+    lines.push({ text: `${qualityLabels[item.quality] ?? ''} Lv.${item.level}`, color: '#888', size: '9px' });
+    if (base) {
+      const typeLabels: Record<string, string> = {
+        weapon: '武器', armor: '护甲', accessory: '饰品', consumable: '消耗品', gem: '宝石', material: '材料', scroll: '卷轴',
+      };
+      const slotLabels: Record<string, string> = {
+        helmet: '头盔', armor: '铠甲', gloves: '手套', boots: '鞋子', weapon: '武器',
+        offhand: '副手', necklace: '项链', ring1: '戒指', ring2: '戒指', belt: '腰带',
+      };
+      let typeLine = typeLabels[base.type] ?? base.type;
+      if (base.slot) typeLine += ` (${slotLabels[base.slot] ?? base.slot})`;
+      lines.push({ text: typeLine, color: '#777', size: '9px' });
+      if ('baseDamage' in base) {
+        const wb = base as WeaponBase;
+        lines.push({ text: `伤害: ${wb.baseDamage[0]}-${wb.baseDamage[1]}`, color: '#e0d8cc', size: '10px' });
+      }
+      if ('baseDefense' in base) {
+        const ab = base as ArmorBase;
+        lines.push({ text: `防御: ${ab.baseDefense}`, color: '#e0d8cc', size: '10px' });
+      }
+    }
+    if (!item.identified && item.quality !== 'normal') {
+      lines.push({ text: '[未鉴定]', color: '#e74c3c', size: '10px' });
+    } else {
+      for (const affix of item.affixes) {
+        lines.push({ text: `${affix.name}: +${affix.value}`, color: '#5dade2', size: '9px' });
+      }
+    }
+    if (item.legendaryEffect) {
+      lines.push({ text: item.legendaryEffect, color: '#e67e22', size: '9px' });
+    }
+    if (base) {
+      lines.push({ text: `售价: ${base.sellPrice}G`, color: '#f1c40f', size: '9px' });
+    }
+
+    let tipH = 12;
+    for (const line of lines) tipH += parseInt(line.size) + 4;
+    tipH += 8;
+
+    // Clamp to screen
+    let tx = screenX + 12;
+    let ty = screenY - 10;
+    if (tx + tipW > GAME_WIDTH) tx = screenX - tipW - 12;
+    if (ty + tipH > GAME_HEIGHT) ty = GAME_HEIGHT - tipH - 4;
+    if (ty < 4) ty = 4;
+
+    this.tooltipContainer = this.add.container(tx, ty).setDepth(5000);
+    this.tooltipContainer.add(this.add.rectangle(0, 0, tipW, tipH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1, 0x666677));
+    let ly = 6;
+    for (const line of lines) {
+      this.tooltipContainer.add(this.add.text(8, ly, line.text, {
+        fontSize: line.size, color: line.color, fontFamily: FONT, wordWrap: { width: tipW - 16 },
+      }));
+      ly += parseInt(line.size) + 4;
+    }
+  }
+
+  private hideItemTooltip(): void {
+    if (this.tooltipContainer) { this.tooltipContainer.destroy(); this.tooltipContainer = null; }
+  }
+
+  // --- Context Popup ---
+  private showContextPopup(item: ItemInstance, screenX: number, screenY: number): void {
+    this.hideContextPopup();
+    const base = getItemBase(item.baseId);
+    const actions: { label: string; callback: () => void }[] = [];
+    if (base && base.slot) {
+      actions.push({ label: '装备', callback: () => {
+        this.zone.inventorySystem.equip(item.uid);
+        this.hideContextPopup();
+        this.refreshInventory();
+      }});
+    } else if (base && (base.type === 'consumable' || base.type === 'scroll')) {
+      actions.push({ label: '使用', callback: () => {
+        const result = this.zone.inventorySystem.useConsumable(item.uid);
+        if (result) {
+          if (result.effect === 'heal') this.player.hp = Math.min(this.player.maxHp, this.player.hp + result.value);
+          if (result.effect === 'mana') this.player.mana = Math.min(this.player.maxMana, this.player.mana + result.value);
+        }
+        this.hideContextPopup();
+        this.refreshInventory();
+      }});
+    }
+    const needsConfirm = item.quality === 'rare' || item.quality === 'legendary' || item.quality === 'set';
+    actions.push({ label: '丢弃', callback: () => {
+      if (needsConfirm) {
+        this.showDiscardConfirm(item);
+      } else {
+        this.zone.inventorySystem.discardItem(item.uid);
+        this.hideContextPopup();
+        this.refreshInventory();
+      }
+    }});
+
+    const popW = 80, btnH = 24;
+    const popH = actions.length * btnH + 8;
+    let px = screenX;
+    let py = screenY;
+    if (px + popW > GAME_WIDTH) px = GAME_WIDTH - popW - 4;
+    if (py + popH > GAME_HEIGHT) py = GAME_HEIGHT - popH - 4;
+
+    this.contextPopup = this.add.container(px, py).setDepth(5001);
+    this.contextPopup.add(this.add.rectangle(0, 0, popW, popH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1, 0x555566));
+    actions.forEach((action, i) => {
+      const by = 4 + i * btnH;
+      const btnBg = this.add.rectangle(4, by, popW - 8, btnH - 2, 0x1a1a2e).setOrigin(0, 0)
+        .setInteractive({ useHandCursor: true });
+      btnBg.on('pointerdown', () => action.callback());
+      btnBg.on('pointerover', () => btnBg.setFillStyle(0x2a2a3e));
+      btnBg.on('pointerout', () => btnBg.setFillStyle(0x1a1a2e));
+      this.contextPopup!.add(btnBg);
+      this.contextPopup!.add(this.add.text(popW / 2, by + btnH / 2 - 1, action.label, {
+        fontSize: '11px', color: action.label === '丢弃' ? '#e74c3c' : '#e0d8cc', fontFamily: FONT,
+      }).setOrigin(0.5));
+    });
+  }
+
+  private hideContextPopup(): void {
+    if (this.contextPopup) { this.contextPopup.destroy(); this.contextPopup = null; }
+  }
+
+  private showDiscardConfirm(item: ItemInstance): void {
+    this.hideContextPopup();
+    const popW = 160, popH = 60;
+    const px = (GAME_WIDTH - popW) / 2, py = (GAME_HEIGHT - popH) / 2;
+    this.contextPopup = this.add.container(px, py).setDepth(5002);
+    this.contextPopup.add(this.add.rectangle(0, 0, popW, popH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1, 0xe74c3c));
+    this.contextPopup.add(this.add.text(popW / 2, 8, '确定丢弃?', {
+      fontSize: '12px', color: '#e74c3c', fontFamily: FONT,
+    }).setOrigin(0.5, 0));
+    const yesBtn = this.add.text(popW / 2 - 30, 34, '[确定]', {
+      fontSize: '11px', color: '#e74c3c', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    yesBtn.on('pointerdown', () => {
+      this.zone.inventorySystem.discardItem(item.uid);
+      this.hideContextPopup();
+      this.refreshInventory();
+    });
+    this.contextPopup.add(yesBtn);
+    const noBtn = this.add.text(popW / 2 + 30, 34, '[取消]', {
+      fontSize: '11px', color: '#27ae60', fontFamily: FONT,
+    }).setInteractive({ useHandCursor: true });
+    noBtn.on('pointerdown', () => this.hideContextPopup());
+    this.contextPopup.add(noBtn);
+  }
+
+  private refreshInventory(): void {
+    if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; this.toggleInventory(); }
+  }
+
   private closeAllPanels(): void {
     if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; }
     if (this.shopPanel) { this.shopPanel.destroy(); this.shopPanel = null; }
@@ -1000,6 +1380,8 @@ export class UIScene extends Phaser.Scene {
     if (this.charPanel) { this.charPanel.destroy(); this.charPanel = null; }
     if (this.homesteadPanel) { this.homesteadPanel.destroy(); this.homesteadPanel = null; }
     if (this.questLogPanel) { this.questLogPanel.destroy(); this.questLogPanel = null; }
+    this.hideItemTooltip();
+    this.hideContextPopup();
     this.closeDialogue();
   }
 
@@ -1028,6 +1410,12 @@ export class UIScene extends Phaser.Scene {
     this.goldText.setText(`${this.player.gold} G`);
     this.autoCombatText.setText(`AUTO\n${this.player.autoCombat ? 'ON' : 'OFF'}`)
       .setColor(this.player.autoCombat ? '#27ae60' : '#666680');
+
+    // Auto-loot button update
+    const alLabels: Record<string, string> = { off: '拾取\nOFF', all: '拾取\n全部', magic: '拾取\n魔法+', rare: '拾取\n稀有+' };
+    const alColors: Record<string, string> = { off: '#666680', all: '#e0d8cc', magic: '#2471a3', rare: '#c0934a' };
+    this.autoLootText.setText(alLabels[this.autoLootMode] ?? '拾取\nOFF')
+      .setColor(alColors[this.autoLootMode] ?? '#666680');
 
     if (this.zone && (this.zone as any).currentMapId) {
       const map = AllMaps[(this.zone as any).currentMapId];

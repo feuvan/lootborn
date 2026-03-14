@@ -12,7 +12,7 @@ export class BootScene extends Phaser.Scene {
     const barY = height / 2;
     this.add.rectangle(width / 2, barY, barW, barH, 0x1a1a2e).setStrokeStyle(1, 0x333344);
     const fill = this.add.rectangle((width - barW) / 2 + 2, barY, 0, barH - 4, 0xc0934a).setOrigin(0, 0.5);
-    const loadingText = this.add.text(width / 2, barY - 24, '锻造掠生大陆...', {
+    const loadingText = this.add.text(width / 2, barY - 24, '锻造渊火...', {
       fontSize: '14px', color: '#c0934a', fontFamily: '"Cinzel", serif',
     }).setOrigin(0.5);
     this.load.on('progress', (v: number) => { fill.width = (barW - 4) * v; });
