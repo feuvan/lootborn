@@ -31,6 +31,11 @@ export class UIScene extends Phaser.Scene {
   private inventoryPanel: Phaser.GameObjects.Container | null = null;
   private shopPanel: Phaser.GameObjects.Container | null = null;
   private mapPanel: Phaser.GameObjects.Container | null = null;
+  private skillPanel: Phaser.GameObjects.Container | null = null;
+  private charPanel: Phaser.GameObjects.Container | null = null;
+  private homesteadPanel: Phaser.GameObjects.Container | null = null;
+  private tooltipContainer: Phaser.GameObjects.Container | null = null;
+  private minimap!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -48,6 +53,7 @@ export class UIScene extends Phaser.Scene {
     this.createLogPanel();
     this.createInfoDisplay();
     this.createQuestTracker();
+    this.createMinimap();
     this.setupEventListeners();
   }
 
@@ -153,6 +159,9 @@ export class UIScene extends Phaser.Scene {
     EventBus.on(GameEvents.UI_TOGGLE_PANEL, (data: { panel: string }) => {
       if (data.panel === 'inventory') this.toggleInventory();
       if (data.panel === 'map') this.toggleMap();
+      if (data.panel === 'skills') this.toggleSkillTree();
+      if (data.panel === 'character') this.toggleCharacter();
+      if (data.panel === 'homestead') this.toggleHomestead();
     });
 
     EventBus.on('ui:refresh', (data: { player: Player; zone: ZoneScene }) => {
@@ -315,10 +324,217 @@ export class UIScene extends Phaser.Scene {
     this.mapPanel.add(this.add.text(pw / 2, ph - 20, '按 M 关闭', { fontSize: '9px', color: '#666', fontFamily: 'monospace' }).setOrigin(0.5));
   }
 
+  // --- Skill Tree Panel (K) ---
+  private toggleSkillTree(): void {
+    if (this.skillPanel) { this.skillPanel.destroy(); this.skillPanel = null; return; }
+    this.closeAllPanels();
+    const pw = 420, ph = 380, px = (GAME_WIDTH - pw) / 2, py = 20;
+    this.skillPanel = this.add.container(px, py).setDepth(4000);
+    this.skillPanel.add(this.add.rectangle(0, 0, pw, ph, 0x1a1a2e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0x9b59b6));
+    this.skillPanel.add(this.add.text(pw / 2, 8, `技能树 - ${this.player.classData.name}`, { fontSize: '13px', color: '#9b59b6', fontFamily: 'monospace', fontStyle: 'bold' }).setOrigin(0.5, 0));
+    this.skillPanel.add(this.add.text(pw / 2, 24, `剩余技能点: ${this.player.freeSkillPoints}`, { fontSize: '10px', color: '#f1c40f', fontFamily: 'monospace' }).setOrigin(0.5, 0));
+    const closeBtn = this.add.text(pw - 12, 6, 'X', { fontSize: '14px', color: '#e74c3c', fontFamily: 'monospace' }).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.toggleSkillTree());
+    this.skillPanel.add(closeBtn);
+
+    // Group skills by tree
+    const trees = new Map<string, typeof this.player.classData.skills>();
+    for (const skill of this.player.classData.skills) {
+      if (!trees.has(skill.tree)) trees.set(skill.tree, []);
+      trees.get(skill.tree)!.push(skill);
+    }
+
+    let treeIdx = 0;
+    const treeW = (pw - 20) / Math.max(trees.size, 1);
+    for (const [treeName, skills] of trees) {
+      const tx = 10 + treeIdx * treeW;
+      this.skillPanel.add(this.add.text(tx + treeW / 2, 42, treeName, { fontSize: '10px', color: '#e0e0e0', fontFamily: 'monospace' }).setOrigin(0.5, 0));
+      skills.forEach((skill, si) => {
+        const sy = 60 + si * 55;
+        const level = this.player.getSkillLevel(skill.id);
+        const canLevel = this.player.freeSkillPoints > 0 && level < skill.maxLevel;
+        const slotBg = this.add.rectangle(tx + treeW / 2, sy + 10, treeW - 10, 48, 0x2c3e50).setStrokeStyle(1, canLevel ? 0xf1c40f : 0x444444).setOrigin(0.5, 0);
+        this.skillPanel!.add(slotBg);
+        this.skillPanel!.add(this.add.text(tx + treeW / 2, sy + 14, skill.name, { fontSize: '10px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5, 0));
+        this.skillPanel!.add(this.add.text(tx + treeW / 2, sy + 28, `Lv.${level}/${skill.maxLevel}  MP:${skill.manaCost}  CD:${(skill.cooldown / 1000).toFixed(1)}s`, { fontSize: '8px', color: '#aaa', fontFamily: 'monospace' }).setOrigin(0.5, 0));
+        this.skillPanel!.add(this.add.text(tx + treeW / 2, sy + 40, skill.description, { fontSize: '7px', color: '#888', fontFamily: 'monospace', wordWrap: { width: treeW - 16 } }).setOrigin(0.5, 0));
+        if (canLevel) {
+          const plusBtn = this.add.text(tx + treeW - 12, sy + 14, '+', { fontSize: '14px', color: '#2ecc71', fontFamily: 'monospace', fontStyle: 'bold' }).setInteractive({ useHandCursor: true });
+          plusBtn.on('pointerdown', () => {
+            if (this.player.freeSkillPoints > 0) {
+              this.player.freeSkillPoints--;
+              this.player.skillLevels.set(skill.id, level + 1);
+              this.toggleSkillTree(); this.toggleSkillTree();
+            }
+          });
+          this.skillPanel!.add(plusBtn);
+        }
+      });
+      treeIdx++;
+    }
+  }
+
+  // --- Character Stats Panel (C) ---
+  private toggleCharacter(): void {
+    if (this.charPanel) { this.charPanel.destroy(); this.charPanel = null; return; }
+    this.closeAllPanels();
+    const pw = 280, ph = 340, px = (GAME_WIDTH - pw) / 2, py = 40;
+    this.charPanel = this.add.container(px, py).setDepth(4000);
+    this.charPanel.add(this.add.rectangle(0, 0, pw, ph, 0x1a1a2e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0x3498db));
+    this.charPanel.add(this.add.text(pw / 2, 8, `角色属性 - ${this.player.classData.name}`, { fontSize: '13px', color: '#3498db', fontFamily: 'monospace', fontStyle: 'bold' }).setOrigin(0.5, 0));
+    this.charPanel.add(this.add.text(pw / 2, 24, `Lv.${this.player.level}  剩余属性点: ${this.player.freeStatPoints}`, { fontSize: '10px', color: '#f1c40f', fontFamily: 'monospace' }).setOrigin(0.5, 0));
+    const closeBtn = this.add.text(pw - 12, 6, 'X', { fontSize: '14px', color: '#e74c3c', fontFamily: 'monospace' }).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.toggleCharacter());
+    this.charPanel.add(closeBtn);
+
+    const stats: [string, keyof typeof this.player.stats, string][] = [
+      ['力量 STR', 'str', '物理伤害/负重'],
+      ['敏捷 DEX', 'dex', '闪避/暴击率/攻速'],
+      ['体质 VIT', 'vit', '生命值/物理抗性'],
+      ['智力 INT', 'int', '魔法伤害/法术抗性'],
+      ['精神 SPI', 'spi', '法力值/法力回复'],
+      ['幸运 LCK', 'lck', '掉宝率/暴击倍率'],
+    ];
+
+    stats.forEach(([label, key, desc], i) => {
+      const sy = 44 + i * 36;
+      const val = this.player.stats[key];
+      this.charPanel!.add(this.add.text(12, sy, label, { fontSize: '11px', color: '#e0e0e0', fontFamily: 'monospace' }));
+      this.charPanel!.add(this.add.text(120, sy, `${val}`, { fontSize: '11px', color: '#fff', fontFamily: 'monospace', fontStyle: 'bold' }));
+      this.charPanel!.add(this.add.text(12, sy + 14, desc, { fontSize: '7px', color: '#888', fontFamily: 'monospace' }));
+      if (this.player.freeStatPoints > 0) {
+        const plusBtn = this.add.text(150, sy, '[+]', { fontSize: '11px', color: '#2ecc71', fontFamily: 'monospace' }).setInteractive({ useHandCursor: true });
+        plusBtn.on('pointerdown', () => {
+          if (this.player.freeStatPoints > 0) {
+            this.player.freeStatPoints--;
+            this.player.stats[key]++;
+            this.player.recalcDerived();
+            this.toggleCharacter(); this.toggleCharacter();
+          }
+        });
+        this.charPanel!.add(plusBtn);
+      }
+    });
+
+    // Derived stats
+    const dy = 44 + stats.length * 36 + 8;
+    const eqStats = this.zone.inventorySystem.getEquipmentStats();
+    const derived = [
+      `HP: ${Math.ceil(this.player.hp)}/${this.player.maxHp}`,
+      `MP: ${Math.ceil(this.player.mana)}/${this.player.maxMana}`,
+      `攻击: ${Math.floor(this.player.baseDamage)}${eqStats['damage'] ? ` (+${eqStats['damage']})` : ''}`,
+      `防御: ${Math.floor(this.player.defense)}${eqStats['defense'] ? ` (+${eqStats['defense']})` : ''}`,
+      `金币: ${this.player.gold}G`,
+    ];
+    derived.forEach((line, i) => {
+      this.charPanel!.add(this.add.text(12, dy + i * 14, line, { fontSize: '9px', color: '#aaa', fontFamily: 'monospace' }));
+    });
+  }
+
+  // --- Homestead Panel (H) ---
+  private toggleHomestead(): void {
+    if (this.homesteadPanel) { this.homesteadPanel.destroy(); this.homesteadPanel = null; return; }
+    this.closeAllPanels();
+    const pw = 380, ph = 360, px = (GAME_WIDTH - pw) / 2, py = 30;
+    this.homesteadPanel = this.add.container(px, py).setDepth(4000);
+    this.homesteadPanel.add(this.add.rectangle(0, 0, pw, ph, 0x1a1a2e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0xf39c12));
+    this.homesteadPanel.add(this.add.text(pw / 2, 8, '家园', { fontSize: '14px', color: '#f39c12', fontFamily: 'monospace', fontStyle: 'bold' }).setOrigin(0.5, 0));
+    const closeBtn = this.add.text(pw - 12, 6, 'X', { fontSize: '14px', color: '#e74c3c', fontFamily: 'monospace' }).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.toggleHomestead());
+    this.homesteadPanel.add(closeBtn);
+
+    const hs = this.zone.homesteadSystem;
+    const buildings = hs.getAllBuildings();
+
+    buildings.forEach((b, i) => {
+      const sy = 30 + i * 42;
+      const lv = hs.getBuildingLevel(b.id);
+      const maxed = lv >= b.maxLevel;
+      const cost = maxed ? 0 : b.costPerLevel[lv]?.gold ?? 0;
+      const canUpgrade = !maxed && this.player.gold >= cost;
+
+      this.homesteadPanel!.add(this.add.text(12, sy, `${b.name} Lv.${lv}/${b.maxLevel}`, { fontSize: '10px', color: '#e0e0e0', fontFamily: 'monospace' }));
+      this.homesteadPanel!.add(this.add.text(12, sy + 14, b.description, { fontSize: '8px', color: '#888', fontFamily: 'monospace' }));
+
+      if (!maxed) {
+        const upBtn = this.add.text(pw - 12, sy + 4, `升级 ${cost}G`, { fontSize: '9px', color: canUpgrade ? '#2ecc71' : '#666', fontFamily: 'monospace' }).setOrigin(1, 0);
+        if (canUpgrade) {
+          upBtn.setInteractive({ useHandCursor: true });
+          upBtn.on('pointerdown', () => {
+            const actualCost = hs.upgrade(b.id);
+            this.player.gold -= actualCost;
+            this.toggleHomestead(); this.toggleHomestead();
+          });
+        }
+        this.homesteadPanel!.add(upBtn);
+      } else {
+        this.homesteadPanel!.add(this.add.text(pw - 12, sy + 4, '已满级', { fontSize: '9px', color: '#f39c12', fontFamily: 'monospace' }).setOrigin(1, 0));
+      }
+    });
+
+    // Pets section
+    const petY = 30 + buildings.length * 42 + 10;
+    this.homesteadPanel.add(this.add.text(12, petY, '── 宠物 ──', { fontSize: '10px', color: '#f39c12', fontFamily: 'monospace' }));
+    const pets = hs.pets;
+    if (pets.length === 0) {
+      this.homesteadPanel.add(this.add.text(12, petY + 16, '暂无宠物 (击杀Boss有机会获得)', { fontSize: '8px', color: '#666', fontFamily: 'monospace' }));
+    }
+    pets.forEach((p, i) => {
+      const pd = hs.getAllPets().find(d => d.id === p.petId);
+      const isActive = hs.activePet === p.petId;
+      this.homesteadPanel!.add(this.add.text(12, petY + 16 + i * 16, `${pd?.name ?? p.petId} Lv.${p.level} ${isActive ? '[激活]' : ''}`, {
+        fontSize: '9px', color: isActive ? '#2ecc71' : '#aaa', fontFamily: 'monospace',
+      }));
+    });
+  }
+
+  // --- Minimap ---
+  private createMinimap(): void {
+    const size = 80, padding = 8;
+    const x = GAME_WIDTH - size - padding, y = padding;
+    // Background
+    this.add.rectangle(x + size / 2, y + size / 2, size + 4, size + 4, 0x000000, 0.6).setStrokeStyle(1, 0x555555).setDepth(2999);
+    this.minimap = this.add.graphics().setDepth(3000);
+    this.minimap.setPosition(x, y);
+  }
+
+  private updateMinimap(): void {
+    if (!this.minimap || !this.zone) return;
+    this.minimap.clear();
+    const mapData = AllMaps[(this.zone as any).currentMapId];
+    if (!mapData) return;
+    const size = 80;
+    const sx = size / mapData.cols, sy = size / mapData.rows;
+    const tileColors: Record<number, number> = {
+      0: 0x4a8c3f, 1: 0x8b7355, 2: 0x707070, 3: 0x2471a3, 4: 0x4a4a4a, 5: 0xb8956b,
+    };
+
+    for (let r = 0; r < mapData.rows; r++) {
+      for (let c = 0; c < mapData.cols; c++) {
+        const color = tileColors[mapData.tiles[r][c]] ?? 0x333333;
+        this.minimap.fillStyle(color, 0.8);
+        this.minimap.fillRect(c * sx, r * sy, Math.ceil(sx), Math.ceil(sy));
+      }
+    }
+
+    // Player dot
+    this.minimap.fillStyle(0x3498db);
+    this.minimap.fillCircle(this.player.tileCol * sx, this.player.tileRow * sy, 2);
+
+    // Exit markers
+    for (const exit of mapData.exits) {
+      this.minimap.fillStyle(0x00ff00);
+      this.minimap.fillRect(exit.col * sx - 1, exit.row * sy - 1, 3, 3);
+    }
+  }
+
   private closeAllPanels(): void {
     if (this.inventoryPanel) { this.inventoryPanel.destroy(); this.inventoryPanel = null; }
     if (this.shopPanel) { this.shopPanel.destroy(); this.shopPanel = null; }
     if (this.mapPanel) { this.mapPanel.destroy(); this.mapPanel = null; }
+    if (this.skillPanel) { this.skillPanel.destroy(); this.skillPanel = null; }
+    if (this.charPanel) { this.charPanel.destroy(); this.charPanel = null; }
+    if (this.homesteadPanel) { this.homesteadPanel.destroy(); this.homesteadPanel = null; }
   }
 
   private getQualityColorNum(quality: string): number {
@@ -351,6 +567,9 @@ export class UIScene extends Phaser.Scene {
       const cd = this.player.skillCooldowns.get(skills[i].id) ?? 0;
       this.skillCooldownOverlays[i].setVisible(time < cd);
     }
+
+    // Minimap (every 5 frames)
+    if (Math.floor(time / 200) % 2 === 0) this.updateMinimap();
 
     // Quest tracker
     if (this.zone?.questSystem) {

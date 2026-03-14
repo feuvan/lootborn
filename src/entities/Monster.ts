@@ -59,17 +59,24 @@ export class Monster {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 50);
 
-    // Monster body color based on type
-    const color = definition.elite ? 0xe74c3c : this.getMonsterColor(definition.id);
+    // Use generated pixel sprite if available
+    const spriteKey = definition.spriteKey;
+    const hasTexture = scene.textures.exists(spriteKey);
     const size = definition.elite ? 24 : 18;
-    this.body = scene.add.rectangle(0, -10, size, size, color);
-    this.body.setStrokeStyle(1, 0x000000);
-    this.sprite.add(this.body);
 
-    // Shadow
-    const shadow = scene.add.ellipse(0, 2, size, 6, 0x000000, 0.3);
-    this.sprite.add(shadow);
-    this.sprite.sendToBack(shadow);
+    if (hasTexture) {
+      const img = scene.add.image(0, -12, spriteKey);
+      this.sprite.add(img);
+      this.body = scene.add.rectangle(0, -10, size, size, 0x000000, 0).setVisible(false);
+    } else {
+      const color = definition.elite ? 0xe74c3c : this.getMonsterColor(definition.id);
+      this.body = scene.add.rectangle(0, -10, size, size, color);
+      this.body.setStrokeStyle(1, 0x000000);
+      this.sprite.add(this.body);
+      const shadow = scene.add.ellipse(0, 2, size, 6, 0x000000, 0.3);
+      this.sprite.add(shadow);
+      this.sprite.sendToBack(shadow);
+    }
 
     // HP bar background
     this.hpBarBg = scene.add.rectangle(0, -size - 6, 24, 3, 0x333333);
@@ -190,12 +197,24 @@ export class Monster {
     this.hp = Math.max(0, this.hp - amount);
     this.updateHpBar();
 
-    // Flash red
-    this.body.setFillStyle(0xff0000);
+    // Flash red - tint the whole sprite container
+    this.sprite.list.forEach(child => {
+      if (child instanceof Phaser.GameObjects.Image) {
+        (child as Phaser.GameObjects.Image).setTint(0xff4444);
+      }
+    });
+    if (this.body.visible) this.body.setFillStyle(0xff0000);
     this.scene.time.delayedCall(100, () => {
       if (this.state !== 'dead') {
-        const color = this.definition.elite ? 0xe74c3c : this.getMonsterColor(this.definition.id);
-        this.body.setFillStyle(color);
+        this.sprite.list.forEach(child => {
+          if (child instanceof Phaser.GameObjects.Image) {
+            (child as Phaser.GameObjects.Image).clearTint();
+          }
+        });
+        if (this.body.visible) {
+          const color = this.definition.elite ? 0xe74c3c : this.getMonsterColor(this.definition.id);
+          this.body.setFillStyle(color);
+        }
       }
     });
 

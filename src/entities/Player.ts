@@ -58,24 +58,21 @@ export class Player {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 100);
 
-    // Player body (colored rectangle placeholder)
-    this.body = scene.add.rectangle(0, -12, 20, 24, 0x3498db);
-    this.body.setStrokeStyle(1, 0x2980b9);
-    this.sprite.add(this.body);
-
-    // Helmet indicator
-    const helmet = scene.add.rectangle(0, -26, 14, 8, 0x7f8c8d);
-    this.sprite.add(helmet);
-
-    // Weapon indicator
-    const weapon = scene.add.rectangle(12, -10, 4, 16, 0xbdc3c7);
-    weapon.setAngle(30);
-    this.sprite.add(weapon);
-
-    // Shadow
-    const shadow = scene.add.ellipse(0, 2, 20, 8, 0x000000, 0.3);
-    this.sprite.add(shadow);
-    this.sprite.sendToBack(shadow);
+    // Use generated pixel art sprite
+    const spriteKey = `player_${classData.id}`;
+    const hasTexture = scene.textures.exists(spriteKey);
+    if (hasTexture) {
+      const img = scene.add.image(0, -16, spriteKey);
+      this.sprite.add(img);
+      this.body = scene.add.rectangle(0, -12, 20, 24, 0x000000, 0).setVisible(false);
+    } else {
+      this.body = scene.add.rectangle(0, -12, 20, 24, 0x3498db);
+      this.body.setStrokeStyle(1, 0x2980b9);
+      this.sprite.add(this.body);
+      const shadow = scene.add.ellipse(0, 2, 20, 8, 0x000000, 0.3);
+      this.sprite.add(shadow);
+      this.sprite.sendToBack(shadow);
+    }
 
     // Set default skill levels and auto priorities
     for (const skill of classData.skills) {

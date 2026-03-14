@@ -135,7 +135,10 @@ export class ZoneScene extends Phaser.Scene {
         SIX: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SIX),
         TAB: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB),
         I: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I),
+        K: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
         M: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M),
+        H: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H),
+        C: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C),
       };
     }
 
@@ -282,6 +285,15 @@ export class ZoneScene extends Phaser.Scene {
     }
     if (Phaser.Input.Keyboard.JustDown(this.wasd.M)) {
       EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'map' });
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.K)) {
+      EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'skills' });
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.H)) {
+      EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'homestead' });
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.wasd.C)) {
+      EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'character' });
     }
 
     const skillKeys = [this.wasd.ONE, this.wasd.TWO, this.wasd.THREE, this.wasd.FOUR, this.wasd.FIVE, this.wasd.SIX];
