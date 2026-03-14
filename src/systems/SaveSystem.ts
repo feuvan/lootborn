@@ -1,18 +1,18 @@
 import Dexie from 'dexie';
 import type { SaveData } from '../data/types';
 
-class LootbornDB extends Dexie {
+class AbyssfireDB extends Dexie {
   saves!: Dexie.Table<SaveData, string>;
 
   constructor() {
-    super('LootbornDB');
+    super('AbyssfireDB');
     this.version(1).stores({
       saves: 'id, timestamp',
     });
   }
 }
 
-const db = new LootbornDB();
+const db = new AbyssfireDB();
 
 export class SaveSystem {
   async save(data: SaveData): Promise<void> {
