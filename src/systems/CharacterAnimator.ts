@@ -148,6 +148,8 @@ export class CharacterAnimator {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private config: AnimConfig;
+  private animPrefix: string;
+  private hasFrameAnims: boolean;
 
   private state: AnimState = 'idle';
   private prevState: AnimState = 'idle';
@@ -157,14 +159,33 @@ export class CharacterAnimator {
   private animTime: number = 0;
   private dead: boolean = false;
 
-  constructor(scene: Phaser.Scene, container: Phaser.GameObjects.Container, config: AnimConfig) {
+  constructor(scene: Phaser.Scene, container: Phaser.GameObjects.Container, config: AnimConfig, animPrefix?: string) {
     this.scene = scene;
     this.container = container;
     this.config = config;
+    this.animPrefix = animPrefix ?? '';
+    this.hasFrameAnims = !!animPrefix && scene.anims.exists(`${animPrefix}_idle`);
   }
 
   getState(): AnimState {
     return this.state;
+  }
+
+  private getSpriteChild(): Phaser.GameObjects.Sprite | null {
+    for (const child of this.container.list) {
+      if (child instanceof Phaser.GameObjects.Sprite) return child;
+    }
+    return null;
+  }
+
+  private playFrameAnim(action: AnimState): void {
+    if (!this.hasFrameAnims) return;
+    const spr = this.getSpriteChild();
+    if (!spr) return;
+    const key = `${this.animPrefix}_${action}`;
+    if (this.scene.anims.exists(key)) {
+      spr.play(key, true);
+    }
   }
 
   setIdle(): void {
@@ -173,6 +194,7 @@ export class CharacterAnimator {
     this.cancelTweens();
     this.prevState = this.state;
     this.state = 'idle';
+    this.playFrameAnim('idle');
     this.resetTransform(150);
   }
 
@@ -185,32 +207,39 @@ export class CharacterAnimator {
     this.animTime = 0;
     this.baseY = 0;
     this.baseX = 0;
+    this.playFrameAnim('walk');
   }
 
   update(delta: number): void {
     if (this.dead) return;
     this.animTime += delta;
 
-    if (this.state === 'idle') {
-      this.updateIdle();
-    } else if (this.state === 'walk') {
-      this.updateWalk();
+    // Frame-based animations handle the visual; we only do light container transforms
+    if (this.hasFrameAnims) {
+      // Minimal container movement to complement frame animation
+      if (this.state === 'idle') {
+        this.updateIdleLight();
+      } else if (this.state === 'walk') {
+        this.updateWalkLight();
+      }
+    } else {
+      // Legacy: full procedural animation for entities without sprite sheets
+      if (this.state === 'idle') {
+        this.updateIdle();
+      } else if (this.state === 'walk') {
+        this.updateWalk();
+      }
     }
   }
 
-  // ── Idle Animation ───────────────────────────────────────────────────────
+  // ── Light container transforms (complement frame animations) ────────
 
-  private updateIdle(): void {
+  private updateIdleLight(): void {
     const phase = (this.animTime / this.config.idleBobSpeed) * Math.PI * 2;
-
-    // Y bob
-    const newBobY = Math.sin(phase) * this.config.idleBobAmount;
+    // Very subtle Y bob
+    const newBobY = Math.sin(phase) * this.config.idleBobAmount * 0.3;
     this.container.y += newBobY - this.baseY;
     this.baseY = newBobY;
-
-    // Breathing scale pulse
-    const pulse = Math.sin(phase) * this.config.idleScalePulse;
-    this.container.scaleY = 1 + pulse;
 
     // Flying sway
     if (this.config.idleSwayX > 0) {
@@ -218,8 +247,34 @@ export class CharacterAnimator {
       this.container.x += newSwayX - this.baseX;
       this.baseX = newSwayX;
     }
+  }
 
-    // Slime wobble (detect via deathStyle === 'splat')
+  private updateWalkLight(): void {
+    const phase = (this.animTime / this.config.walkBobSpeed) * Math.PI * 2;
+    // Very subtle Y bounce
+    const newBobY = -Math.abs(Math.sin(phase)) * this.config.walkBobAmount * 0.3;
+    this.container.y += newBobY - this.baseY;
+    this.baseY = newBobY;
+  }
+
+  // ── Full procedural animation (fallback for no sprite sheet) ────────
+
+  private updateIdle(): void {
+    const phase = (this.animTime / this.config.idleBobSpeed) * Math.PI * 2;
+
+    const newBobY = Math.sin(phase) * this.config.idleBobAmount;
+    this.container.y += newBobY - this.baseY;
+    this.baseY = newBobY;
+
+    const pulse = Math.sin(phase) * this.config.idleScalePulse;
+    this.container.scaleY = 1 + pulse;
+
+    if (this.config.idleSwayX > 0) {
+      const newSwayX = Math.sin(phase * 0.7) * this.config.idleSwayX;
+      this.container.x += newSwayX - this.baseX;
+      this.baseX = newSwayX;
+    }
+
     if (this.config.deathStyle === 'splat') {
       this.container.scaleX = 1 - pulse;
       this.container.scaleY = 1 + pulse;
@@ -228,29 +283,22 @@ export class CharacterAnimator {
     }
   }
 
-  // ── Walk Animation ───────────────────────────────────────────────────────
-
   private updateWalk(): void {
     const phase = (this.animTime / this.config.walkBobSpeed) * Math.PI * 2;
 
-    // Y bounce (always up)
     const newBobY = -Math.abs(Math.sin(phase)) * this.config.walkBobAmount;
     this.container.y += newBobY - this.baseY;
     this.baseY = newBobY;
 
-    // Tilt
     this.container.angle = Math.sin(phase) * this.config.walkTilt;
 
-    // Landing squash check
     const sinVal = Math.abs(Math.sin(phase));
 
     if (this.config.deathStyle === 'splat') {
-      // Slime exaggerated stretch on rise
       const stretch = sinVal * this.config.walkSquash;
       this.container.scaleX = 1 + stretch;
       this.container.scaleY = 1 - stretch;
     } else if (sinVal < 0.15) {
-      // Landing moment — squash
       this.container.scaleX = 1 + this.config.walkSquash;
       this.container.scaleY = 1 - this.config.walkSquash;
     } else {
@@ -259,7 +307,7 @@ export class CharacterAnimator {
     }
   }
 
-  // ── Attack Animation ─────────────────────────────────────────────────────
+  // ── Attack Animation ─────────────────────────────────────────────────
 
   playAttack(targetX: number, targetY: number): void {
     if (this.dead) return;
@@ -267,18 +315,18 @@ export class CharacterAnimator {
     this.prevState = this.state;
     this.state = 'attack';
 
-    // Store origin position
+    // Play frame animation
+    this.playFrameAnim('attack');
+
     const originX = this.container.x;
     const originY = this.container.y;
 
-    // Calculate direction toward target
     const dx = targetX - originX;
     const dy = targetY - originY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const nx = dist > 0 ? dx / dist : 0;
     const ny = dist > 0 ? dy / dist : 0;
 
-    // Small tilt toward target
     const targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
     const tiltAngle = targetAngle * 0.05;
 
@@ -293,7 +341,7 @@ export class CharacterAnimator {
     const lungeX = originX + nx * this.config.attackLunge;
     const lungeY = originY + ny * this.config.attackLunge;
 
-    // 1. Windup: pull back, compress
+    // 1. Windup: pull back
     this.addTween({
       targets: this.container,
       x: pullbackX,
@@ -312,16 +360,15 @@ export class CharacterAnimator {
           duration: lungeMs,
           ease: 'Quad.easeIn',
           onComplete: () => {
-            // 3. Impact: squash
+            // 3. Impact
             this.container.scaleX = 1 + this.config.attackSquash;
             this.container.scaleY = 1 - this.config.attackSquash;
 
-            // Camera micro-shake for large types
             if (this.config.attackShake && this.scene.cameras?.main) {
               this.scene.cameras.main.shake(80, 0.003);
             }
 
-            // 4. Recover: ease back to origin
+            // 4. Recover
             this.addTween({
               targets: this.container,
               x: originX,
@@ -336,6 +383,7 @@ export class CharacterAnimator {
                 this.animTime = 0;
                 this.baseY = 0;
                 this.baseX = 0;
+                this.playFrameAnim('idle');
               },
             });
           },
@@ -344,7 +392,7 @@ export class CharacterAnimator {
     });
   }
 
-  // ── Cast Animation ────────────────────────────────────────────────────────
+  // ── Cast Animation ────────────────────────────────────────────────────
 
   playCast(): void {
     if (this.dead) return;
@@ -352,12 +400,13 @@ export class CharacterAnimator {
     this.prevState = this.state;
     this.state = 'cast';
 
+    this.playFrameAnim('cast');
+
     const originY = this.container.y;
     const chargeMs = this.config.castDuration * 0.4;
     const releaseMs = this.config.castDuration * 0.3;
     const settleMs = this.config.castDuration * 0.3;
 
-    // 1. Charge: lean back, scale up
     this.addTween({
       targets: this.container,
       y: originY + this.config.castLean,
@@ -366,12 +415,10 @@ export class CharacterAnimator {
       duration: chargeMs,
       ease: 'Quad.easeOut',
       onComplete: () => {
-        // Cast glow tint
         if (this.config.castGlow) {
           this.tintFlash(0xaaaaff, 120);
         }
 
-        // 2. Release: snap forward, scale to 1
         this.addTween({
           targets: this.container,
           y: originY - this.config.castLean * 1.5,
@@ -380,7 +427,6 @@ export class CharacterAnimator {
           duration: releaseMs,
           ease: 'Quad.easeIn',
           onComplete: () => {
-            // 3. Settle: ease y back to origin
             this.addTween({
               targets: this.container,
               y: originY,
@@ -394,6 +440,7 @@ export class CharacterAnimator {
                 this.animTime = 0;
                 this.baseY = 0;
                 this.baseX = 0;
+                this.playFrameAnim('idle');
               },
             });
           },
@@ -402,7 +449,7 @@ export class CharacterAnimator {
     });
   }
 
-  // ── Hurt Animation ────────────────────────────────────────────────────────
+  // ── Hurt Animation ────────────────────────────────────────────────────
 
   playHurt(sourceX: number, sourceY: number): void {
     if (this.dead) return;
@@ -412,28 +459,26 @@ export class CharacterAnimator {
     this.cancelTweens();
     this.state = 'hurt';
 
+    this.playFrameAnim('hurt');
+
     const originX = this.container.x;
     const originY = this.container.y;
 
-    // Calculate knockback direction (away from source)
     const dx = originX - sourceX;
     const dy = originY - sourceY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const nx = dist > 0 ? dx / dist : 0;
     const ny = dist > 0 ? dy / dist : -1;
 
-    // Flash red
     if (this.config.hurtFlash) {
       this.tintFlash(0xff4444, 100);
     }
 
-    // Snap to knockback position
     this.container.x = originX + nx * this.config.hurtKnockback;
     this.container.y = originY + ny * this.config.hurtKnockback;
     this.container.scaleX = 0.9;
     this.container.scaleY = 1.1;
 
-    // Tween back to original position
     this.addTween({
       targets: this.container,
       x: originX,
@@ -447,16 +492,20 @@ export class CharacterAnimator {
         this.animTime = 0;
         this.baseY = 0;
         this.baseX = 0;
+        if (savedState === 'idle') this.playFrameAnim('idle');
+        else if (savedState === 'walk') this.playFrameAnim('walk');
       },
     });
   }
 
-  // ── Death Animation ───────────────────────────────────────────────────────
+  // ── Death Animation ───────────────────────────────────────────────────
 
   playDeath(onComplete?: () => void): void {
     this.cancelTweens();
     this.dead = true;
     this.state = 'death';
+
+    this.playFrameAnim('death');
 
     const duration = this.config.deathDuration;
 
@@ -491,7 +540,6 @@ export class CharacterAnimator {
         break;
 
       case 'dissolve': {
-        // Flicker alpha 8 times over 400ms
         const flickerDuration = Math.min(400, duration * 0.6);
         const flickerInterval = flickerDuration / 8;
         const remainingDuration = duration - flickerDuration;
@@ -526,16 +574,14 @@ export class CharacterAnimator {
     }
   }
 
-  // ── Private Helpers ──────────────────────────────────────────────────────
+  // ── Private Helpers ──────────────────────────────────────────────────
 
   private addTween(config: Phaser.Types.Tweens.TweenBuilderConfig): Phaser.Tweens.Tween {
     const tween = this.scene.tweens.add({
       ...config,
       onComplete: (...args: unknown[]) => {
-        // Remove from registry
         const idx = this.tweens.indexOf(tween);
         if (idx !== -1) this.tweens.splice(idx, 1);
-        // Call original onComplete
         if (config.onComplete) {
           (config.onComplete as (...a: unknown[]) => void)(...args);
         }
@@ -564,7 +610,6 @@ export class CharacterAnimator {
       duration,
       ease: 'Sine.easeOut',
       onComplete: () => {
-        // Reset Y/X offsets
         this.container.y -= this.baseY;
         this.container.x -= this.baseX;
         this.baseY = 0;
@@ -576,7 +621,9 @@ export class CharacterAnimator {
   private tintFlash(color: number, duration: number): void {
     const children = this.container.list;
     for (const child of children) {
-      if (child instanceof Phaser.GameObjects.Image) {
+      if (child instanceof Phaser.GameObjects.Sprite) {
+        child.setTint(color);
+      } else if (child instanceof Phaser.GameObjects.Image) {
         child.setTint(color);
       } else if (child instanceof Phaser.GameObjects.Rectangle && child.visible) {
         child.setFillStyle(color);
@@ -585,7 +632,9 @@ export class CharacterAnimator {
     this.scene.time.delayedCall(duration, () => {
       if (!this.container || !this.container.active) return;
       for (const child of this.container.list) {
-        if (child instanceof Phaser.GameObjects.Image) {
+        if (child instanceof Phaser.GameObjects.Sprite) {
+          child.clearTint();
+        } else if (child instanceof Phaser.GameObjects.Image) {
           child.clearTint();
         }
       }

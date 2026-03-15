@@ -60,13 +60,16 @@ export class Player {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 100);
 
-    // Use generated HD sprite
+    // Use animated sprite sheet
     const spriteKey = `player_${classData.id}`;
     const hasTexture = scene.textures.exists(spriteKey);
     if (hasTexture) {
-      const img = scene.add.image(0, -32, spriteKey).setScale(1 / TEXTURE_SCALE);
-      this.sprite.add(img);
+      const spr = scene.add.sprite(0, -32, spriteKey, 0).setScale(1 / TEXTURE_SCALE);
+      this.sprite.add(spr);
       this.body = scene.add.rectangle(0, -24, 40, 48, 0x000000, 0).setVisible(false);
+      // Play idle animation if registered
+      const idleKey = `${spriteKey}_idle`;
+      if (scene.anims.exists(idleKey)) spr.play(idleKey);
     } else {
       this.body = scene.add.rectangle(0, -24, 40, 48, 0x3498db);
       this.body.setStrokeStyle(1, 0x2980b9);
@@ -82,7 +85,7 @@ export class Player {
       this.skillCooldowns.set(skill.id, 0);
     }
     this.autoSkillPriority = classData.skills.map(s => s.id);
-    this.animator = new CharacterAnimator(scene, this.sprite, getAnimConfig(classData.id));
+    this.animator = new CharacterAnimator(scene, this.sprite, getAnimConfig(classData.id), spriteKey);
   }
 
   private calcMaxHp(): number {
@@ -251,7 +254,7 @@ export class Player {
     this.sprite.setScale(1);
     this.sprite.setAngle(0);
     this.animator.cleanup();
-    this.animator = new CharacterAnimator(this.scene, this.sprite, getAnimConfig(this.classData.id));
+    this.animator = new CharacterAnimator(this.scene, this.sprite, getAnimConfig(this.classData.id), `player_${this.classData.id}`);
     EventBus.emit(GameEvents.PLAYER_HEALTH_CHANGED, { hp: this.hp, maxHp: this.maxHp });
     EventBus.emit(GameEvents.LOG_MESSAGE, {
       text: '你在营地复活了。',

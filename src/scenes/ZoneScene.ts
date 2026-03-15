@@ -18,6 +18,7 @@ import { SaveSystem } from '../systems/SaveSystem';
 import { SkillEffectSystem } from '../systems/SkillEffectSystem';
 import { MobileControlsSystem, isMobileDevice } from '../systems/MobileControlsSystem';
 import { audioSystem } from '../systems/AudioSystem';
+import { SpriteGenerator } from '../graphics/SpriteGenerator';
 import { AllClasses } from '../data/classes/index';
 import { AllMaps } from '../data/maps/index';
 import { MonstersByZone, getMonsterDef } from '../data/monsters/index';
@@ -319,7 +320,16 @@ export class ZoneScene extends Phaser.Scene {
           newVisible.add(key);
           if (!this.tileSprites[row][col]) {
             const tileType = this.mapData.tiles[row][col];
-            const tileKey = TILE_KEYS[tileType] || 'tile_grass';
+            const tiles = this.mapData.tiles;
+            // Neighbor types for edge blending: TR=(col,row-1), TL=(col-1,row), BR=(col+1,row), BL=(col,row+1)
+            const tr = row > 0 ? tiles[row - 1][col] : tileType;
+            const tl = col > 0 ? tiles[row][col - 1] : tileType;
+            const br = col < this.mapData.cols - 1 ? tiles[row][col + 1] : tileType;
+            const bl = row < this.mapData.rows - 1 ? tiles[row + 1][col] : tileType;
+            const needsBlend = tr !== tileType || tl !== tileType || br !== tileType || bl !== tileType;
+            const tileKey = needsBlend
+              ? SpriteGenerator.generateBlendedTile(this, tileType, [tr, tl, br, bl])
+              : (TILE_KEYS[tileType] || 'tile_grass');
             const tile = this.add.image(pos.x, pos.y, tileKey).setScale(1 / TEXTURE_SCALE);
             tile.setDepth(pos.y);
             this.tileSprites[row][col] = tile;

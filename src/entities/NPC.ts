@@ -23,11 +23,13 @@ export class NPC {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 80);
 
-    // Use loaded sprite texture if available, otherwise draw procedural fallback
+    // Use animated sprite sheet if available, otherwise draw procedural fallback
     const spriteKey = `npc_${definition.type}`;
     if (scene.textures.exists(spriteKey)) {
-      const img = scene.add.image(0, -32, spriteKey).setScale(1 / TEXTURE_SCALE);
-      this.sprite.add(img);
+      const spr = scene.add.sprite(0, -32, spriteKey, 0).setScale(1 / TEXTURE_SCALE);
+      this.sprite.add(spr);
+      const idleKey = `${spriteKey}_idle`;
+      if (scene.anims.exists(idleKey)) spr.play(idleKey);
     } else {
       this.drawProceduralNPC(scene);
     }

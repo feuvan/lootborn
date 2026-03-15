@@ -62,15 +62,18 @@ export class Monster {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 50);
 
-    // Use generated HD sprite if available
+    // Use animated sprite sheet if available
     const spriteKey = definition.spriteKey;
     const hasTexture = scene.textures.exists(spriteKey);
     const size = definition.elite ? 48 : 36;
 
     if (hasTexture) {
-      const img = scene.add.image(0, -24, spriteKey).setScale(1 / TEXTURE_SCALE);
-      this.sprite.add(img);
+      const spr = scene.add.sprite(0, -24, spriteKey, 0).setScale(1 / TEXTURE_SCALE);
+      this.sprite.add(spr);
       this.body = scene.add.rectangle(0, -20, size, size, 0x000000, 0).setVisible(false);
+      // Play idle animation if registered
+      const idleKey = `${spriteKey}_idle`;
+      if (scene.anims.exists(idleKey)) spr.play(idleKey);
     } else {
       const color = definition.elite ? 0xe74c3c : this.getMonsterColor(definition.id);
       this.body = scene.add.rectangle(0, -20, size, size, color);
@@ -96,7 +99,7 @@ export class Monster {
     }
 
     const animCategory = definition.animCategory ?? 'humanoid';
-    this.animator = new CharacterAnimator(scene, this.sprite, getAnimConfig(animCategory));
+    this.animator = new CharacterAnimator(scene, this.sprite, getAnimConfig(animCategory), spriteKey);
   }
 
   private getMonsterColor(id: string): number {
