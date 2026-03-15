@@ -38,7 +38,7 @@ export const CAMP_THEMES: Record<MapTheme, CampTheme> = {
     wallColor: '#6a5a3a',
     wallDark: '#4a3a1a',
     wallLight: '#8a7a5a',
-    wallTop: '#aа9a7a',
+    wallTop: '#aa9a7a',
     groundColor: '#4a3a20',
     bannerColor: '#c07020',
     bannerDark: '#905010',

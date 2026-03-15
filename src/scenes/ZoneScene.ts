@@ -470,16 +470,16 @@ export class ZoneScene extends Phaser.Scene {
       // Entrance banners
       this.campDecorPositions.push({ col: c - 5, row: r + 4, type: 'banner' });
       this.campDecorPositions.push({ col: c + 5, row: r + 4, type: 'banner' });
-      // Entrance torches
-      this.campDecorPositions.push({ col: c - 5, row: r + 4, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c + 5, row: r + 4, type: 'camp_torch' });
+      // Entrance torches (offset 1 row south from entrance banners)
+      this.campDecorPositions.push({ col: c - 5, row: r + 5, type: 'torch' });
+      this.campDecorPositions.push({ col: c + 5, row: r + 5, type: 'torch' });
       // Wall torches
-      this.campDecorPositions.push({ col: c - 5, row: r - 2, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c - 5, row: r + 1, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c + 5, row: r - 2, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c + 5, row: r + 1, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c - 2, row: r - 5, type: 'camp_torch' });
-      this.campDecorPositions.push({ col: c + 3, row: r - 5, type: 'camp_torch' });
+      this.campDecorPositions.push({ col: c - 5, row: r - 2, type: 'torch' });
+      this.campDecorPositions.push({ col: c - 5, row: r + 1, type: 'torch' });
+      this.campDecorPositions.push({ col: c + 5, row: r - 2, type: 'torch' });
+      this.campDecorPositions.push({ col: c + 5, row: r + 1, type: 'torch' });
+      this.campDecorPositions.push({ col: c - 2, row: r - 5, type: 'torch' });
+      this.campDecorPositions.push({ col: c + 3, row: r - 5, type: 'torch' });
     }
   }
 
@@ -510,7 +510,7 @@ export class ZoneScene extends Phaser.Scene {
       this.campDecorSprites.set(key, sprite);
 
       // Torch/campfire flicker animation
-      if (decor.type === 'camp_torch' || decor.type === 'campfire') {
+      if (decor.type === 'torch' || decor.type === 'campfire') {
         this.tweens.add({
           targets: sprite,
           alpha: { from: 0.85, to: 1 },
@@ -520,7 +520,7 @@ export class ZoneScene extends Phaser.Scene {
           yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         });
       }
-      // Campfire glow
+      // Campfire glow (stored alongside sprite for cleanup)
       if (decor.type === 'campfire') {
         const glow = this.add.circle(pos.x, pos.y, 60, 0xff8800, 0.08);
         glow.setBlendMode(Phaser.BlendModes.ADD);
@@ -531,6 +531,8 @@ export class ZoneScene extends Phaser.Scene {
           scaleX: { from: 0.9, to: 1.1 }, scaleY: { from: 0.9, to: 1.1 },
           duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         });
+        const glowKey = `${key}_glow`;
+        this.campDecorSprites.set(glowKey, glow as unknown as Phaser.GameObjects.Image);
       }
       // Banner sway
       if (decor.type === 'banner') {
@@ -1176,6 +1178,7 @@ export class ZoneScene extends Phaser.Scene {
   private respawnMonster(dead: Monster): void {
     const idx = this.monsters.indexOf(dead);
     if (idx === -1) return;
+    const safeRadius = this.mapData.safeZoneRadius ?? 9;
     // Try random offsets, fall back to spawn point
     let c = dead.spawnCol;
     let r = dead.spawnRow;
@@ -1183,6 +1186,14 @@ export class ZoneScene extends Phaser.Scene {
       const tc = dead.spawnCol + randomInt(-2, 2);
       const tr = dead.spawnRow + randomInt(-2, 2);
       if (tc >= 0 && tc < this.mapData.cols && tr >= 0 && tr < this.mapData.rows && this.mapData.collisions[tr][tc]) {
+        let inSafeZone = false;
+        for (const camp of this.campPositions) {
+          if (euclideanDistance(tc, tr, camp.col, camp.row) < safeRadius) {
+            inSafeZone = true;
+            break;
+          }
+        }
+        if (inSafeZone) continue;
         c = tc;
         r = tr;
         break;

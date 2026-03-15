@@ -188,12 +188,14 @@ function clearArea(
   radius: number,
   fillTile: number,
   cols: number, rows: number,
+  skipCamp = false,
 ): void {
   for (let dr = -radius; dr <= radius; dr++) {
     for (let dc = -radius; dc <= radius; dc++) {
       const r = centerRow + dr;
       const c = centerCol + dc;
       if (r > 0 && r < rows - 1 && c > 0 && c < cols - 1) {
+        if (skipCamp && isCampTile(tiles[r][c])) continue;
         tiles[r][c] = fillTile;
       }
     }
@@ -365,16 +367,16 @@ export class MapGenerator {
           tiles[r][c] = TILE_CAMP_WALL;
         }
       }
-      // Place palisade walls: left column from top row down to (halfSize-2) leaving bottom 2 rows open
-      for (let dr = -halfSize; dr <= -(halfSize - 2); dr++) {
+      // Place palisade walls: left column from top row down, leaving bottom 2 rows open for entrance
+      for (let dr = -halfSize; dr < halfSize - 1; dr++) {
         const r = camp.row + dr;
         const c = camp.col - halfSize;
         if (r > 0 && r < rows - 1 && c > 0 && c < cols - 1) {
           tiles[r][c] = TILE_CAMP_WALL;
         }
       }
-      // Place palisade walls: right column from top row down to (halfSize-2) leaving bottom 2 rows open
-      for (let dr = -halfSize; dr <= -(halfSize - 2); dr++) {
+      // Place palisade walls: right column from top row down, leaving bottom 2 rows open for entrance
+      for (let dr = -halfSize; dr < halfSize - 1; dr++) {
         const r = camp.row + dr;
         const c = camp.col + halfSize;
         if (r > 0 && r < rows - 1 && c > 0 && c < cols - 1) {
@@ -383,14 +385,14 @@ export class MapGenerator {
       }
     }
 
-    // Clear areas around spawns, exits, and playerStart
+    // Clear areas around spawns, exits, and playerStart (skip camp tiles)
     for (const spawn of map.spawns) {
-      clearArea(tiles, spawn.col, spawn.row, 2, config.primaryTile, cols, rows);
+      clearArea(tiles, spawn.col, spawn.row, 2, config.primaryTile, cols, rows, true);
     }
     for (const exit of map.exits) {
-      clearArea(tiles, exit.col, exit.row, 1, config.primaryTile, cols, rows);
+      clearArea(tiles, exit.col, exit.row, 1, config.primaryTile, cols, rows, true);
     }
-    clearArea(tiles, map.playerStart.col, map.playerStart.row, 2, config.primaryTile, cols, rows);
+    clearArea(tiles, map.playerStart.col, map.playerStart.row, 2, config.primaryTile, cols, rows, true);
 
     // (d) Generate paths connecting key points using drunk walk
     const keyPoints = getKeyPoints(map);
