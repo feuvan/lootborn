@@ -16,6 +16,7 @@ import { HomesteadSystem } from '../systems/HomesteadSystem';
 import { AchievementSystem } from '../systems/AchievementSystem';
 import { SaveSystem } from '../systems/SaveSystem';
 import { SkillEffectSystem } from '../systems/SkillEffectSystem';
+import { MobileControlsSystem, isMobileDevice } from '../systems/MobileControlsSystem';
 import { audioSystem } from '../systems/AudioSystem';
 import { AllClasses } from '../data/classes/index';
 import { AllMaps } from '../data/maps/index';
@@ -57,6 +58,7 @@ export class ZoneScene extends Phaser.Scene {
   private fogData: Record<string, boolean[][]> = {};
   private lastTileUpdate = 0;
   private _pendingSaveData: SaveData | null = null;
+  private mobileControls: MobileControlsSystem | null = null;
 
   constructor() {
     super({ key: 'ZoneScene' });
@@ -166,6 +168,11 @@ export class ZoneScene extends Phaser.Scene {
       };
     }
 
+    // Mobile controls
+    if (isMobileDevice()) {
+      this.mobileControls = new MobileControlsSystem(this, this.player);
+    }
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.rightButtonDown()) return;
       const tile = worldToTile(pointer.worldX, pointer.worldY);
@@ -258,6 +265,7 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     this.handleCombat(time);
+    if (this.mobileControls) this.mobileControls.update(time, delta);
 
     if (this.player.autoCombat) this.handleAutoCombat(time);
 
@@ -391,12 +399,22 @@ export class ZoneScene extends Phaser.Scene {
   }
 
   private handleKeyboardMovement(delta: number): void {
-    if (!this.cursors || !this.wasd) return;
     let dx = 0, dy = 0;
-    if (this.cursors.up.isDown || this.wasd.W.isDown) { dx -= 1; dy -= 1; }
-    if (this.cursors.down.isDown || this.wasd.S.isDown) { dx += 1; dy += 1; }
-    if (this.cursors.left.isDown || this.wasd.A.isDown) { dx -= 1; dy += 1; }
-    if (this.cursors.right.isDown || this.wasd.D.isDown) { dx += 1; dy -= 1; }
+
+    // Keyboard input
+    if (this.cursors && this.wasd) {
+      if (this.cursors.up.isDown || this.wasd.W.isDown) { dx -= 1; dy -= 1; }
+      if (this.cursors.down.isDown || this.wasd.S.isDown) { dx += 1; dy += 1; }
+      if (this.cursors.left.isDown || this.wasd.A.isDown) { dx -= 1; dy += 1; }
+      if (this.cursors.right.isDown || this.wasd.D.isDown) { dx += 1; dy -= 1; }
+    }
+
+    // Mobile joystick input (additive, so both can coexist)
+    if (dx === 0 && dy === 0 && this.mobileControls) {
+      const mobile = this.mobileControls.getDirection();
+      dx = mobile.dx;
+      dy = mobile.dy;
+    }
 
     if (dx !== 0 || dy !== 0) {
       this.player.path = [];
