@@ -147,11 +147,47 @@ const MONSTER_CONFIGS: SpriteConfig[] = [
   }),
 ];
 
-const NPC_CONFIGS: { key: string; bodyColor: number; hatColor: number; itemColor: number }[] = [
-  { key: 'npc_blacksmith', bodyColor: 0x5a3a1a, hatColor: 0x4a2a3a, itemColor: 0x6a6a6a },
-  { key: 'npc_merchant', bodyColor: 0x1a3a5a, hatColor: 0x1a5a4a, itemColor: 0xb8860b },
-  { key: 'npc_quest', bodyColor: 0x5a4a1a, hatColor: 0x6a3a0a, itemColor: 0xb8860b },
-  { key: 'npc_stash', bodyColor: 0x3a1a4a, hatColor: 0x2a1a3a, itemColor: 0x8a5ac0 },
+interface NPCConfig {
+  key: string;
+  bodyColor: number;
+  hatColor: number;
+  itemColor: number;
+  skinColor?: number;
+  hairColor?: number;
+  hairStyle?: 'none' | 'short' | 'long' | 'bald' | 'hood';
+  beard?: boolean;
+  accessory?: 'hammer' | 'coinbag' | 'scroll' | 'staff' | 'pickaxe' | 'sword' | 'lantern' | 'book' | 'none';
+  cloakColor?: number;
+  bulky?: boolean;
+}
+
+const NPC_CONFIGS: NPCConfig[] = [
+  // ── Blacksmiths ──
+  { key: 'npc_blacksmith', bodyColor: 0x5a3a1a, hatColor: 0x4a2a3a, itemColor: 0x6a6a6a,
+    skinColor: 0xc09070, hairColor: 0x2a1a0a, hairStyle: 'short', beard: true, accessory: 'hammer', bulky: true },
+  { key: 'npc_blacksmith_advanced', bodyColor: 0x3a3a4a, hatColor: 0x6a3050, itemColor: 0x8a8a9a,
+    skinColor: 0xa08060, hairColor: 0x1a1a2a, hairStyle: 'bald', beard: true, accessory: 'hammer', bulky: true },
+  // ── Merchants ──
+  { key: 'npc_merchant', bodyColor: 0x1a3a5a, hatColor: 0x1a5a4a, itemColor: 0xb8860b,
+    skinColor: 0xc09870, hairColor: 0x3a2a1a, hairStyle: 'short', accessory: 'coinbag' },
+  { key: 'npc_merchant_desert', bodyColor: 0x6a4a2a, hatColor: 0xc09040, itemColor: 0xd4a030,
+    skinColor: 0xb08050, hairColor: 0x1a1a0a, hairStyle: 'hood', accessory: 'coinbag', cloakColor: 0x8a6a3a },
+  // ── Stash ──
+  { key: 'npc_stash', bodyColor: 0x3a1a4a, hatColor: 0x2a1a3a, itemColor: 0x8a5ac0,
+    skinColor: 0xb09070, hairColor: 0x5a4a3a, hairStyle: 'short', accessory: 'book' },
+  // ── Quest givers (each unique) ──
+  { key: 'npc_quest_elder', bodyColor: 0x5a5a2a, hatColor: 0x6a5a1a, itemColor: 0xb8860b,
+    skinColor: 0xc09870, hairColor: 0x9a9090, hairStyle: 'long', beard: true, accessory: 'staff' },
+  { key: 'npc_quest_scout', bodyColor: 0x2a4a2a, hatColor: 0x3a5a2a, itemColor: 0x4a6a3a,
+    skinColor: 0xb09060, hairColor: 0x3a2a0a, hairStyle: 'short', accessory: 'sword', cloakColor: 0x2a3a1a },
+  { key: 'npc_forest_hermit', bodyColor: 0x3a4a3a, hatColor: 0x2a3a2a, itemColor: 0x5a8a4a,
+    skinColor: 0xa08a60, hairColor: 0x7a7a6a, hairStyle: 'long', beard: true, accessory: 'staff', cloakColor: 0x3a4a2a },
+  { key: 'npc_quest_dwarf', bodyColor: 0x5a4a3a, hatColor: 0x7a5a3a, itemColor: 0x8a7a5a,
+    skinColor: 0xc0a080, hairColor: 0x8a4a1a, hairStyle: 'short', beard: true, accessory: 'pickaxe', bulky: true },
+  { key: 'npc_quest_nomad', bodyColor: 0x7a5a30, hatColor: 0xb08a40, itemColor: 0xc09a30,
+    skinColor: 0xb08050, hairColor: 0x1a1a0a, hairStyle: 'hood', accessory: 'lantern', cloakColor: 0x8a6a2a },
+  { key: 'npc_quest_warden', bodyColor: 0x2a1a2a, hatColor: 0x4a1a1a, itemColor: 0x6a2a3a,
+    skinColor: 0x907060, hairColor: 0x1a1a1a, hairStyle: 'short', accessory: 'sword', cloakColor: 0x1a0a1a },
 ];
 
 // ── Color Utilities (module-level) ──────────────────────────────────────────
@@ -1283,11 +1319,15 @@ export class SpriteGenerator {
     }
   }
 
-  private makeNPCSheet(npc: { key: string; bodyColor: number; hatColor: number; itemColor: number }): void {
+  private makeNPCSheet(npc: NPCConfig): void {
     const s = TEXTURE_SCALE;
     const fw = 48 * s, fh = 80 * s;
     const frames = 4;
     const [canvas, ctx] = this.createCanvas(fw * frames, fh);
+    const skin = npc.skinColor ?? 0xb08960;
+    const hair = npc.hairColor ?? 0x3a2a1a;
+    const acc = npc.accessory ?? 'none';
+    const bw = npc.bulky ? 1.15 : 1; // wider body for bulky NPCs
 
     for (let f = 0; f < frames; f++) {
       const ox = f * fw;
@@ -1300,6 +1340,7 @@ export class SpriteGenerator {
       const cx = fw / 2;
       const ground = fh - 6 * s;
       const by = ground + bob;
+      const bodyW = Math.round(12 * bw);
 
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -1312,39 +1353,93 @@ export class SpriteGenerator {
       this.drawPart(ctx, cx - 8 * s, by - 4 * s, 7 * s, 5 * s, 0x2a1a0a, 2 * s);
       this.drawPart(ctx, cx + 1 * s, by - 4 * s, 7 * s, 5 * s, 0x2a1a0a, 2 * s);
 
+      // Cloak (behind body)
+      if (npc.cloakColor) {
+        this.drawPart(ctx, cx - (bodyW + 2) * s, by - 38 * s, (bodyW * 2 + 4) * s, 28 * s, npc.cloakColor, 3 * s);
+      }
+
       // Body
-      this.drawPart(ctx, cx - 12 * s, by - 36 * s, 24 * s, 22 * s, npc.bodyColor, 3 * s);
+      this.drawPart(ctx, cx - bodyW * s, by - 36 * s, bodyW * 2 * s, 22 * s, npc.bodyColor, 3 * s);
       // Belt
-      this.drawPart(ctx, cx - 12 * s, by - 18 * s, 24 * s, 4 * s, darkenHex(npc.bodyColor, 20), 1 * s);
+      this.drawPart(ctx, cx - bodyW * s, by - 18 * s, bodyW * 2 * s, 4 * s, darkenHex(npc.bodyColor, 20), 1 * s);
 
       // Arms
       const armBob = Math.sin(phase) * 3;
-      this.drawPart(ctx, cx - 16 * s, by - 34 * s, 5 * s, 12 * s, npc.bodyColor, 2 * s);
-      this.drawPart(ctx, cx + 11 * s, by - 34 * s, 5 * s, 12 * s, npc.bodyColor, 2 * s);
+      this.drawPart(ctx, cx - (bodyW + 4) * s, by - 34 * s, 5 * s, 12 * s, npc.bodyColor, 2 * s);
+      this.drawPart(ctx, cx + (bodyW - 1) * s, by - 34 * s, 5 * s, 12 * s, npc.bodyColor, 2 * s);
       // Hands
-      ctx.fillStyle = this.rgb(0xa08060);
-      this.fillCircle(ctx, cx - 13.5 * s, by - 22 * s + armBob * s, 2.5 * s);
-      this.fillCircle(ctx, cx + 13.5 * s, by - 22 * s - armBob * s, 2.5 * s);
+      ctx.fillStyle = this.rgb(skin);
+      this.fillCircle(ctx, cx - (bodyW + 1.5) * s, by - 22 * s + armBob * s, 2.5 * s);
+      this.fillCircle(ctx, cx + (bodyW + 1.5) * s, by - 22 * s - armBob * s, 2.5 * s);
 
-      // Item in hand
+      // Accessory in hand
       ctx.fillStyle = this.rgb(npc.itemColor);
-      if (npc.key.includes('blacksmith')) {
-        // Hammer
-        ctx.fillRect(cx + 12 * s, by - 30 * s, 2 * s, 14 * s);
-        this.drawPart(ctx, cx + 10 * s, by - 33 * s, 6 * s, 4 * s, npc.itemColor, 1 * s);
-      } else if (npc.key.includes('merchant')) {
-        // Coin bag
-        this.fillCircle(ctx, cx + 13 * s, by - 26 * s, 4 * s);
-        ctx.fillStyle = this.rgb(0x8a7020);
-        this.fillCircle(ctx, cx + 13 * s, by - 26 * s, 2 * s);
+      const handX = cx + (bodyW + 1) * s;
+      const handY = by - 22 * s - armBob * s;
+      switch (acc) {
+        case 'hammer':
+          ctx.fillRect(handX - 1 * s, handY - 8 * s, 2 * s, 14 * s);
+          this.drawPart(ctx, handX - 3 * s, handY - 11 * s, 6 * s, 4 * s, npc.itemColor, 1 * s);
+          break;
+        case 'coinbag':
+          this.fillCircle(ctx, handX, handY - 4 * s, 4 * s);
+          ctx.fillStyle = this.rgb(0x8a7020);
+          this.fillCircle(ctx, handX, handY - 4 * s, 2 * s);
+          break;
+        case 'staff':
+          ctx.fillStyle = this.rgb(0x4a3018);
+          ctx.fillRect(handX - 1 * s, handY - 16 * s, 2.5 * s, 22 * s);
+          ctx.fillStyle = this.rgb(npc.itemColor);
+          this.fillCircle(ctx, handX + 0.5 * s, handY - 17 * s, 3 * s);
+          break;
+        case 'sword':
+          ctx.fillStyle = this.rgb(0x888898);
+          ctx.fillRect(handX - 0.5 * s, handY - 14 * s, 2 * s, 16 * s);
+          ctx.fillStyle = this.rgb(0x5a4020);
+          ctx.fillRect(handX - 2 * s, handY, 5 * s, 2 * s);
+          break;
+        case 'pickaxe':
+          ctx.fillStyle = this.rgb(0x4a3018);
+          ctx.fillRect(handX - 1 * s, handY - 10 * s, 2 * s, 16 * s);
+          ctx.fillStyle = this.rgb(npc.itemColor);
+          ctx.beginPath();
+          ctx.moveTo(handX - 4 * s, handY - 10 * s);
+          ctx.lineTo(handX + 4 * s, handY - 12 * s);
+          ctx.lineTo(handX + 4 * s, handY - 9 * s);
+          ctx.closePath(); ctx.fill();
+          break;
+        case 'lantern':
+          ctx.fillStyle = this.rgb(0x4a4a50);
+          ctx.fillRect(handX - 1.5 * s, handY - 8 * s, 3 * s, 2 * s);
+          ctx.fillStyle = this.rgb(0xffaa30);
+          this.roundRect(ctx, handX - 2.5 * s, handY - 6 * s, 5 * s, 6 * s, 1 * s);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,200,50,0.3)';
+          this.fillCircle(ctx, handX, handY - 3 * s, 5 * s);
+          break;
+        case 'scroll':
+          ctx.fillStyle = this.rgb(0xd4c8a0);
+          this.roundRect(ctx, handX - 2 * s, handY - 6 * s, 5 * s, 8 * s, 1.5 * s);
+          ctx.fill();
+          ctx.fillStyle = this.rgb(0x8a3020);
+          ctx.fillRect(handX - 2.5 * s, handY - 6 * s, 6 * s, 1.5 * s);
+          ctx.fillRect(handX - 2.5 * s, handY + 1 * s, 6 * s, 1.5 * s);
+          break;
+        case 'book':
+          ctx.fillStyle = this.rgb(npc.itemColor);
+          this.roundRect(ctx, handX - 3 * s, handY - 5 * s, 6 * s, 7 * s, 1 * s);
+          ctx.fill();
+          ctx.fillStyle = this.rgb(lightenHex(npc.itemColor, 40));
+          ctx.fillRect(handX - 2 * s, handY - 4 * s, 4 * s, 5 * s);
+          break;
       }
 
       // Neck
-      ctx.fillStyle = this.rgb(0xa08060);
+      ctx.fillStyle = this.rgb(skin);
       ctx.fillRect(cx - 3 * s, by - 42 * s, 6 * s, 6 * s);
 
       // Head
-      ctx.fillStyle = this.rgb(0xb08960);
+      ctx.fillStyle = this.rgb(skin);
       this.roundRect(ctx, cx - 8 * s, by - 54 * s, 16 * s, 16 * s, 5 * s);
       ctx.fill();
 
@@ -1353,8 +1448,49 @@ export class SpriteGenerator {
       this.fillEllipse(ctx, cx - 3 * s, by - 46 * s, 1.5 * s, 2 * s);
       this.fillEllipse(ctx, cx + 3 * s, by - 46 * s, 1.5 * s, 2 * s);
 
-      // Hat
-      this.drawPart(ctx, cx - 9 * s, by - 58 * s, 18 * s, 6 * s, npc.hatColor, 2 * s);
+      // Hair
+      const hs = npc.hairStyle ?? 'none';
+      ctx.fillStyle = this.rgb(hair);
+      if (hs === 'short') {
+        this.roundRect(ctx, cx - 8 * s, by - 56 * s, 16 * s, 8 * s, 3 * s);
+        ctx.fill();
+      } else if (hs === 'long') {
+        this.roundRect(ctx, cx - 9 * s, by - 57 * s, 18 * s, 10 * s, 3 * s);
+        ctx.fill();
+        // Side hair
+        ctx.fillRect(cx - 9 * s, by - 50 * s, 3 * s, 12 * s);
+        ctx.fillRect(cx + 6 * s, by - 50 * s, 3 * s, 12 * s);
+      } else if (hs === 'hood') {
+        ctx.fillStyle = this.rgb(npc.cloakColor ?? hair);
+        ctx.beginPath();
+        ctx.moveTo(cx, by - 60 * s);
+        ctx.lineTo(cx - 11 * s, by - 42 * s);
+        ctx.lineTo(cx + 11 * s, by - 42 * s);
+        ctx.closePath(); ctx.fill();
+        // Hood rim
+        ctx.fillStyle = this.rgb(darkenHex(npc.cloakColor ?? hair, 15));
+        ctx.beginPath();
+        ctx.arc(cx, by - 44 * s, 10 * s, Math.PI, 0);
+        ctx.closePath(); ctx.fill();
+      }
+      // bald = no hair drawn
+
+      // Beard
+      if (npc.beard) {
+        ctx.fillStyle = this.rgb(hair);
+        ctx.beginPath();
+        ctx.moveTo(cx - 5 * s, by - 42 * s);
+        ctx.lineTo(cx + 5 * s, by - 42 * s);
+        ctx.lineTo(cx + 3 * s, by - 34 * s);
+        ctx.lineTo(cx, by - 32 * s);
+        ctx.lineTo(cx - 3 * s, by - 34 * s);
+        ctx.closePath(); ctx.fill();
+      }
+
+      // Hat (drawn on top of hair, only for non-hood styles)
+      if (hs !== 'hood') {
+        this.drawPart(ctx, cx - 9 * s, by - 58 * s, 18 * s, 6 * s, npc.hatColor, 2 * s);
+      }
 
       ctx.restore();
     }

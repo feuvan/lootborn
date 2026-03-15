@@ -23,8 +23,10 @@ export class NPC {
     this.sprite = scene.add.container(worldPos.x, worldPos.y);
     this.sprite.setDepth(worldPos.y + 80);
 
-    // Use animated sprite sheet if available, otherwise draw procedural fallback
-    const spriteKey = `npc_${definition.type}`;
+    // Use animated sprite sheet: try unique npc_<id> first, fall back to npc_<type>
+    const uniqueKey = `npc_${definition.id}`;
+    const typeKey = `npc_${definition.type}`;
+    const spriteKey = scene.textures.exists(uniqueKey) ? uniqueKey : typeKey;
     if (scene.textures.exists(spriteKey)) {
       const spr = scene.add.sprite(0, -32, spriteKey, 0).setScale(1 / TEXTURE_SCALE);
       this.sprite.add(spr);
