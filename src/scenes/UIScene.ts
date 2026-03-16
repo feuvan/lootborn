@@ -1391,7 +1391,7 @@ export class UIScene extends Phaser.Scene {
   private toggleAudioSettings(): void {
     if (this.audioPanel) { this.audioPanel.destroy(); this.audioPanel = null; return; }
     this.closeAllPanels();
-    const pw = 280, ph = 180, px = (GAME_WIDTH - pw) / 2, py = (GAME_HEIGHT - ph) / 2;
+    const pw = 360, ph = 180, px = (GAME_WIDTH - pw) / 2, py = (GAME_HEIGHT - ph) / 2;
     this.audioPanel = this.add.container(px, py).setDepth(4000);
     this.audioPanel.add(this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.95).setOrigin(0, 0).setStrokeStyle(2, 0xc0934a));
     this.audioPanel.add(this.add.text(pw / 2, 12, '音频设置', {
