@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { SpriteGenerator } from '../graphics/SpriteGenerator';
 import { SkillEffectSystem } from '../systems/SkillEffectSystem';
 import { audioManager } from '../systems/audio/AudioManager';
+import { buildFrameSizeRegistry } from '../graphics/sprites/types';
+import { TEXTURE_SCALE } from '../config';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -25,39 +27,34 @@ export class BootScene extends Phaser.Scene {
       console.debug(`[BootScene] Asset not found, will use fallback: ${file.key}`);
     });
 
-    // ── External assets (optional overrides) ─────────────────────
-    const tiles = ['grass', 'dirt', 'stone', 'water', 'wall', 'camp'];
-    for (const t of tiles) {
-      this.load.image(`tile_${t}`, `assets/tiles/tile_${t}.png`);
+    // ── External assets (optional spritesheet overrides) ─────────────────
+    const registry = buildFrameSizeRegistry();
+    const s = TEXTURE_SCALE;
+
+    // Load entity spritesheets (frame dimensions scaled by TEXTURE_SCALE)
+    for (const [key, { frameWidth, frameHeight }] of Object.entries(registry)) {
+      const path = this.getAssetPath(key);
+      this.load.spritesheet(key, path, {
+        frameWidth: frameWidth * s,
+        frameHeight: frameHeight * s,
+      });
     }
 
-    const classes = ['warrior', 'mage', 'rogue'];
-    for (const c of classes) {
-      this.load.image(`player_${c}`, `assets/sprites/players/player_${c}.png`);
-    }
-
-    const monsters = [
-      'slime', 'goblin', 'goblin_chief', 'skeleton', 'zombie', 'werewolf',
-      'werewolf_alpha', 'gargoyle', 'stone_golem', 'mountain_troll',
-      'fire_elemental', 'desert_scorpion', 'sandworm', 'phoenix',
-      'imp', 'lesser_demon', 'succubus', 'demon_lord',
-    ];
-    for (const m of monsters) {
-      this.load.image(`monster_${m}`, `assets/sprites/monsters/monster_${m}.png`);
-    }
-
-    const npcTypes = ['blacksmith', 'merchant', 'quest', 'stash'];
-    for (const n of npcTypes) {
-      this.load.image(`npc_${n}`, `assets/sprites/npcs/npc_${n}.png`);
-    }
-
+    // Decorations (single-frame images — no spritesheet needed)
     const decors = ['tree', 'bush', 'rock', 'flower', 'mushroom', 'cactus', 'boulder', 'crystal', 'bones'];
     for (const d of decors) {
       this.load.image(`decor_${d}`, `assets/sprites/decorations/decor_${d}.png`);
     }
 
+    // Effects (single-frame images)
     this.load.image('loot_bag', 'assets/sprites/effects/loot_bag.png');
     this.load.image('exit_portal', 'assets/sprites/effects/exit_portal.png');
+
+    // Tiles (keep as-is)
+    const tiles = ['grass', 'dirt', 'stone', 'water', 'wall', 'camp'];
+    for (const t of tiles) {
+      this.load.image(`tile_${t}`, `assets/tiles/tile_${t}.png`);
+    }
 
     // ── Audio assets (optional overrides) ─────────────────────
     const zones = ['emerald_plains', 'twilight_forest', 'anvil_mountains', 'scorching_desert', 'abyss_rift'];
@@ -105,5 +102,12 @@ export class BootScene extends Phaser.Scene {
     }
 
     this.scene.start('MenuScene');
+  }
+
+  private getAssetPath(key: string): string {
+    if (key.startsWith('player_')) return `assets/sprites/players/${key}.png`;
+    if (key.startsWith('monster_')) return `assets/sprites/monsters/${key}.png`;
+    if (key.startsWith('npc_')) return `assets/sprites/npcs/${key}.png`;
+    return `assets/sprites/${key}.png`;
   }
 }
