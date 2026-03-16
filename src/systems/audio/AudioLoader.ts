@@ -30,6 +30,11 @@ export class AudioLoader {
     return this.buffers.get(key) ?? null;
   }
 
+  /** Stores an already-decoded AudioBuffer directly. */
+  storeBuffer(key: string, buffer: AudioBuffer): void {
+    this.buffers.set(key, buffer);
+  }
+
   /**
    * Decodes the raw ArrayBuffer using the provided AudioContext and stores the
    * result under key.  Rejects if decoding fails (e.g. unsupported format).

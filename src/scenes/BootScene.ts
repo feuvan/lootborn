@@ -64,16 +64,19 @@ export class BootScene extends Phaser.Scene {
         this.load.audio(`bgm_${z}_${s}`, `assets/audio/bgm/${z}_${s}.mp3`);
       }
     }
-    const sfxTypes = [
-      'hit', 'hit_heavy', 'crit', 'miss', 'block', 'player_hurt', 'monster_death', 'player_death',
-      'skill_melee', 'skill_fire', 'skill_ice', 'skill_lightning', 'skill_heal', 'skill_buff',
-      'loot_common', 'loot_magic', 'loot_rare', 'loot_legendary', 'equip', 'potion',
-      'click', 'panel_open', 'panel_close', 'error',
-      'zone_transition', 'quest_complete', 'levelup', 'npc_interact',
-    ];
-    for (const t of sfxTypes) {
-      this.load.audio(`sfx_${t}`, `assets/audio/sfx/${t}.mp3`);
-    }
+    // SFX external overrides — only load if files are actually shipped.
+    // Currently no SFX mp3 files exist; SFXEngine uses procedural synthesis.
+    // Uncomment when real SFX assets are added to public/assets/audio/sfx/.
+    // const sfxTypes = [
+    //   'hit', 'hit_heavy', 'crit', 'miss', 'block', 'player_hurt', 'monster_death', 'player_death',
+    //   'skill_melee', 'skill_fire', 'skill_ice', 'skill_lightning', 'skill_heal', 'skill_buff',
+    //   'loot_common', 'loot_magic', 'loot_rare', 'loot_legendary', 'equip', 'potion',
+    //   'click', 'panel_open', 'panel_close', 'error',
+    //   'zone_transition', 'quest_complete', 'levelup', 'npc_interact',
+    // ];
+    // for (const t of sfxTypes) {
+    //   this.load.audio(`sfx_${t}`, `assets/audio/sfx/${t}.mp3`);
+    // }
   }
 
   create(): void {
@@ -84,20 +87,20 @@ export class BootScene extends Phaser.Scene {
     // Skill effect particle textures
     SkillEffectSystem.generateTextures(this);
 
-    // Pass any successfully loaded audio files to the AudioLoader for Web Audio decoding.
-    // Phaser's cache stores decoded HTML audio objects; we grab the raw data for Web Audio.
-    // Files that failed to load (via loaderror) won't be in the cache — AudioLoader returns null.
+    // Pass any successfully loaded audio files to the AudioLoader.
+    // Phaser's WebAudioSoundManager decodes audio during loading, so the cache
+    // contains AudioBuffer objects (not raw ArrayBuffers).
     const loader = audioManager.getLoader();
     const audioKeys = this.cache.audio.getKeys();
-    if (audioKeys.length > 0) {
-      const ctx = new AudioContext();
-      for (const key of audioKeys) {
-        const audioData = this.cache.audio.get(key);
-        if (audioData && audioData instanceof ArrayBuffer) {
-          loader.decodeAudio(ctx, key, audioData).catch(() => {
-            console.debug(`[BootScene] Failed to decode audio: ${key}`);
-          });
-        }
+    for (const key of audioKeys) {
+      const audioData = this.cache.audio.get(key);
+      if (audioData instanceof AudioBuffer) {
+        loader.storeBuffer(key, audioData);
+      } else if (audioData instanceof ArrayBuffer) {
+        const ctx = new AudioContext();
+        loader.decodeAudio(ctx, key, audioData).catch(() => {
+          console.debug(`[BootScene] Failed to decode audio: ${key}`);
+        });
       }
     }
 
