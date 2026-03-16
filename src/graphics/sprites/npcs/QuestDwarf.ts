@@ -2,16 +2,16 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xc0a080;
-const SKIN_DARK   = 0xa08060;
-const SKIN_LIGHT  = 0xd8b898;
-const HAIR        = 0x8a4a1a;   // red-orange
-const HAIR_LIGHT  = 0xaa6a3a;
-const TUNIC       = 0x5a4a3a;
-const TUNIC_DARK  = 0x3a2a1a;
+const SKIN        = 0x9d8369;
+const SKIN_DARK   = 0x83694f;
+const SKIN_LIGHT  = 0xb1977d;
+const HAIR        = 0x713d15;   // red-orange
+const HAIR_LIGHT  = 0x8b5730;
+const TUNIC       = 0x4a3d30;
+const TUNIC_DARK  = 0x302215;
 const BELT        = 0x2a1a0a;
 const BOOT        = 0x2a1a0a;
-const PICK_WOOD   = 0x4a3018;
+const PICK_WOOD   = 0x3d2714;
 const PICK_METAL  = 0x7a8a9a;
 const PICK_LIGHT  = 0xaabac8;
 
@@ -99,7 +99,7 @@ export const QuestDwarfDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow (wide for a stocky dwarf)
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = 'rgba(0,0,0,0.31)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 25 * s, 5 * s);
 
     // ── Boots (shorter, wider) ──
@@ -128,7 +128,7 @@ export const QuestDwarfDrawer: EntityDrawer = {
 
     // ── Belt ──
     utils.drawPart(ctx, cx - torsoW * 0.5 * s + bodyLean, by - 22 * s, torsoW * s, 5 * s, BELT, 1 * s);
-    ctx.fillStyle = utils.rgb(0x9a8040);
+    ctx.fillStyle = utils.rgb(0x7e6934);
     utils.roundRect(ctx, cx - 2.5 * s + bodyLean, by - 21.5 * s, 5 * s, 4 * s, 1 * s);
     ctx.fill();
 

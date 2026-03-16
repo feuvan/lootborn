@@ -2,19 +2,19 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0x907060;
-const SKIN_DARK   = 0x705040;
-const SKIN_LIGHT  = 0xa88070;
+const SKIN        = 0x765c4f;
+const SKIN_DARK   = 0x5c4234;
+const SKIN_LIGHT  = 0x8a695c;
 const HAIR        = 0x1a1a1a;
 const CLOAK       = 0x1a0a1a;    // very dark cloak
 const CLOAK_INNER = 0x2a1a2a;
-const ARMOR       = 0x2a2a3a;
-const ARMOR_LIGHT = 0x3a3a4a;
+const ARMOR       = 0x222230;
+const ARMOR_LIGHT = 0x30303d;
 const BELT        = 0x1a1a1a;
 const BOOT        = 0x0a0a0a;
 const BLADE       = 0x8a8a9a;
 const SCABBARD    = 0x2a1a2a;
-const BUTTON      = 0x5a3050;
+const BUTTON      = 0x4a2742;
 
 export const QuestWardenDrawer: EntityDrawer = {
   key: 'npc_quest_warden',
@@ -93,7 +93,7 @@ export const QuestWardenDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 19 * s, 4 * s);
 
     // ── Boots (tall, sleek) ──

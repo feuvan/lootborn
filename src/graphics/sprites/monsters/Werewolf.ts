@@ -2,9 +2,9 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const FUR_DARK  = 0x2a1808;
-const FUR_MID   = 0x6a4a30;
-const FUR_LIGHT = 0x8a6840;
+const FUR_DARK  = 0x1d1006;
+const FUR_MID   = 0x4a3321;
+const FUR_LIGHT = 0x61482c;
 const CLAW_COLOR = 0xf0ece0;
 
 export const WerewolfDrawer: EntityDrawer = {
@@ -72,7 +72,7 @@ export const WerewolfDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // ── Shadow ──────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.5, baseY + 1 * s, 16 * s, 3.5 * s);
 
     // ── Digitigrade legs ─────────────────────────────────────────────────────

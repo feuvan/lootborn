@@ -2,7 +2,7 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const BONE_COLOR = 0xd0c8b0;
+const BONE_COLOR = 0x91897b;
 
 export const SkeletonDrawer: EntityDrawer = {
   key: 'monster_skeleton',
@@ -87,7 +87,7 @@ export const SkeletonDrawer: EntityDrawer = {
     ctx.translate(-cx, -(baseY - 28 * s));
 
     // ── Shadow ──────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 14 * s, 3 * s);
 
     // ── Legs: femur + tibia ──────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export const SkeletonDrawer: EntityDrawer = {
         ctx.translate(handX, handY);
         ctx.rotate(swordAngle);
         // Blade — pitted surface
-        const bladeColor = '#7a6a50';
+        const bladeColor = '#554a38';
         ctx.fillStyle = bladeColor;
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -222,10 +222,10 @@ export const SkeletonDrawer: EntityDrawer = {
         utils.fillCircle(ctx, 0.5 * s, 7.5 * s, 0.5 * s);
         utils.fillCircle(ctx, -0.6 * s, 9.5 * s, 0.4 * s);
         // Guard
-        ctx.fillStyle = '#a09070';
+        ctx.fillStyle = '#706448';
         ctx.fillRect(-3 * s, -1 * s, 6 * s, 1.5 * s);
         // Handle
-        ctx.fillStyle = '#503820';
+        ctx.fillStyle = '#382716';
         ctx.fillRect(-0.8 * s, -5 * s, 1.6 * s, 5 * s);
         ctx.restore();
       }

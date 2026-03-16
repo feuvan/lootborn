@@ -12,20 +12,20 @@ export const MushroomDrawer: EntityDrawer = {
     const cx = w / 2;
 
     // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, h - 0.8 * s, 4 * s, 1.2 * s);
 
-    // Thick stem
+    // Thick stem (darkened 30%)
     const stemGrad = ctx.createLinearGradient(cx - 2 * s, h * 0.52, cx + 2 * s, h * 0.52);
-    stemGrad.addColorStop(0, '#c8b898');
-    stemGrad.addColorStop(0.5, '#e0d0b0');
-    stemGrad.addColorStop(1, '#a89870');
+    stemGrad.addColorStop(0, '#8c816b');
+    stemGrad.addColorStop(0.5, '#9d9279');
+    stemGrad.addColorStop(1, '#756b4e');
     ctx.fillStyle = stemGrad;
     utils.roundRect(ctx, cx - 2 * s, h * 0.52, 4 * s, h * 0.40, 1.5 * s);
     ctx.fill();
 
-    // Gills underneath cap (thin arcs)
-    ctx.strokeStyle = 'rgba(160,120,80,0.5)';
+    // Gills underneath cap (thin arcs, darkened)
+    ctx.strokeStyle = 'rgba(112,84,56,0.5)';
     ctx.lineWidth = 0.5 * s;
     for (let i = -2; i <= 2; i++) {
       ctx.beginPath();
@@ -33,11 +33,11 @@ export const MushroomDrawer: EntityDrawer = {
       ctx.stroke();
     }
 
-    // Cap ellipse
+    // Cap ellipse (darkened 30%)
     const capGrad = ctx.createRadialGradient(cx - 1.5 * s, h * 0.28, 0, cx, h * 0.35, 5.5 * s);
-    capGrad.addColorStop(0, '#c03a28');
-    capGrad.addColorStop(0.5, '#8a1a10');
-    capGrad.addColorStop(1, '#5a0a08');
+    capGrad.addColorStop(0, '#861c1b');
+    capGrad.addColorStop(0.5, '#61120b');
+    capGrad.addColorStop(1, '#3f0706');
     ctx.fillStyle = capGrad;
     utils.fillEllipse(ctx, cx, h * 0.38, 5 * s, 4.2 * s);
 

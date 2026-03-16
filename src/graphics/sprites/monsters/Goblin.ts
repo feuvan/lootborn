@@ -2,13 +2,13 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0x5a8a30;
-const SKIN_DARK   = 0x3a6010;
-const SKIN_LIGHT  = 0x7aaa50;
-const LEATHER     = 0x5a3820;
-const WOOD_COLOR  = 0x6a4820;
+const SKIN        = 0x3f6121;
+const SKIN_DARK   = 0x29430b;
+const SKIN_LIGHT  = 0x557738;
+const LEATHER     = 0x3f2716;
+const WOOD_COLOR  = 0x4a3216;
 const EYE_COLOR   = 0xcc6600;
-const NAIL_COLOR  = 0x8a8a8a;
+const NAIL_COLOR  = 0x616161;
 
 export const GoblinDrawer: EntityDrawer = {
   key: 'monster_goblin',
@@ -67,7 +67,7 @@ export const GoblinDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 12 * s, 3 * s);
 
     // ── Legs ────────────────────────────────────────────────────────────────

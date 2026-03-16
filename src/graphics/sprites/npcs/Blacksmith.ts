@@ -2,18 +2,18 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xc09070;
-const SKIN_DARK   = 0x9a7050;
-const SKIN_LIGHT  = 0xd4a888;
+const SKIN        = 0x9d765c;
+const SKIN_DARK   = 0x7e5c42;
+const SKIN_LIGHT  = 0xae8a6f;
 const HAIR        = 0x2a1a0a;
-const APRON       = 0x5a3a1a;
-const APRON_DARK  = 0x3a2008;
-const SHIRT       = 0x8a6a4a;
+const APRON       = 0x4a3015;
+const APRON_DARK  = 0x301a07;
+const SHIRT       = 0x71573d;
 const METAL_HEAD  = 0x6a6a6a;
 const METAL_LIGHT = 0x9a9aaa;
-const WOOD_HANDLE = 0x4a3018;
+const WOOD_HANDLE = 0x3d2714;
 const BOOT        = 0x2a1a0a;
-const BELT        = 0x3a2810;
+const BELT        = 0x30210d;
 
 export const BlacksmithDrawer: EntityDrawer = {
   key: 'npc_blacksmith',
@@ -90,7 +90,7 @@ export const BlacksmithDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = 'rgba(0,0,0,0.31)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 22 * s, 5 * s);
 
     // ── Boots ──
@@ -100,7 +100,7 @@ export const BlacksmithDrawer: EntityDrawer = {
     }
 
     // ── Legs ──
-    const legColor = 0x3a2a1a;
+    const legColor = 0x302215;
     utils.drawPart(ctx, cx - 12 * s, by - 24 * s, 9 * s, 20 * s, legColor, 3 * s);
     utils.drawPart(ctx, cx + 3 * s, by - 24 * s, 9 * s, 20 * s, legColor, 3 * s);
 
@@ -116,7 +116,7 @@ export const BlacksmithDrawer: EntityDrawer = {
 
     // ── Belt ──
     utils.drawPart(ctx, cx - 13 * s + bodyLean, by - 22 * s, 26 * s, 5 * s, BELT, 1 * s);
-    ctx.fillStyle = utils.rgb(0x8a7040);
+    ctx.fillStyle = utils.rgb(0x715c34);
     utils.roundRect(ctx, cx - 2 * s + bodyLean, by - 22 * s + 0.5 * s, 5 * s, 4 * s, 1 * s);
     ctx.fill();
 

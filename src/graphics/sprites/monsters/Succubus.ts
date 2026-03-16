@@ -2,15 +2,15 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN_MID   = 0x8a1848;
-const SKIN_DARK  = 0x5a0a30;
-const SKIN_LIGHT = 0xba2868;
-const HAIR_COLOR = 0x2a0a1a;
-const WING_COLOR = 0x5a1030;
-const HORN_COLOR = 0x3a0818;
+const SKIN_MID   = 0x611032;
+const SKIN_DARK  = 0x3f0721;
+const SKIN_LIGHT = 0x821c49;
+const HAIR_COLOR = 0x1d0712;
+const WING_COLOR = 0x3f0b21;
+const HORN_COLOR = 0x290610;
 const EYE_COLOR  = 0xff44aa;
-const CLOTH_COLOR = 0x2a0818;
-const LIP_COLOR  = 0xaa2050;
+const CLOTH_COLOR = 0x1d0610;
+const LIP_COLOR  = 0x771638;
 
 export const SuccubusDrawer: EntityDrawer = {
   key: 'monster_succubus',
@@ -74,7 +74,7 @@ export const SuccubusDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // ── Shadow ────────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx + bodyOffsetX, baseY + 1 * s, 11 * s, 2.5 * s);
 
     // ── Elegant bat wings (behind body) ──────────────────────────────────────

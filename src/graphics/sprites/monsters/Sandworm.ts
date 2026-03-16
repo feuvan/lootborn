@@ -2,11 +2,11 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const HIDE_MID   = 0x8a7040;
-const HIDE_DARK  = 0x4a3018;
-const HIDE_LIGHT = 0xb09060;
-const SAND_COLOR = 0xc0a060;
-const TOOTH_COLOR = 0xd8c890;
+const HIDE_MID   = 0x614e2c;
+const HIDE_DARK  = 0x342110;
+const HIDE_LIGHT = 0x7b6543;
+const SAND_COLOR = 0x867043;
+const TOOTH_COLOR = 0x977b5f;
 
 export const SandwormDrawer: EntityDrawer = {
   key: 'monster_sandworm',
@@ -123,7 +123,7 @@ export const SandwormDrawer: EntityDrawer = {
     ctx.fillRect(cx - 22 * s, groundY - 2 * s, 44 * s, 8 * s);
 
     // ── Shadow ───────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, groundY + 2 * s, 18 * s, 3 * s);
 
     // ── Neck / lower body emerging ───────────────────────────────────────────
@@ -167,13 +167,13 @@ export const SandwormDrawer: EntityDrawer = {
     const innerR = 4.5 * s + mouthOpen * 2 * s;
 
     // Outer gum ring
-    ctx.fillStyle = utils.rgb(0x6a3018);
+    ctx.fillStyle = utils.rgb(0x4a2110);
     ctx.beginPath();
     ctx.arc(headCX, mouthY, outerR, 0, Math.PI * 2);
     ctx.fill();
 
     // Mid ring
-    ctx.fillStyle = utils.rgb(0x8a2810);
+    ctx.fillStyle = utils.rgb(0x611c0b);
     ctx.beginPath();
     ctx.arc(headCX, mouthY, outerR * 0.75, 0, Math.PI * 2);
     ctx.fill();

@@ -11,7 +11,7 @@ export const TreeDrawer: EntityDrawer = {
     const s = w / 24;
 
     // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, w / 2, h - 1.5 * s, 9 * s, 2 * s);
 
     // Visible roots at base (curved strokes)
@@ -28,10 +28,10 @@ export const TreeDrawer: EntityDrawer = {
       ctx.stroke();
     }
 
-    // Trunk — gnarled via drawPart with bark detail
-    utils.drawPart(ctx, w / 2 - 2.5 * s, h * 0.42, 5 * s, h * 0.30, 0x2a1a0a, 1 * s);
-    // Bark vertical line details
-    ctx.strokeStyle = utils.rgb(0x120d04, 0.35);
+    // Trunk — gnarled via drawPart with bark detail (darkened 25%)
+    utils.drawPart(ctx, w / 2 - 2.5 * s, h * 0.42, 5 * s, h * 0.30, 0x1f1208, 1 * s);
+    // Bark vertical line details (darkened 25%)
+    ctx.strokeStyle = utils.rgb(0x0d0903, 0.35);
     ctx.lineWidth = 0.6 * s;
     for (let i = 0; i < 3; i++) {
       const lx = w / 2 - 1.5 * s + i * 1.5 * s;
@@ -41,7 +41,7 @@ export const TreeDrawer: EntityDrawer = {
       ctx.stroke();
     }
     // Subtle gnarl knot
-    ctx.strokeStyle = utils.rgb(0x120d04, 0.25);
+    ctx.strokeStyle = utils.rgb(0x0d0903, 0.25);
     ctx.lineWidth = 0.8 * s;
     ctx.beginPath();
     ctx.ellipse(w / 2 + 0.5 * s, h * 0.56, 1.2 * s, 0.8 * s, 0.3, 0, Math.PI * 2);
@@ -55,7 +55,7 @@ export const TreeDrawer: EntityDrawer = {
       [-0.06, 0.26, 0.35, 0.24], // mid
       [0, 0.22, 0.42, 0.30],    // front
     ];
-    const greens = [0x0d2e0b, 0x134d10, 0x1a5c15, 0x226820];
+    const greens = [0x092006, 0x0d360b, 0x12400e, 0x184916];
     for (let i = 0; i < canopyColors.length; i++) {
       const [dxF, cyF, rxF, ryF] = canopyColors[i];
       const baseGreen = greens[i];
@@ -70,8 +70,19 @@ export const TreeDrawer: EntityDrawer = {
       utils.fillEllipse(ctx, w / 2 + dxF * w, h * cyF, w * rxF, h * ryF);
     }
 
-    // Canopy highlight specular
-    ctx.fillStyle = 'rgba(80,160,60,0.12)';
+    // Canopy highlight specular (reduced)
+    ctx.fillStyle = 'rgba(50,110,35,0.08)';
     utils.fillEllipse(ctx, w * 0.42, h * 0.18, w * 0.12, h * 0.07);
+
+    // Leaf scatter dots at base
+    const leafDots: [number, number][] = [
+      [w / 2 - 3 * s, h * 0.75],
+      [w / 2 + 2.5 * s, h * 0.78],
+      [w / 2 - 0.5 * s, h * 0.80],
+    ];
+    ctx.fillStyle = 'rgba(18,40,10,0.18)';
+    for (const [lx, ly] of leafDots) {
+      utils.fillEllipse(ctx, lx, ly, 1.4 * s, 0.7 * s);
+    }
   },
 };

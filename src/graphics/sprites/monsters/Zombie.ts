@@ -2,12 +2,12 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0x6a8a5a;
-const SKIN_DARK   = 0x4a6a3a;
-const SKIN_LIGHT  = 0x8aaa70;
-const SKULL_PATCH = 0xc0b898;
-const CLOTH_COLOR = 0x4a3a2a;
-const CLOTH_TORN  = 0x3a2a1a;
+const SKIN        = 0x4a613f;
+const SKIN_DARK   = 0x344a29;
+const SKIN_LIGHT  = 0x61774e;
+const SKULL_PATCH = 0x867e6b;
+const CLOTH_COLOR = 0x34291d;
+const CLOTH_TORN  = 0x291d12;
 
 export const ZombieDrawer: EntityDrawer = {
   key: 'monster_zombie',
@@ -67,7 +67,7 @@ export const ZombieDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 11 * s, 2.5 * s);
 
     // ── Legs (stiff, asymmetric gait) ────────────────────────────────────────

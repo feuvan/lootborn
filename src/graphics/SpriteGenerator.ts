@@ -72,30 +72,31 @@ export class SpriteGenerator {
 
   // Terrain base colors for edge blending (indexed by tile type)
   static readonly TERRAIN_COLORS = [
-    '#1f3d18', // 0 = grass
-    '#35251a', // 1 = dirt
-    '#2e3338', // 2 = stone
-    '#0b1820', // 3 = water
-    '#1a1a1e', // 4 = wall
-    '#2c2010', // 5 = camp
-    '#4a3520', // 6 = camp_wall
+    '#1b3715', // 0 = grass
+    '#30221a', // 1 = dirt
+    '#2a2e33', // 2 = stone
+    '#0a161e', // 3 = water
+    '#18181c', // 4 = wall
+    '#281e10', // 5 = camp
+    '#42301a', // 6 = camp_wall
   ];
 
   private static readonly TILE_NAMES = ['grass', 'dirt', 'stone', 'water', 'wall', 'camp', 'camp_wall'];
 
   /**
-   * Generate a blended tile that smoothly transitions to neighboring terrain types.
+   * Generate a transition tile using bitmask-based boundary with noise displacement.
    * Called lazily by ZoneScene when a tile borders a different terrain type.
    * Results are cached as Phaser textures.
    *
    * neighbors order: [TR, TL, BR, BL] — the 4 edge-sharing neighbors in iso space.
+   * Each bit: 1 = same terrain as base, 0 = different.
    */
-  static generateBlendedTile(
+  static generateTransitionTile(
     scene: Phaser.Scene,
     baseTileType: number,
     neighbors: [number, number, number, number],
   ): string {
-    const key = `tile_b_${baseTileType}_${neighbors.join('')}`;
+    const key = `tile_t_${baseTileType}_${neighbors.join('')}`;
     if (scene.textures.exists(key)) return key;
 
     const s = TEXTURE_SCALE;
@@ -104,13 +105,13 @@ export class SpriteGenerator {
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d')!;
 
-    // Draw the base tile onto our canvas
+    // Draw the base tile
     const baseTexKey = `tile_${SpriteGenerator.TILE_NAMES[baseTileType]}`;
     if (scene.textures.exists(baseTexKey)) {
       ctx.drawImage(scene.textures.get(baseTexKey).getSourceImage() as CanvasImageSource, 0, 0);
     }
 
-    // Diamond clip so blends stay within tile boundary
+    // Diamond clip
     const cx = w / 2, cy = h / 2;
     ctx.save();
     ctx.beginPath();
@@ -118,31 +119,98 @@ export class SpriteGenerator {
     ctx.closePath();
     ctx.clip();
 
-    // Edge midpoints (gradient origins) for each diamond edge
-    const edgeMids: [number, number][] = [
-      [w * 0.75, h * 0.25], // TR edge midpoint
-      [w * 0.25, h * 0.25], // TL edge midpoint
-      [w * 0.75, h * 0.75], // BR edge midpoint
-      [w * 0.25, h * 0.75], // BL edge midpoint
+    const utils = new DrawUtils();
+
+    // For each edge with a different neighbor, paint the neighbor's texture with a noisy boundary
+    const edgeRegions: { startAngle: number; endAngle: number; dirX: number; dirY: number }[] = [
+      { startAngle: -Math.PI / 2, endAngle: 0,            dirX: 0.5, dirY: -0.5 }, // TR
+      { startAngle: -Math.PI,     endAngle: -Math.PI / 2, dirX: -0.5, dirY: -0.5 }, // TL
+      { startAngle: 0,            endAngle: Math.PI / 2,   dirX: 0.5, dirY: 0.5 },  // BR
+      { startAngle: Math.PI / 2,  endAngle: Math.PI,       dirX: -0.5, dirY: 0.5 }, // BL
     ];
 
     for (let i = 0; i < 4; i++) {
       const nType = neighbors[i];
       if (nType === baseTileType) continue;
-      if (nType < 0 || nType > 5) continue;
+      if (nType < 0 || nType > 6) continue;
       // Skip blending into/from walls (they have 3D height)
       if (nType === 4 || baseTileType === 4) continue;
 
-      const nColor = SpriteGenerator.TERRAIN_COLORS[nType];
-      const [mx, my] = edgeMids[i];
+      const region = edgeRegions[i];
 
-      // Gradient from edge midpoint toward center — fades neighbor color in
-      const grad = ctx.createLinearGradient(mx, my, cx, cy);
-      grad.addColorStop(0, nColor + 'aa');   // ~67% alpha at edge
-      grad.addColorStop(0.35, nColor + '55'); // ~33% at 35%
-      grad.addColorStop(0.6, nColor + '00');  // transparent at 60%
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+      // Get neighbor tile texture for sampling
+      const nTexKey = `tile_${SpriteGenerator.TILE_NAMES[nType]}`;
+      let nCanvas: HTMLCanvasElement | null = null;
+      if (scene.textures.exists(nTexKey)) {
+        const srcImg = scene.textures.get(nTexKey).getSourceImage();
+        const tc = document.createElement('canvas');
+        tc.width = w; tc.height = h;
+        const tctx = tc.getContext('2d')!;
+        tctx.drawImage(srcImg as CanvasImageSource, 0, 0);
+        nCanvas = tc;
+      }
+
+      // Paint neighbor's texture in edge zone with bezier+noise boundary via per-pixel masking
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      let nData: Uint8ClampedArray | null = null;
+      if (nCanvas) {
+        nData = nCanvas.getContext('2d')!.getImageData(0, 0, w, h).data;
+      }
+
+      for (let py = 0; py < h; py++) {
+        for (let px = 0; px < w; px++) {
+          // Normalized position relative to diamond center
+          const nx = (px - cx) / (w / 2);
+          const ny = (py - cy) / (h / 2);
+
+          // Check if pixel is in this edge's quadrant
+          const angle = Math.atan2(ny, nx);
+          let inQuadrant = false;
+          if (region.startAngle < region.endAngle) {
+            inQuadrant = angle >= region.startAngle && angle < region.endAngle;
+          } else {
+            inQuadrant = angle >= region.startAngle || angle < region.endAngle;
+          }
+          if (!inQuadrant) continue;
+
+          // Distance from center toward edge (0 = center, 1 = diamond edge)
+          const distFromCenter = Math.abs(nx) + Math.abs(ny);
+          if (distFromCenter < 0.01) continue;
+
+          // Noise displacement for organic boundary
+          const noiseVal = utils.fbm(px * 0.08 + i * 100, py * 0.08 + i * 100, 3);
+          const noiseDisp = (noiseVal - 0.5) * 0.35;
+
+          // Transition boundary: starts at ~40% from center, fully neighbor at ~70%
+          const boundary = 0.4 + noiseDisp;
+          const fadeEnd = boundary + 0.3;
+
+          if (distFromCenter < boundary) continue;
+
+          const blend = Math.min(1, (distFromCenter - boundary) / (fadeEnd - boundary));
+
+          const pi = (py * w + px) * 4;
+          if (d[pi + 3] === 0) continue;
+
+          if (nData) {
+            // Blend with neighbor's actual texture
+            d[pi]     = Math.round(d[pi] * (1 - blend) + nData[pi] * blend);
+            d[pi + 1] = Math.round(d[pi + 1] * (1 - blend) + nData[pi + 1] * blend);
+            d[pi + 2] = Math.round(d[pi + 2] * (1 - blend) + nData[pi + 2] * blend);
+          } else {
+            // Fallback: blend with flat color
+            const nColor = SpriteGenerator.TERRAIN_COLORS[nType];
+            const nr = parseInt(nColor.slice(1, 3), 16);
+            const ng = parseInt(nColor.slice(3, 5), 16);
+            const nb = parseInt(nColor.slice(5, 7), 16);
+            d[pi]     = Math.round(d[pi] * (1 - blend) + nr * blend);
+            d[pi + 1] = Math.round(d[pi + 1] * (1 - blend) + ng * blend);
+            d[pi + 2] = Math.round(d[pi + 2] * (1 - blend) + nb * blend);
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
     }
 
     ctx.restore();
@@ -197,13 +265,37 @@ export class SpriteGenerator {
   // ██ TILE GENERATION ██
   // ═══════════════════════════════════════════════════════════════════════
 
+  /** Number of visual variants per ground tile type */
+  static readonly TILE_VARIANTS = 3;
+
   private generateTiles(): void {
-    this.makeTile('tile_grass', this.drawGrass.bind(this));
-    this.makeTile('tile_dirt', this.drawDirt.bind(this));
-    this.makeTile('tile_stone', this.drawStone.bind(this));
-    this.makeTile('tile_water', this.drawWater.bind(this));
-    this.makeTile('tile_wall', this.drawWall.bind(this));
-    this.makeTile('tile_camp', this.drawCamp.bind(this));
+    // Generate 3 variants per ground tile for visual variety
+    const groundDrawers: [string, (ctx: CanvasRenderingContext2D, w: number, h: number, seed: number) => void][] = [
+      ['grass', this.drawGrass.bind(this)],
+      ['dirt', this.drawDirt.bind(this)],
+      ['stone', this.drawStone.bind(this)],
+      ['water', this.drawWater.bind(this)],
+      ['camp', this.drawCamp.bind(this)],
+    ];
+    for (const [name, drawFn] of groundDrawers) {
+      for (let v = 0; v < SpriteGenerator.TILE_VARIANTS; v++) {
+        const variantKey = `tile_${name}_${v}`;
+        this.makeTile(variantKey, (ctx, w, h) => drawFn(ctx, w, h, v * 1000));
+      }
+      // Alias base key to variant 0 for backward compatibility
+      if (!this.scene.textures.exists(`tile_${name}`)) {
+        const srcTex = this.scene.textures.get(`tile_${name}_0`);
+        if (srcTex) {
+          const srcImg = srcTex.getSourceImage() as HTMLCanvasElement;
+          const [canvas, ctx] = this.createCanvas(srcImg.width, srcImg.height);
+          ctx.drawImage(srcImg, 0, 0);
+          this.scene.textures.addCanvas(`tile_${name}`, canvas);
+        }
+      }
+    }
+
+    // Wall stays single variant (3D block, no need for variety)
+    this.makeTile('tile_wall', (ctx, w, h) => this.drawWall(ctx, w, h));
 
     // Default camp wall (plains theme)
     const plainsTheme = CAMP_THEMES['plains'];
@@ -229,6 +321,7 @@ export class SpriteGenerator {
   }
 
   private makeTile(key: string, drawFn: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): void {
+    if (this.shouldSkipGeneration(key)) return;
     const s = TEXTURE_SCALE;
     const w = 64 * s, h = 32 * s;
     const [canvas, ctx] = this.createCanvas(w, h);
@@ -241,110 +334,227 @@ export class SpriteGenerator {
     this.scene.textures.addCanvas(key, canvas);
   }
 
-  private drawGrass(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    // Uniform dark forest green base
-    ctx.fillStyle = '#1f3d18';
+  private drawGrass(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number = 0): void {
+    ctx.fillStyle = '#1b3715';
     ctx.fillRect(0, 0, w, h);
 
-    // Very subtle color variation
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 6);
+    // Multi-octave fbm noise for natural variation
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const i = (py * w + px) * 4;
+        if (d[i + 3] === 0) continue;
+        const n = this.utils.fbm((px + seed) * 0.04, (py + seed) * 0.04, 5);
+        const val = (n - 0.5) * 18;
+        d[i] = this.utils.clamp(d[i] + val * 0.3);
+        d[i + 1] = this.utils.clamp(d[i + 1] + val);
+        d[i + 2] = this.utils.clamp(d[i + 2] + val * 0.2);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
 
-    // Faint grass blade hints
-    for (let i = 0; i < 20; i++) {
-      const gx = this.hash2d(i * 7, 31) * w;
-      const gy = this.hash2d(i * 13, 47) * h;
-      const green = 55 + this.hash2d(i, 91) * 40;
-      ctx.strokeStyle = `rgba(25,${green | 0},18,0.1)`;
-      ctx.lineWidth = 0.6;
-      const lean = (this.hash2d(i, 53) - 0.5) * 2;
+    // Grass blade details
+    for (let i = 0; i < 30; i++) {
+      const gx = this.hash2d(i * 7 + seed, 31) * w;
+      const gy = this.hash2d(i * 13 + seed, 47) * h;
+      const green = 35 + this.hash2d(i + seed, 91) * 30;
+      ctx.strokeStyle = `rgba(18,${green | 0},12,0.18)`;
+      ctx.lineWidth = 0.5 + this.hash2d(i + seed, 61) * 0.4;
+      const lean = (this.hash2d(i + seed, 53) - 0.5) * 3;
+      const bladeH = 2.5 + this.hash2d(i + seed, 71) * 4;
       ctx.beginPath();
       ctx.moveTo(gx, gy);
-      ctx.lineTo(gx + lean, gy - 2 - this.hash2d(i, 71) * 3);
+      ctx.quadraticCurveTo(gx + lean * 0.5, gy - bladeH * 0.6, gx + lean, gy - bladeH);
+      ctx.stroke();
+    }
+
+    // Small shadow spots (ground undulation)
+    for (let i = 0; i < 4; i++) {
+      const sx = this.hash2d(i * 19 + seed, 113) * w;
+      const sy = this.hash2d(i * 23 + seed, 127) * h;
+      ctx.fillStyle = 'rgba(5,12,3,0.12)';
+      this.fillEllipse(ctx, sx, sy, 3 + this.hash2d(i + seed, 131) * 4, 1.5 + this.hash2d(i + seed, 137) * 2);
+    }
+
+    // Sparse wildflower dots (1-2 per tile)
+    for (let i = 0; i < 2; i++) {
+      if (this.hash2d(i + seed, 200) > 0.6) continue;
+      const fx = this.hash2d(i * 31 + seed, 141) * w;
+      const fy = this.hash2d(i * 37 + seed, 149) * h;
+      const colors = ['rgba(80,30,50,0.3)', 'rgba(70,60,20,0.25)', 'rgba(40,40,70,0.2)'];
+      ctx.fillStyle = colors[i % colors.length];
+      this.fillCircle(ctx, fx, fy, 0.8);
+    }
+  }
+
+  private drawDirt(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number = 0): void {
+    ctx.fillStyle = '#30221a';
+    ctx.fillRect(0, 0, w, h);
+
+    // Warm-to-cool variation via fbm
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const i = (py * w + px) * 4;
+        if (d[i + 3] === 0) continue;
+        const n = this.utils.fbm((px + seed) * 0.035, (py + seed) * 0.035, 4);
+        const warm = (n - 0.5) * 14;
+        d[i] = this.utils.clamp(d[i] + warm * 1.2);
+        d[i + 1] = this.utils.clamp(d[i + 1] + warm * 0.8);
+        d[i + 2] = this.utils.clamp(d[i + 2] + warm * 0.3);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Pebble clusters with highlight/shadow
+    for (let i = 0; i < 7; i++) {
+      const px = this.hash2d(i * 11 + seed, 23) * w;
+      const py = this.hash2d(i * 17 + seed, 29) * h;
+      const r = this.hash2d(i + seed, 59);
+      const rx = 1.2 + r * 2.5, ry = 0.8 + r * 1.8;
+      // Shadow side
+      ctx.fillStyle = `rgba(${15 + r * 10 | 0},${10 + r * 8 | 0},${5 + r * 4 | 0},0.25)`;
+      this.fillEllipse(ctx, px + 0.3, py + 0.3, rx, ry);
+      // Pebble body
+      ctx.fillStyle = `rgba(${50 + r * 25 | 0},${40 + r * 18 | 0},${28 + r * 12 | 0},0.3)`;
+      this.fillEllipse(ctx, px, py, rx, ry);
+      // Highlight
+      ctx.fillStyle = `rgba(${70 + r * 20 | 0},${55 + r * 15 | 0},${38 + r * 10 | 0},0.12)`;
+      this.fillEllipse(ctx, px - 0.3, py - 0.3, rx * 0.6, ry * 0.6);
+    }
+
+    // Branching crack network
+    ctx.strokeStyle = 'rgba(15,10,5,0.22)';
+    ctx.lineWidth = 0.5;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      let cx = this.hash2d(i * 37 + seed, 41) * w;
+      let cy = this.hash2d(i * 43 + seed, 53) * h;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      for (let j = 0; j < 3 + (this.hash2d(i + seed, 201) * 3 | 0); j++) {
+        const angle = this.hash2d(i * 7 + j + seed, 67) * Math.PI * 2;
+        const len = 3 + this.hash2d(i + j + seed, 79) * 6;
+        cx += Math.cos(angle) * len;
+        cy += Math.sin(angle) * len;
+        ctx.lineTo(cx, cy);
+      }
       ctx.stroke();
     }
   }
 
-  private drawDirt(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    // Uniform dark earth base
-    ctx.fillStyle = '#35251a';
+  private drawStone(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number = 0): void {
+    ctx.fillStyle = '#2a2e33';
     ctx.fillRect(0, 0, w, h);
 
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 7);
-
-    // Faint pebble hints
-    for (let i = 0; i < 5; i++) {
-      const px = this.hash2d(i * 11, 23) * w;
-      const py = this.hash2d(i * 17, 29) * h;
-      const r = this.hash2d(i, 59);
-      ctx.fillStyle = `rgba(${70 + r * 25 | 0},${60 + r * 20 | 0},${45 + r * 15 | 0},0.15)`;
-      this.fillEllipse(ctx, px, py, 1.5 + r * 2, 1 + r * 1.5);
+    // Per-slab color variation via noise
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const i = (py * w + px) * 4;
+        if (d[i + 3] === 0) continue;
+        const n = this.utils.fbm((px + seed) * 0.05, (py + seed) * 0.05, 3);
+        const val = (n - 0.5) * 12;
+        d[i] = this.utils.clamp(d[i] + val);
+        d[i + 1] = this.utils.clamp(d[i + 1] + val);
+        d[i + 2] = this.utils.clamp(d[i + 2] + val * 1.1);
+      }
     }
+    ctx.putImageData(imgData, 0, 0);
 
-    // Very faint cracks
-    ctx.strokeStyle = 'rgba(25,18,10,0.12)';
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < 2; i++) {
-      const x1 = this.hash2d(i * 37, 41) * w;
-      const y1 = this.hash2d(i * 43, 53) * h;
-      const x2 = this.hash2d(i * 61, 67) * w;
-      const y2 = this.hash2d(i * 71, 79) * h;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
-  }
-
-  private drawStone(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    // Uniform dark grey base
-    ctx.fillStyle = '#2e3338';
-    ctx.fillRect(0, 0, w, h);
-
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 5);
-
-    // Very faint mortar hints
-    ctx.strokeStyle = 'rgba(18,20,22,0.15)';
-    ctx.lineWidth = 0.5;
+    // Distinct slab mortar lines
+    ctx.strokeStyle = 'rgba(10,12,14,0.3)';
+    ctx.lineWidth = 0.7;
     const cx = w / 2, cy = h / 2;
-    ctx.beginPath(); ctx.moveTo(cx - w * 0.35, cy); ctx.lineTo(cx + w * 0.35, cy); ctx.stroke();
+    // Horizontal mortar
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.4, cy);
+    ctx.lineTo(cx + w * 0.4, cy);
+    ctx.stroke();
+    // Vertical mortar segments (offset per variant)
+    const vx1 = cx + (this.hash2d(seed, 151) - 0.5) * w * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(vx1, cy - h * 0.35);
+    ctx.lineTo(vx1, cy);
+    ctx.stroke();
+    const vx2 = cx + (this.hash2d(seed + 1, 157) - 0.5) * w * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(vx2, cy);
+    ctx.lineTo(vx2, cy + h * 0.35);
+    ctx.stroke();
 
-    // Faint moss patches
+    // Defined moss patches
     for (let i = 0; i < 2; i++) {
-      const mx = this.hash2d(i * 19, 83) * w;
-      const my = this.hash2d(i * 23, 89) * h;
-      ctx.fillStyle = `rgba(28,45,22,0.08)`;
-      const rx = 3 + this.hash2d(i, 103) * 4;
-      const ry = 2 + this.hash2d(i, 107) * 2;
+      const mx = this.hash2d(i * 19 + seed, 83) * w;
+      const my = this.hash2d(i * 23 + seed, 89) * h;
+      ctx.fillStyle = 'rgba(18,35,14,0.15)';
+      const rx = 3 + this.hash2d(i + seed, 103) * 5;
+      const ry = 1.5 + this.hash2d(i + seed, 107) * 2.5;
       this.fillEllipse(ctx, mx, my, rx, ry);
+      // Moss edge detail
+      for (let j = 0; j < 3; j++) {
+        const angle = this.hash2d(i * 3 + j + seed, 163) * Math.PI * 2;
+        const dist = rx * 0.7;
+        ctx.fillStyle = 'rgba(14,28,10,0.1)';
+        this.fillCircle(ctx, mx + Math.cos(angle) * dist, my + Math.sin(angle) * dist * 0.5, 1.2);
+      }
     }
   }
 
-  private drawWater(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    // Uniform dark water base
-    ctx.fillStyle = '#0b1820';
+  private drawWater(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number = 0): void {
+    ctx.fillStyle = '#0a161e';
     ctx.fillRect(0, 0, w, h);
 
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 4);
+    // Subtle depth variation via noise
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const i = (py * w + px) * 4;
+        if (d[i + 3] === 0) continue;
+        const n = this.utils.fbm((px + seed) * 0.06, (py + seed) * 0.06, 3);
+        const val = (n - 0.5) * 8;
+        d[i] = this.utils.clamp(d[i] + val * 0.3);
+        d[i + 1] = this.utils.clamp(d[i + 1] + val * 0.7);
+        d[i + 2] = this.utils.clamp(d[i + 2] + val);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
 
-    // Faint ripple highlights
-    ctx.strokeStyle = 'rgba(45,90,130,0.1)';
-    ctx.lineWidth = 0.6;
+    // Subtle caustic patterns
+    ctx.strokeStyle = 'rgba(30,70,100,0.12)';
+    ctx.lineWidth = 0.5;
     const cx = w / 2, cy = h / 2;
-    ctx.beginPath(); ctx.arc(cx - w * 0.1, cy - h * 0.06, w * 0.1, 0.3, 2.6, false); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx + w * 0.08, cy + h * 0.06, w * 0.07, 0.5, 2.5, false); ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      const rx = Math.max(0.5, w * (0.06 + this.hash2d(i + seed, 171) * 0.08));
+      const ry = Math.max(0.5, h * (0.04 + this.hash2d(i + seed, 173) * 0.05));
+      const ox = (this.hash2d(i * 3 + seed, 181) - 0.5) * w * 0.4;
+      const oy = (this.hash2d(i * 5 + seed, 183) - 0.5) * h * 0.4;
+      ctx.beginPath();
+      ctx.ellipse(cx + ox, cy + oy, rx, ry, this.hash2d(i + seed, 191) * Math.PI, 0, Math.PI * 1.5);
+      ctx.stroke();
+    }
 
-    // Very faint shimmer
-    ctx.fillStyle = 'rgba(70,130,170,0.06)';
-    this.fillEllipse(ctx, cx + w * 0.04, cy - h * 0.1, w * 0.05, h * 0.04);
+    // Faint reflection highlights
+    ctx.fillStyle = 'rgba(50,100,140,0.08)';
+    this.fillEllipse(ctx, cx + (this.hash2d(seed, 201) - 0.5) * w * 0.3, cy - h * 0.1, w * 0.06, h * 0.03);
   }
 
   private drawWall(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     // The wall is NOT diamond-clipped — it has 3D height.
-    // We re-draw over the clipped area with wall faces.
-    ctx.fillStyle = '#1a1a1e';
+    ctx.fillStyle = '#18181c';
     ctx.fillRect(0, 0, w, h);
 
     const wallH = h * 0.45;
-    // Front face (dark)
+
+    // Front face (dark) with improved gradient
     const fGrad = ctx.createLinearGradient(0, h / 2, 0, h);
-    fGrad.addColorStop(0, '#2a2a30'); fGrad.addColorStop(1, '#181820');
+    fGrad.addColorStop(0, '#2a2a32');
+    fGrad.addColorStop(0.5, '#22222a');
+    fGrad.addColorStop(1, '#181822');
     ctx.fillStyle = fGrad;
     ctx.beginPath();
     ctx.moveTo(0, h / 2); ctx.lineTo(w / 2, h);
@@ -353,7 +563,9 @@ export class SpriteGenerator {
 
     // Right face (lighter)
     const rGrad = ctx.createLinearGradient(w / 2, h / 2, w, h / 2);
-    rGrad.addColorStop(0, '#323238'); rGrad.addColorStop(1, '#28282e');
+    rGrad.addColorStop(0, '#33333a');
+    rGrad.addColorStop(0.5, '#2c2c35');
+    rGrad.addColorStop(1, '#252530');
     ctx.fillStyle = rGrad;
     ctx.beginPath();
     ctx.moveTo(w / 2, h); ctx.lineTo(w, h / 2);
@@ -361,55 +573,108 @@ export class SpriteGenerator {
     ctx.closePath(); ctx.fill();
 
     // Top face
-    ctx.fillStyle = '#3a3a42';
+    ctx.fillStyle = '#383842';
     ctx.beginPath();
     ctx.moveTo(w / 2, h / 2 - wallH); ctx.lineTo(w, h / 2 - wallH);
     ctx.lineTo(w / 2, h - wallH); ctx.lineTo(0, h / 2 - wallH);
     ctx.closePath(); ctx.fill();
 
-    // Brick lines
-    ctx.strokeStyle = 'rgba(10,10,12,0.5)';
-    ctx.lineWidth = 0.8;
-    for (let i = 1; i < 3; i++) {
-      const ly = h / 2 + (h / 2 - wallH) * 0 + i * (wallH / 3);
+    // Brick lines on front face (improved stone pattern)
+    ctx.strokeStyle = 'rgba(6,6,10,0.6)';
+    ctx.lineWidth = 0.7;
+    for (let i = 1; i <= 3; i++) {
+      const t = i / 4;
+      const y1 = (h / 2 - wallH) + t * wallH;
+      const y2 = (h - wallH) + t * wallH * 0.01;
       ctx.beginPath();
-      ctx.moveTo(0 + i * 2, h / 2 - wallH + ly * 0.3);
-      ctx.lineTo(w / 2 - i * 2, h - wallH + ly * 0.3);
+      ctx.moveTo(0, h / 2 - wallH + t * wallH);
+      ctx.lineTo(w / 2, h - wallH + t * wallH * 0.01);
+      ctx.stroke();
+    }
+    // Vertical brick offsets on front
+    for (let i = 1; i < 3; i++) {
+      const bx = i * (w / 2) / 3;
+      const by1 = (h / 2 - wallH) + wallH * 0.25;
+      const by2 = (h / 2 - wallH) + wallH * 0.75;
+      ctx.beginPath();
+      ctx.moveTo(bx * 0.8, by1 + (h / 2 - by1) * (bx / (w / 2)));
+      ctx.lineTo(bx * 0.8, by2 + (h / 2 - by2) * (bx / (w / 2)));
       ctx.stroke();
     }
 
-    // Edge highlight
-    ctx.strokeStyle = 'rgba(80,80,90,0.3)';
+    // Brick lines on right face
+    for (let i = 1; i <= 3; i++) {
+      const t = i / 4;
+      ctx.beginPath();
+      ctx.moveTo(w / 2, h - wallH + t * wallH * 0.01);
+      ctx.lineTo(w, h / 2 - wallH + t * wallH);
+      ctx.stroke();
+    }
+
+    // Base shadow where wall meets ground
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w / 2, h);
+    ctx.lineTo(w / 2, h + 2);
+    ctx.lineTo(0, h / 2 + 2);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w / 2, h);
+    ctx.lineTo(w, h / 2);
+    ctx.lineTo(w, h / 2 + 2);
+    ctx.lineTo(w / 2, h + 2);
+    ctx.closePath(); ctx.fill();
+
+    // Edge highlight on top ridge
+    ctx.strokeStyle = 'rgba(60,60,75,0.25)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
     ctx.moveTo(0, h / 2 - wallH); ctx.lineTo(w / 2, h / 2 - wallH);
     ctx.lineTo(w, h / 2 - wallH);
     ctx.stroke();
 
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 5);
+    this.applyNoiseToRegion(ctx, 0, 0, w, h, 4);
   }
 
-  private drawCamp(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-    // Uniform warm wood base
-    ctx.fillStyle = '#2c2010';
+  private drawCamp(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number = 0): void {
+    ctx.fillStyle = '#281e10';
     ctx.fillRect(0, 0, w, h);
 
-    this.applyNoiseToRegion(ctx, 0, 0, w, h, 6);
+    this.applyNoiseToRegion(ctx, 0, 0, w, h, 5);
 
-    // Plank lines
+    // Wood grain direction (diagonal planks)
     const cx = w / 2, cy = h / 2;
-    ctx.strokeStyle = 'rgba(35,22,10,0.3)';
+    ctx.strokeStyle = 'rgba(25,16,6,0.35)';
     ctx.lineWidth = 0.6;
     for (let i = -4; i <= 4; i++) {
       const ly = cy + i * h * 0.1;
       const inset = Math.abs(i) * w * 0.06;
-      ctx.beginPath(); ctx.moveTo(cx - w * 0.4 + inset, ly); ctx.lineTo(cx + w * 0.4 - inset, ly); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.4 + inset, ly);
+      ctx.lineTo(cx + w * 0.4 - inset, ly);
+      ctx.stroke();
     }
 
-    // Subtle warm glow (very faint, no hard edges)
+    // Nail holes / knots
+    for (let i = 0; i < 3; i++) {
+      const nx = this.hash2d(i * 11 + seed, 211) * w;
+      const ny = this.hash2d(i * 13 + seed, 217) * h;
+      ctx.fillStyle = 'rgba(10,6,2,0.3)';
+      this.fillCircle(ctx, nx, ny, 0.6 + this.hash2d(i + seed, 223) * 0.4);
+    }
+
+    // Worn center (lighter from foot traffic)
+    const wear = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.25);
+    wear.addColorStop(0, 'rgba(50,35,18,0.1)');
+    wear.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = wear;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle warm glow
     const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.4);
-    glow.addColorStop(0, 'rgba(160,90,20,0.1)');
-    glow.addColorStop(0.6, 'rgba(100,45,10,0.05)');
+    glow.addColorStop(0, 'rgba(120,65,15,0.08)');
+    glow.addColorStop(0.6, 'rgba(70,30,8,0.04)');
     glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);

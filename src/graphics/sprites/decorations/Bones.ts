@@ -9,11 +9,15 @@ export const BonesDrawer: EntityDrawer = {
 
   drawFrame(ctx, _frame, _action, w, h, utils) {
     const s = w / 16;
-    const BONE_COLOR = 0xc8be9a;
+    const BONE_COLOR = 0xd4c8a0; // aged yellow-brown instead of near-white
 
-    // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    // Ground shadow (increased)
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, w / 2, h - 0.6 * s, 7 * s, 1.2 * s);
+
+    // Blood stain underneath (dark red-brown ellipse)
+    ctx.fillStyle = 'rgba(80,10,5,0.20)';
+    utils.fillEllipse(ctx, w * 0.48, h * 0.72, 4 * s, 1.8 * s);
 
     // Partially buried long bone (horizontal, slightly angled)
     utils.drawBoneSegment(ctx, w * 0.08, h * 0.62, w * 0.68, h * 0.50, 2.2 * s, BONE_COLOR);

@@ -2,13 +2,13 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const STONE_BASE  = 0x4a5a6a;
-const STONE_DARK  = 0x2a3a4a;
-const STONE_LIGHT = 0x6a7a8a;
+const STONE_BASE  = 0x343f4a;
+const STONE_DARK  = 0x1d2934;
+const STONE_LIGHT = 0x4a5561;
 const CRACK_GLOW  = 0xff6600;
-const WING_COLOR  = 0x3a4a5a;
-const HORN_COLOR  = 0x3a3a4a;
-const MOSS_COLOR  = 0x3a6a3a;
+const WING_COLOR  = 0x29343f;
+const HORN_COLOR  = 0x292934;
+const MOSS_COLOR  = 0x294a29;
 
 export const GargoyleDrawer: EntityDrawer = {
   key: 'monster_gargoyle',
@@ -75,7 +75,7 @@ export const GargoyleDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 14 * s, 3 * s);
 
     // ── Bat-wing membranes (drawn behind body) ────────────────────────────────

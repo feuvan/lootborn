@@ -2,17 +2,17 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xc09870;
-const SKIN_DARK   = 0x9a7850;
-const SKIN_LIGHT  = 0xd8b888;
-const HAIR        = 0x9a9090;   // grey
-const HAIR_DARK   = 0x787070;
-const ROBE        = 0x5a5a2a;   // sage robe
-const ROBE_LIGHT  = 0x7a7a3a;
+const SKIN        = 0x9d7d5c;
+const SKIN_DARK   = 0x7e6242;
+const SKIN_LIGHT  = 0xb1976f;
+const HAIR        = 0x7e7676;   // grey
+const HAIR_DARK   = 0x625c5c;
+const ROBE        = 0x4a4a22;   // sage robe
+const ROBE_LIGHT  = 0x646430;
 const ROBE_TRIM   = 0xb8860b;   // gold
-const BELT        = 0x3a3a1a;
+const BELT        = 0x303015;
 const BOOT        = 0x2a1a0a;
-const STAFF_WOOD  = 0x4a3018;
+const STAFF_WOOD  = 0x3d2714;
 const STAFF_ORB   = 0xd4a020;   // golden orb
 
 export const QuestElderDrawer: EntityDrawer = {
@@ -92,7 +92,7 @@ export const QuestElderDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 19 * s, 4 * s);
 
     // ── Boots ──

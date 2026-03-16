@@ -2,16 +2,16 @@
 import type { EntityDrawer, PlayerAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const LEATHER_BASE = 0x2a3a2a;
-const LEATHER_DARK = 0x1a2a1a;
-const LEATHER_LIGHT= 0x3a5a3a;
-const CLOAK_COLOR  = 0x2a3a1a;
-const SKIN         = 0xa08060;
-const SKIN_DARK    = 0x7a5a40;
+const LEATHER_BASE = 0x1e2a1e;
+const LEATHER_DARK = 0x131e13;
+const LEATHER_LIGHT= 0x2a412a;
+const CLOAK_COLOR  = 0x1e2a13;
+const SKIN         = 0x735c45;
+const SKIN_DARK    = 0x58412e;
 const BLADE_COLOR  = 0x8a8a9a;
 const BUCKLE_COLOR = 0xb8a030;
-const BANDOLIER    = 0x4a3020;
-const WRAP_COLOR   = 0x3a3a2a;
+const BANDOLIER    = 0x352317;
+const WRAP_COLOR   = 0x2a2a1e;
 
 export const PlayerRogueDrawer: EntityDrawer = {
   key: 'player_rogue',
@@ -84,7 +84,7 @@ export const PlayerRogueDrawer: EntityDrawer = {
     ctx.translate(-cx, -(baseY + bodyOffsetY));
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillStyle = 'rgba(0,0,0,0.24)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 13 * s, 2.8 * s);
 
     // ── Legs / Wrapped Boots ───────────────────────────────────────────────

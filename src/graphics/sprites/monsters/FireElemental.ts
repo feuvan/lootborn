@@ -68,7 +68,7 @@ export const FireElementalDrawer: EntityDrawer = {
     const flameW = 18 * s * scaleW;
 
     // ── Shadow ──────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(80,20,0,0.25)';
+    ctx.fillStyle = 'rgba(40,10,0,0.4)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, flameW * 0.9, 3.5 * s);
 
     // ── Three layered flame silhouettes ─────────────────────────────────────

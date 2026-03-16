@@ -2,18 +2,18 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xa08060;
-const SKIN_DARK   = 0x806040;
-const SKIN_LIGHT  = 0xc09878;
+const SKIN        = 0x83694f;
+const SKIN_DARK   = 0x694f34;
+const SKIN_LIGHT  = 0x9d7d62;
 const HAIR        = 0x1a1a2a;  // very dark, almost black
-const APRON       = 0x3a3a4a;
-const APRON_TRIM  = 0x6a3050;
-const SHIRT       = 0x5a5a6a;
+const APRON       = 0x30303d;
+const APRON_TRIM  = 0x572742;
+const SHIRT       = 0x4a4a57;
 const METAL_HEAD  = 0x8a8a9a;
 const METAL_LIGHT = 0xc0c0d0;
-const WOOD_HANDLE = 0x3a2810;
+const WOOD_HANDLE = 0x30210d;
 const BOOT        = 0x1a1a2a;
-const BELT        = 0x2a2a3a;
+const BELT        = 0x222230;
 const ORB_COLOR   = 0x9a30a0;  // ornate hammer orb accent
 
 export const BlacksmithAdvancedDrawer: EntityDrawer = {
@@ -86,7 +86,7 @@ export const BlacksmithAdvancedDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 24 * s, 5 * s);
 
     // ── Boots ──
@@ -94,7 +94,7 @@ export const BlacksmithAdvancedDrawer: EntityDrawer = {
       const bx = cx + side * 7 * s;
       utils.drawMetalSurface(ctx, bx - 5 * s, by - 7 * s, 11 * s, 8 * s, BOOT);
       // Boot buckle
-      ctx.fillStyle = utils.rgb(0x6a6a80);
+      ctx.fillStyle = utils.rgb(0x565668);
       ctx.fillRect(bx - 1 * s, by - 6 * s, 2 * s, 3 * s);
     }
 
@@ -119,7 +119,7 @@ export const BlacksmithAdvancedDrawer: EntityDrawer = {
 
     // ── Belt ──
     utils.drawPart(ctx, cx - 14 * s + bodyLean, by - 23 * s, 28 * s, 5 * s, BELT, 1 * s);
-    ctx.fillStyle = utils.rgb(0x8a7040);
+    ctx.fillStyle = utils.rgb(0x715c34);
     utils.roundRect(ctx, cx - 2.5 * s + bodyLean, by - 22.5 * s, 5 * s, 4 * s, 1 * s);
     ctx.fill();
 

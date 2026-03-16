@@ -11,8 +11,12 @@ export const FlowerDrawer: EntityDrawer = {
     const s = w / 8;
     const cx = w / 2;
 
-    // Stem
-    ctx.strokeStyle = '#1e4a18';
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    utils.fillEllipse(ctx, cx, h - 0.5 * s, 3 * s, 0.8 * s);
+
+    // Stem (darkened 30%)
+    ctx.strokeStyle = '#153310';
     ctx.lineWidth = 0.9 * s;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -20,8 +24,8 @@ export const FlowerDrawer: EntityDrawer = {
     ctx.quadraticCurveTo(cx + 0.8 * s, h * 0.70, cx, h * 0.55);
     ctx.stroke();
 
-    // Small leaves on stem
-    ctx.fillStyle = '#1a4014';
+    // Small leaves on stem (darkened 30%)
+    ctx.fillStyle = '#122c0e';
     // Left leaf
     ctx.beginPath();
     ctx.ellipse(cx - 1.5 * s, h * 0.72, 1.5 * s, 0.7 * s, -0.5, 0, Math.PI * 2);
@@ -31,8 +35,8 @@ export const FlowerDrawer: EntityDrawer = {
     ctx.ellipse(cx + 1.4 * s, h * 0.64, 1.3 * s, 0.6 * s, 0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // 5 petals arranged radially around center
-    const petalColor = 0x7a2a8a; // purple-ish default
+    // 5 petals arranged radially around center (darkened 15-20%)
+    const petalColor = 0x641f72; // purple-ish default, darkened ~18%
     const petalCount = 5;
     for (let i = 0; i < petalCount; i++) {
       const angle = (i / petalCount) * Math.PI * 2 - Math.PI / 2;
@@ -49,10 +53,10 @@ export const FlowerDrawer: EntityDrawer = {
       ctx.restore();
     }
 
-    // Center dot
-    ctx.fillStyle = '#d4b820';
+    // Center dot (stem/leaf color family, darkened 30%)
+    ctx.fillStyle = '#947e16';
     utils.fillCircle(ctx, cx, h * 0.30, 1.2 * s);
-    ctx.fillStyle = 'rgba(255,230,80,0.6)';
+    ctx.fillStyle = 'rgba(200,175,50,0.5)';
     utils.fillCircle(ctx, cx - 0.3 * s, h * 0.28, 0.45 * s);
   },
 };

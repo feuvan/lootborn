@@ -12,19 +12,19 @@ export const CactusDrawer: EntityDrawer = {
     const cx = w / 2;
 
     // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, h - s, 5 * s, 1.5 * s);
 
-    // Left arm
-    utils.drawPart(ctx, cx - 5 * s, h * 0.35, 3.5 * s, h * 0.14, 0x1e5a1a, 2 * s);
-    utils.drawPart(ctx, cx - 5 * s, h * 0.22, 3.5 * s, h * 0.15, 0x1e5a1a, 2 * s);
+    // Left arm (greens darkened 30%: 0x1e5a1a → 0x153f12)
+    utils.drawPart(ctx, cx - 5 * s, h * 0.35, 3.5 * s, h * 0.14, 0x153f12, 2 * s);
+    utils.drawPart(ctx, cx - 5 * s, h * 0.22, 3.5 * s, h * 0.15, 0x153f12, 2 * s);
 
-    // Right arm
-    utils.drawPart(ctx, cx + 1.5 * s, h * 0.28, 3.5 * s, h * 0.14, 0x1e5a1a, 2 * s);
-    utils.drawPart(ctx, cx + 3.5 * s, h * 0.16, 3.5 * s, h * 0.14, 0x1e5a1a, 2 * s);
+    // Right arm (darkened)
+    utils.drawPart(ctx, cx + 1.5 * s, h * 0.28, 3.5 * s, h * 0.14, 0x153f12, 2 * s);
+    utils.drawPart(ctx, cx + 3.5 * s, h * 0.16, 3.5 * s, h * 0.14, 0x153f12, 2 * s);
 
-    // Main trunk with ribbed surface
-    utils.drawPart(ctx, cx - 2.5 * s, h * 0.08, 5 * s, h * 0.84, 0x1e5a1a, 2.5 * s);
+    // Main trunk with ribbed surface (darkened)
+    utils.drawPart(ctx, cx - 2.5 * s, h * 0.08, 5 * s, h * 0.84, 0x153f12, 2.5 * s);
 
     // Rib arcs (vertical stroked arcs = ribbed surface)
     ctx.strokeStyle = 'rgba(10,60,10,0.35)';
@@ -71,10 +71,10 @@ export const CactusDrawer: EntityDrawer = {
       }
     }
 
-    // Optional small flower at top
-    ctx.fillStyle = '#d4208a';
+    // Optional small flower at top (petals darkened ~15%)
+    ctx.fillStyle = '#b31b75';
     utils.fillCircle(ctx, cx, h * 0.07, 1.8 * s);
-    ctx.fillStyle = '#f0d020';
+    ctx.fillStyle = '#ccb01b';
     utils.fillCircle(ctx, cx, h * 0.07, 0.7 * s);
   },
 };

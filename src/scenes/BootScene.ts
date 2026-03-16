@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { SpriteGenerator } from '../graphics/SpriteGenerator';
 import { SkillEffectSystem } from '../systems/SkillEffectSystem';
 import { audioManager } from '../systems/audio/AudioManager';
-import { buildFrameSizeRegistry } from '../graphics/sprites/types';
-import { TEXTURE_SCALE } from '../config';
+// import { buildFrameSizeRegistry } from '../graphics/sprites/types';
+// import { TEXTURE_SCALE } from '../config';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -27,36 +27,23 @@ export class BootScene extends Phaser.Scene {
       console.debug(`[BootScene] Asset not found, will use fallback: ${file.key}`);
     });
 
-    // ── External assets (optional spritesheet overrides) ─────────────────
-    const registry = buildFrameSizeRegistry();
-    const s = TEXTURE_SCALE;
+    // ── External art assets (uncomment when PNGs are added to public/assets/) ──
+    // Currently all sprites/tiles are procedurally generated.
+    // To override with external art, add the PNG and uncomment the matching load:
+    //
+    // Entity spritesheets:
+    // const registry = buildFrameSizeRegistry();
+    // const s = TEXTURE_SCALE;
+    // for (const [key, { frameWidth, frameHeight }] of Object.entries(registry)) {
+    //   this.load.spritesheet(key, this.getAssetPath(key), { frameWidth: frameWidth * s, frameHeight: frameHeight * s });
+    // }
+    //
+    // Decorations:  this.load.image('decor_tree', 'assets/sprites/decorations/decor_tree.png');
+    // Effects:      this.load.image('loot_bag', 'assets/sprites/effects/loot_bag.png');
+    // Tiles:        this.load.image('tile_grass', 'assets/tiles/tile_grass.png');
+    // Tile variants: this.load.image('tile_grass_0', 'assets/tiles/tile_grass_0.png');
 
-    // Load entity spritesheets (frame dimensions scaled by TEXTURE_SCALE)
-    for (const [key, { frameWidth, frameHeight }] of Object.entries(registry)) {
-      const path = this.getAssetPath(key);
-      this.load.spritesheet(key, path, {
-        frameWidth: frameWidth * s,
-        frameHeight: frameHeight * s,
-      });
-    }
-
-    // Decorations (single-frame images — no spritesheet needed)
-    const decors = ['tree', 'bush', 'rock', 'flower', 'mushroom', 'cactus', 'boulder', 'crystal', 'bones'];
-    for (const d of decors) {
-      this.load.image(`decor_${d}`, `assets/sprites/decorations/decor_${d}.png`);
-    }
-
-    // Effects (single-frame images)
-    this.load.image('loot_bag', 'assets/sprites/effects/loot_bag.png');
-    this.load.image('exit_portal', 'assets/sprites/effects/exit_portal.png');
-
-    // Tiles (keep as-is)
-    const tiles = ['grass', 'dirt', 'stone', 'water', 'wall', 'camp'];
-    for (const t of tiles) {
-      this.load.image(`tile_${t}`, `assets/tiles/tile_${t}.png`);
-    }
-
-    // ── Audio assets (optional overrides) ─────────────────────
+    // ── Audio assets ─────────────────────
     const zones = ['emerald_plains', 'twilight_forest', 'anvil_mountains', 'scorching_desert', 'abyss_rift'];
     const musicStates = ['explore', 'combat', 'victory'];
     for (const z of zones) {

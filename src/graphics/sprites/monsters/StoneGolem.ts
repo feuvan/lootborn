@@ -2,9 +2,9 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const STONE_BASE  = 0x4a4a4a;
-const STONE_DARK  = 0x2a2a2a;
-const STONE_LIGHT = 0x6a6a6a;
+const STONE_BASE  = 0x343434;
+const STONE_DARK  = 0x1d1d1d;
+const STONE_LIGHT = 0x4a4a4a;
 const EMBER_COLOR = 0xff8800;
 
 export const StoneGolemDrawer: EntityDrawer = {
@@ -66,7 +66,7 @@ export const StoneGolemDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 18 * s, 4 * s);
 
     // ── Pillar legs (rectangles with stone texture) ───────────────────────────

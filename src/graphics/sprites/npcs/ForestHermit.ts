@@ -2,15 +2,15 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xa08a60;
-const SKIN_DARK   = 0x806a40;
-const SKIN_LIGHT  = 0xb89a70;
-const HAIR        = 0x7a7a6a;   // grey/white wild hair
-const HAIR_LIGHT  = 0x9a9a8a;
-const CLOAK       = 0x3a4a2a;
-const CLOAK_DARK  = 0x2a3a1a;
-const CLOAK_MOSS  = 0x4a6a3a;
-const STAFF_WOOD  = 0x4a3a1a;
+const SKIN        = 0x83714f;
+const SKIN_DARK   = 0x695734;
+const SKIN_LIGHT  = 0x977e5c;
+const HAIR        = 0x646457;   // grey/white wild hair
+const HAIR_LIGHT  = 0x7e7e71;
+const CLOAK       = 0x303d22;
+const CLOAK_DARK  = 0x223015;
+const CLOAK_MOSS  = 0x3d5730;
+const STAFF_WOOD  = 0x3d3015;
 const CRYSTAL     = 0x50a050;   // green crystal
 const CRYSTAL_GLO = 0x80d080;
 const BOOT        = 0x2a1a0a;
@@ -89,7 +89,7 @@ export const ForestHermitDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 19 * s, 4 * s);
 
     // ── Boots ──

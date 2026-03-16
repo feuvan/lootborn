@@ -2,12 +2,12 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xb09070;
-const SKIN_DARK   = 0x907050;
-const SKIN_LIGHT  = 0xc8a880;
-const HAIR        = 0x5a4a3a;
-const ROBE        = 0x3a1a4a;
-const ROBE_LIGHT  = 0x5a3a6a;
+const SKIN        = 0x90765c;
+const SKIN_DARK   = 0x765c42;
+const SKIN_LIGHT  = 0xa48a69;
+const HAIR        = 0x4a3d30;
+const ROBE        = 0x30153d;
+const ROBE_LIGHT  = 0x4a3057;
 const ROBE_TRIM   = 0x8a5ac0;   // purple arcane
 const SHIRT       = 0x2a1a3a;
 const BELT        = 0x2a1a3a;
@@ -89,7 +89,7 @@ export const StashDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 19 * s, 4 * s);
 
     // ── Boots ──

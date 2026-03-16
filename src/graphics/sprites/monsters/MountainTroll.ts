@@ -2,13 +2,13 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN_MID    = 0x4a6a3a;
-const SKIN_DARK   = 0x2a4a1a;
-const SKIN_LIGHT  = 0x6a8a5a;
-const BELLY_COLOR = 0x3a5a2a;
-const BELLY_LIGHT = 0x4a6a3a;
-const BARK_COLOR  = 0x5a3a1a;
-const TUSK_COLOR  = 0xe8d8a0;
+const SKIN_MID    = 0x344a29;
+const SKIN_DARK   = 0x1d3412;
+const SKIN_LIGHT  = 0x4a613f;
+const BELLY_COLOR = 0x293f1d;
+const BELLY_LIGHT = 0x344a29;
+const BARK_COLOR  = 0x3f2912;
+const TUSK_COLOR  = 0xa29670;
 const EYE_COLOR   = 0xffaa00;
 
 export const MountainTrollDrawer: EntityDrawer = {
@@ -68,7 +68,7 @@ export const MountainTrollDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 22 * s, 5 * s);
 
     // ── Short thick legs ───────────────────────────────────────────────────────

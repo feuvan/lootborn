@@ -2,16 +2,16 @@
 import type { EntityDrawer, PlayerAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const ROBE_BASE    = 0x2a1a3a;
-const ROBE_LIGHT   = 0x3f2a55;
-const ROBE_DARK    = 0x150a25;
-const SKIN         = 0xc4a882;
-const SKIN_DARK    = 0xa08060;
-const STAFF_WOOD   = 0x6a4820;
+const ROBE_BASE    = 0x1e132a;
+const ROBE_LIGHT   = 0x2d1e3d;
+const ROBE_DARK    = 0x0f071b;
+const SKIN         = 0x8d795e;
+const SKIN_DARK    = 0x735c45;
+const STAFF_WOOD   = 0x4c3417;
 const CRYSTAL      = 0x8a5ac0;
 const CRYSTAL_GLOW = 0xc09ae0;
 const ARCANE       = 0x8a5ac0;
-const HAT_COLOR    = 0x3f2a55;
+const HAT_COLOR    = 0x2d1e3d;
 const HAT_TRIM     = 0x8a5ac0;
 
 export const PlayerMageDrawer: EntityDrawer = {
@@ -84,7 +84,7 @@ export const PlayerMageDrawer: EntityDrawer = {
     ctx.translate(-cx, -(baseY + bodyOffsetY));
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.23)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 13 * s, 2.5 * s);
 
     // ── Robe (lower — wide trapezoid with wavy hem) ────────────────────────

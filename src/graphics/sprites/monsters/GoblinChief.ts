@@ -2,12 +2,12 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0x5a8a30;
-const SKIN_DARK   = 0x3a6010;
-const SKIN_LIGHT  = 0x7aaa50;
-const LEATHER     = 0x5a3820;
-const METAL_COLOR = 0x6a6a7a;
-const GOLD_COLOR  = 0x8a7030;
+const SKIN        = 0x3f6121;
+const SKIN_DARK   = 0x29430b;
+const SKIN_LIGHT  = 0x557738;
+const LEATHER     = 0x3f2716;
+const METAL_COLOR = 0x4a4a56;
+const GOLD_COLOR  = 0x614e21;
 const EYE_COLOR   = 0xcc4400;
 
 export const GoblinChiefDrawer: EntityDrawer = {
@@ -67,7 +67,7 @@ export const GoblinChiefDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx + bodyOffsetX * 0.4, baseY + 1 * s, 15 * s, 3.5 * s);
 
     // ── Legs with metal-capped boots ─────────────────────────────────────────
@@ -145,7 +145,7 @@ export const GoblinChiefDrawer: EntityDrawer = {
         const axeX = handX + side * 1.5 * s;
         const axeY = handY;
         // Handle
-        ctx.fillStyle = utils.rgb(0x5a3820);
+        ctx.fillStyle = utils.rgb(0x3f2716);
         ctx.fillRect(axeX - 1.2 * s, axeY - 16 * s, 2.4 * s, 18 * s);
         // Blade body
         utils.drawMetalSurface(ctx, axeX + 1 * s, axeY - 20 * s, 8 * s, 12 * s, METAL_COLOR);
@@ -281,7 +281,7 @@ export const GoblinChiefDrawer: EntityDrawer = {
       ctx.closePath();
       ctx.fill();
     }
-    // Crown gem
+    // Crown gem — keep bright (emissive)
     ctx.fillStyle = '#cc2222';
     utils.fillCircle(ctx, headX, crownY + 2.5 * s, 2 * s);
     ctx.fillStyle = 'rgba(255,100,100,0.5)';

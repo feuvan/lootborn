@@ -226,4 +226,66 @@ export class DrawUtils {
       ctx.stroke();
     }
   }
+
+  // ── Directional Lighting & Palette Helpers (D2 Visual Overhaul) ──
+
+  /** Apply upper-left warm highlight + lower-right cold shadow (pixel-level, skips transparent) */
+  applyDirectionalLighting(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const i = (py * w + px) * 4;
+        if (d[i + 3] === 0) continue;
+        const t = (px / w + py / h) / 2;
+        const warm = Math.max(0, 1 - t * 2.5) * 4;
+        const cool = Math.max(0, t * 2.5 - 1.5) * 3;
+        d[i]     = this.clamp(d[i] + warm - cool * 0.5);
+        d[i + 1] = this.clamp(d[i + 1] + warm * 0.4);
+        d[i + 2] = this.clamp(d[i + 2] - warm * 0.6 + cool);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /** Enhanced ground shadow beneath entity */
+  drawGroundShadow(ctx: CanvasRenderingContext2D, cx: number, baseY: number, rx: number, ry: number): void {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    this.fillEllipse(ctx, cx, baseY + ry * 0.3, rx * 1.2, ry);
+  }
+
+  /** 3-5 translucent brown dirt splotches for wear/grime */
+  drawDirtSplatter(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, intensity: number): void {
+    const count = 3 + Math.floor(intensity * 2);
+    for (let i = 0; i < count; i++) {
+      const sx = x + this.hash2d(i * 17, 251) * w;
+      const sy = y + this.hash2d(i * 23, 257) * h;
+      const sr = 1 + this.hash2d(i, 263) * 2 * intensity;
+      const alpha = 0.05 + this.hash2d(i, 269) * 0.08 * intensity;
+      ctx.fillStyle = `rgba(40,28,15,${alpha})`;
+      this.fillEllipse(ctx, sx, sy, sr, sr * 0.7);
+    }
+  }
+
+  /** Desaturate an RGB hex color by amount (0-1) */
+  desaturate(color: number, amount: number): number {
+    const [r, g, b] = this.hexRgb(color);
+    const gray = Math.round(r * 0.299 + g * 0.587 + b * 0.114);
+    const nr = Math.round(r + (gray - r) * amount);
+    const ng = Math.round(g + (gray - g) * amount);
+    const nb = Math.round(b + (gray - b) * amount);
+    return (this.clamp(nr) << 16) | (this.clamp(ng) << 8) | this.clamp(nb);
+  }
+
+  /** Shift color toward warm (add red, reduce blue) */
+  warmTint(color: number, amount: number): number {
+    const [r, g, b] = this.hexRgb(color);
+    return (this.clamp(r + amount * 15) << 16) | (this.clamp(g + amount * 5) << 8) | this.clamp(b - amount * 8);
+  }
+
+  /** Shift color toward cold (add blue, reduce red) */
+  coldTint(color: number, amount: number): number {
+    const [r, g, b] = this.hexRgb(color);
+    return (this.clamp(r - amount * 8) << 16) | (this.clamp(g + amount * 2) << 8) | this.clamp(b + amount * 15);
+  }
 }

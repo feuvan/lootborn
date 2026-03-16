@@ -2,8 +2,8 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const CARAPACE_LIGHT = 0x8a6a3a;
-const CARAPACE_DARK  = 0x4a3018;
+const CARAPACE_LIGHT = 0x614a29;
+const CARAPACE_DARK  = 0x342110;
 const STINGER_COLOR  = 0xcc2200;
 
 export const DesertScorpionDrawer: EntityDrawer = {
@@ -64,7 +64,7 @@ export const DesertScorpionDrawer: EntityDrawer = {
     const baseY = h * 0.88;
 
     // ── Shadow ──────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx, baseY + 1.5 * s, 18 * s * contractScale, 3 * s);
 
     // ── Carapace (body) — segmented overlapping ellipses ────────────────────
@@ -96,7 +96,7 @@ export const DesertScorpionDrawer: EntityDrawer = {
     }
 
     // Specular sheen
-    ctx.fillStyle = 'rgba(255,230,160,0.12)';
+    ctx.fillStyle = 'rgba(255,230,160,0.07)';
     utils.fillEllipse(ctx, -5 * s, -4 * s, 8 * s, 3 * s);
 
     ctx.restore(); // carapace

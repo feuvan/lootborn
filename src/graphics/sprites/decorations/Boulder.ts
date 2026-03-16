@@ -10,8 +10,8 @@ export const BoulderDrawer: EntityDrawer = {
   drawFrame(ctx, _frame, _action, w, h, utils) {
     const s = w / 20;
 
-    // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    // Ground shadow (increased opacity)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     utils.fillEllipse(ctx, w / 2, h - s, 9 * s, 2.2 * s);
 
     // Massive angular polygon boulder via clip
@@ -28,14 +28,14 @@ export const BoulderDrawer: EntityDrawer = {
     ctx.closePath();
     ctx.clip();
 
-    // Stone texture fill (covers the clipped region)
-    utils.drawStoneTexture(ctx, w * 0.05, h * 0.06, w * 0.90, h * 0.84, 0x4a4a50);
+    // Stone texture fill (darkened 30%: 0x4a4a50 → 0x343439)
+    utils.drawStoneTexture(ctx, w * 0.05, h * 0.06, w * 0.90, h * 0.84, 0x343439);
 
     // Depth shading overlay
     const grad = ctx.createLinearGradient(w * 0.1, h * 0.1, w * 0.9, h * 0.9);
-    grad.addColorStop(0, 'rgba(90,90,100,0.35)');
+    grad.addColorStop(0, 'rgba(63,63,70,0.40)');
     grad.addColorStop(0.35, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(10,10,15,0.45)');
+    grad.addColorStop(1, 'rgba(7,7,10,0.55)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
@@ -47,8 +47,8 @@ export const BoulderDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(70,110,50,0.22)';
     utils.fillEllipse(ctx, w * 0.52, h * 0.16, w * 0.18, h * 0.08);
 
-    // Edge highlight (top-left face)
-    ctx.strokeStyle = 'rgba(100,105,115,0.45)';
+    // Edge highlight (top-left face, reduced)
+    ctx.strokeStyle = 'rgba(70,74,80,0.40)';
     ctx.lineWidth = 0.8 * s;
     ctx.beginPath();
     ctx.moveTo(w * 0.14, h * 0.22);

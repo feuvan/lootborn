@@ -2,15 +2,15 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN_MID    = 0x2a0a3a;
-const SKIN_DARK   = 0x0a0418;
-const SKIN_LIGHT  = 0x4a1a5a;
-const WING_COLOR  = 0x2a0a3a;
-const HORN_COLOR  = 0x1a0a1a;
+const SKIN_MID    = 0x1d0729;
+const SKIN_DARK   = 0x070310;
+const SKIN_LIGHT  = 0x34123f;
+const WING_COLOR  = 0x1d0729;
+const HORN_COLOR  = 0x12071a;
 const EYE_COLOR   = 0xff0044;
 const RUNE_COLOR  = 0xff0044;
-const SPIKE_COLOR = 0x1a0828;
-const HOOF_COLOR  = 0x0a0210;
+const SPIKE_COLOR = 0x12051c;
+const HOOF_COLOR  = 0x07020b;
 
 export const DemonLordDrawer: EntityDrawer = {
   key: 'monster_demon_lord',
@@ -88,7 +88,7 @@ export const DemonLordDrawer: EntityDrawer = {
     ctx.fillRect(cx + bodyOffsetX - 42 * s, baseY - 84 * s + bodyOffsetY, 84 * s, 84 * s);
 
     // ── Shadow ────────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     utils.fillEllipse(ctx, cx + bodyOffsetX, baseY + 1 * s, 22 * s, 4.5 * s);
 
     // ── Enormous tattered bat wings (drawn behind body) ───────────────────────

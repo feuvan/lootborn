@@ -2,8 +2,8 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const BODY_COLOR  = 0xcc4400;
-const HIDE_DARK   = 0x3a1800;
+const BODY_COLOR  = 0x8f2f00;
+const HIDE_DARK   = 0x291000;
 const WING_OUTER  = 0xcc5500;
 const WING_MID    = 0xff8800;
 const WING_INNER  = 0xffcc00;
@@ -85,7 +85,7 @@ export const PhoenixDrawer: EntityDrawer = {
     ctx.fillRect(cx - 28 * s, baseY - 48 * s, 56 * s, 56 * s);
 
     // ── Shadow ────────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(80,20,0,0.2)';
+    ctx.fillStyle = 'rgba(40,10,0,0.35)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 14 * s * (1 - bodyOffsetY / h * 0.5), 3 * s);
 
     // ── Trailing tail feathers (behind body) ─────────────────────────────────

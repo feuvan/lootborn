@@ -2,16 +2,16 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xb08050;
-const SKIN_DARK   = 0x8a6030;
-const SKIN_LIGHT  = 0xc89860;
+const SKIN        = 0x906942;
+const SKIN_DARK   = 0x714f27;
+const SKIN_LIGHT  = 0xa47d4f;
 const HAIR        = 0x1a1a0a;
-const CLOAK       = 0x8a6a2a;   // sandy cloak
-const CLOAK_DARK  = 0x6a4a1a;
+const CLOAK       = 0x715722;   // sandy cloak
+const CLOAK_DARK  = 0x573d15;
 const CLOAK_TRIM  = 0xc0960a;
-const ROBE        = 0x7a5a2a;
-const BELT        = 0x4a3010;
-const BOOT        = 0x3a2010;
+const ROBE        = 0x644a22;
+const BELT        = 0x3d270d;
+const BOOT        = 0x301a0d;
 const LAN_FRAME   = 0x4a4a50;
 const LAN_GLOW    = 0xffaa30;
 const LAN_OUTER   = 0xff8800;
@@ -96,7 +96,7 @@ export const QuestNomadDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 20 * s, 4.5 * s);
 
     // ── Boots ──

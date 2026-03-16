@@ -2,11 +2,11 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN_MID   = 0x7a1010;
-const SKIN_DARK  = 0x4a0808;
-const SKIN_LIGHT = 0xaa2828;
-const WING_COLOR = 0x5a1010;
-const HORN_COLOR = 0x4a0808;
+const SKIN_MID   = 0x560b0b;
+const SKIN_DARK  = 0x340606;
+const SKIN_LIGHT = 0x771c1c;
+const WING_COLOR = 0x3f0b0b;
+const HORN_COLOR = 0x340606;
 const EYE_COLOR  = 0xffaa00;
 
 export const ImpDrawer: EntityDrawer = {
@@ -71,7 +71,7 @@ export const ImpDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // ── Shadow ────────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx + bodyOffsetX, baseY + 1 * s, 11 * s, 2.5 * s);
 
     // ── Bat wings (too small to fly — behind body) ────────────────────────────

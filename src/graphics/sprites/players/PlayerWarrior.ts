@@ -2,15 +2,15 @@
 import type { EntityDrawer, PlayerAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const ARMOR_BASE   = 0x3a4a5c;
-const ARMOR_LIGHT  = 0x566a80;
-const ARMOR_DARK   = 0x252f3c;
-const SKIN         = 0xb08960;
-const SKIN_DARK    = 0x8a6a40;
+const ARMOR_BASE   = 0x2a3542;
+const ARMOR_LIGHT  = 0x3e4c5c;
+const ARMOR_DARK   = 0x1b222b;
+const SKIN         = 0x7f6345;
+const SKIN_DARK    = 0x634c2e;
 const BLADE_COLOR  = 0x8a8a9a;
-const GUARD_COLOR  = 0x5a4a3a;
-const SHIELD_BASE  = 0x566a80;
-const SHIELD_DARK  = 0x3a4a5c;
+const GUARD_COLOR  = 0x41352a;
+const SHIELD_BASE  = 0x3e4c5c;
+const SHIELD_DARK  = 0x2a3542;
 const SHIELD_TRIM  = 0xb8860b;
 
 export const PlayerWarriorDrawer: EntityDrawer = {
@@ -85,7 +85,7 @@ export const PlayerWarriorDrawer: EntityDrawer = {
     ctx.translate(-cx, -(baseY + bodyOffsetY));
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 16 * s, 3.5 * s);
 
     // ── Legs / Greaves ─────────────────────────────────────────────────────

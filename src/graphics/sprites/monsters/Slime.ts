@@ -53,11 +53,11 @@ export const SlimeDrawer: EntityDrawer = {
     const cx = w / 2, baseY = h * 0.88;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
     utils.fillEllipse(ctx, cx, baseY + 2 * s, 17 * s * squishX, 3 * s);
 
     // Puddle drip
-    ctx.fillStyle = 'rgba(10,74,24,0.25)';
+    ctx.fillStyle = 'rgba(7,52,17,0.25)';
     utils.fillEllipse(ctx, cx, baseY, 18 * s * squishX, 4 * s);
 
     // Main body
@@ -69,9 +69,9 @@ export const SlimeDrawer: EntityDrawer = {
       cx - bodyRx * 0.15, bodyCy - bodyRy * 0.2, 0,
       cx, bodyCy, bodyRx
     );
-    grad.addColorStop(0, '#3aaa55');
-    grad.addColorStop(0.5, '#1a7a30');
-    grad.addColorStop(1, '#0a4a18');
+    grad.addColorStop(0, '#28773b');
+    grad.addColorStop(0.5, '#125521');
+    grad.addColorStop(1, '#073410');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.ellipse(cx, bodyCy, bodyRx, bodyRy, 0, 0, Math.PI * 2);
@@ -79,24 +79,24 @@ export const SlimeDrawer: EntityDrawer = {
 
     // Subsurface glow
     const glowGrad = ctx.createRadialGradient(cx - 2 * s, bodyCy - 2 * s, 0, cx, bodyCy, bodyRx * 0.7);
-    glowGrad.addColorStop(0, 'rgba(90,238,112,0.25)');
-    glowGrad.addColorStop(1, 'rgba(26,122,48,0)');
+    glowGrad.addColorStop(0, 'rgba(63,167,78,0.25)');
+    glowGrad.addColorStop(1, 'rgba(18,85,34,0)');
     ctx.fillStyle = glowGrad;
     utils.fillEllipse(ctx, cx - 2 * s, bodyCy - 2 * s, bodyRx * 0.65, bodyRy * 0.6);
 
     // Internal particles
-    ctx.fillStyle = 'rgba(10,90,26,0.4)';
+    ctx.fillStyle = 'rgba(7,63,18,0.4)';
     utils.fillCircle(ctx, cx - 6 * s, bodyCy + 2 * s, 2 * s);
     utils.fillCircle(ctx, cx + 4 * s, bodyCy + 4 * s, 1.5 * s);
 
     // Specular highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
     ctx.save();
     ctx.translate(cx - 6 * s, bodyCy - bodyRy * 0.4);
     ctx.rotate(-0.25);
     utils.fillEllipse(ctx, 0, 0, 5 * s, 3 * s);
     ctx.restore();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
     utils.fillEllipse(ctx, cx - 7 * s, bodyCy - bodyRy * 0.5, 2.5 * s, 1.5 * s);
 
     // Eyes
@@ -106,11 +106,11 @@ export const SlimeDrawer: EntityDrawer = {
       const ey = bodyCy - bodyRy * 0.15;
       ctx.fillStyle = '#0a3a0a';
       utils.fillEllipse(ctx, ex, ey, 3 * s, 3.5 * s);
-      ctx.fillStyle = '#2aaa40';
+      ctx.fillStyle = '#1d7730';  // keep emissive eye glow
       utils.fillEllipse(ctx, ex, ey - 0.5 * s, 2 * s, 2.5 * s);
       ctx.fillStyle = '#0a2a0a';
       utils.fillEllipse(ctx, ex, ey - 1 * s, 1 * s, 1.2 * s);
-      ctx.fillStyle = 'rgba(170,255,170,0.5)';
+      ctx.fillStyle = 'rgba(170,255,170,0.5)';  // keep bright reflection
       utils.fillCircle(ctx, ex - 0.5 * s, ey - 1.5 * s, 0.5 * s);
     }
 
@@ -124,7 +124,7 @@ export const SlimeDrawer: EntityDrawer = {
 
     // Drip tendrils
     if (act !== 'death') {
-      ctx.fillStyle = 'rgba(10,74,24,0.6)';
+      ctx.fillStyle = 'rgba(7,52,17,0.6)';
       ctx.beginPath();
       ctx.moveTo(cx - 10 * s, baseY - 2 * s);
       ctx.quadraticCurveTo(cx - 12 * s, baseY + 2 * s, cx - 11 * s, baseY + 4 * s);

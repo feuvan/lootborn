@@ -2,12 +2,12 @@
 import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN_MID   = 0x5a0a3a;
-const SKIN_DARK  = 0x3a0420;
-const SKIN_LIGHT = 0x8a1a5a;
-const HORN_COLOR = 0x3a0a2a;
+const SKIN_MID   = 0x3f0729;
+const SKIN_DARK  = 0x290316;
+const SKIN_LIGHT = 0x61123f;
+const HORN_COLOR = 0x29071d;
 const EYE_COLOR  = 0xff3030;
-const HOOF_COLOR = 0x1a0410;
+const HOOF_COLOR = 0x12030b;
 
 export const LesserDemonDrawer: EntityDrawer = {
   key: 'monster_lesser_demon',
@@ -66,7 +66,7 @@ export const LesserDemonDrawer: EntityDrawer = {
     ctx.translate(-cx, -baseY);
 
     // ── Shadow ────────────────────────────────────────────────────────────────
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
     utils.fillEllipse(ctx, cx + bodyOffsetX, baseY + 1 * s, 14 * s, 3 * s);
 
     // ── Hooved digitigrade legs ───────────────────────────────────────────────

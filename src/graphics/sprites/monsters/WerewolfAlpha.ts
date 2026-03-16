@@ -3,11 +3,11 @@ import type { EntityDrawer, MonsterAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
 // Darker fur than base Werewolf (0x2a1808 instead of 0x2a1808/0x6a4a30)
-const FUR_DARK   = 0x1a0e04;
-const FUR_MID    = 0x2a1810;
-const FUR_LIGHT  = 0x4a3020;
+const FUR_DARK   = 0x120903;
+const FUR_MID    = 0x1d100b;
+const FUR_LIGHT  = 0x342116;
 const CLAW_COLOR = 0xf0ece0;
-const SCAR_COLOR = 0x6a2a1a;
+const SCAR_COLOR = 0x4a1d12;
 
 export const WerewolfAlphaDrawer: EntityDrawer = {
   key: 'monster_werewolf_alpha',

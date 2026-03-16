@@ -2,18 +2,18 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xb09060;
-const SKIN_DARK   = 0x906a40;
-const SKIN_LIGHT  = 0xc8a878;
+const SKIN        = 0x90764f;
+const SKIN_DARK   = 0x765734;
+const SKIN_LIGHT  = 0xa48a62;
 const HAIR        = 0x3a2a0a;   // short, alert
-const CLOAK       = 0x2a3a1a;
-const CLOAK_INNER = 0x1a2a10;
-const TUNIC       = 0x3a5a2a;
-const LEATHER     = 0x4a3820;
+const CLOAK       = 0x223015;
+const CLOAK_INNER = 0x15220d;
+const TUNIC       = 0x304a22;
+const LEATHER     = 0x3d2e1a;
 const BELT        = 0x2a1a08;
 const BOOT        = 0x1a1008;
 const BLADE       = 0x8a8a9a;
-const SCABBARD    = 0x4a3020;
+const SCABBARD    = 0x3d271a;
 
 export const QuestScoutDrawer: EntityDrawer = {
   key: 'npc_quest_scout',
@@ -92,7 +92,7 @@ export const QuestScoutDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 19 * s, 4 * s);
 
     // ── Boots ──

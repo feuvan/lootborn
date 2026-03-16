@@ -11,7 +11,7 @@ export const RockDrawer: EntityDrawer = {
     const s = w / 16;
 
     // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, w / 2, h - s, 6.5 * s, 1.5 * s);
 
     // Angular polygon rock shape via clip path
@@ -27,14 +27,14 @@ export const RockDrawer: EntityDrawer = {
     ctx.closePath();
     ctx.clip();
 
-    // Stone texture fill
-    utils.drawStoneTexture(ctx, w * 0.08, h * 0.12, w * 0.82, h * 0.76, 0x4e5258);
+    // Stone texture fill (darkened 30%)
+    utils.drawStoneTexture(ctx, w * 0.08, h * 0.12, w * 0.82, h * 0.76, 0x373940);
 
     // Depth gradient overlay
     const grad = ctx.createLinearGradient(w * 0.1, h * 0.15, w * 0.85, h * 0.85);
-    grad.addColorStop(0, 'rgba(80,85,90,0.4)');
+    grad.addColorStop(0, 'rgba(55,58,62,0.45)');
     grad.addColorStop(0.4, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(20,22,26,0.35)');
+    grad.addColorStop(1, 'rgba(14,15,18,0.45)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
@@ -53,8 +53,8 @@ export const RockDrawer: EntityDrawer = {
       utils.fillCircle(ctx, w * lxF, h * lyF, lr * s);
     }
 
-    // Edge highlight (top-left)
-    ctx.strokeStyle = 'rgba(110,115,122,0.4)';
+    // Edge highlight (top-left, reduced)
+    ctx.strokeStyle = 'rgba(78,82,88,0.35)';
     ctx.lineWidth = 0.7 * s;
     ctx.beginPath();
     ctx.moveTo(w * 0.20, h * 0.28);

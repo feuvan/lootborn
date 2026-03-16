@@ -11,9 +11,16 @@ export const CrystalDrawer: EntityDrawer = {
     const s = w / 14;
     const cx = w / 2;
 
-    // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    // Ground shadow (darkened for contrast with bright crystal)
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
     utils.fillEllipse(ctx, cx, h - s, 4.5 * s, 1.3 * s);
+
+    // Radial glow around base (crystal light source effect)
+    const baseGlow = ctx.createRadialGradient(cx, h * 0.85, 0, cx, h * 0.85, 5 * s);
+    baseGlow.addColorStop(0, 'rgba(160,80,255,0.15)');
+    baseGlow.addColorStop(1, 'rgba(160,80,255,0)');
+    ctx.fillStyle = baseGlow;
+    utils.fillEllipse(ctx, cx, h * 0.85, 5 * s, 2 * s);
 
     // Define crystal polygon facets
     const tip = { x: cx, y: h * 0.04 };
@@ -56,10 +63,10 @@ export const CrystalDrawer: EntityDrawer = {
     ctx.closePath();
     ctx.fill();
 
-    // Inner glow (radial gradient)
+    // Inner glow (radial gradient, enhanced +0.1 alpha)
     const glow = ctx.createRadialGradient(cx, h * 0.46, 0, cx, h * 0.46, 5 * s);
-    glow.addColorStop(0, 'rgba(160,80,255,0.35)');
-    glow.addColorStop(0.5, 'rgba(100,40,180,0.18)');
+    glow.addColorStop(0, 'rgba(160,80,255,0.45)');
+    glow.addColorStop(0.5, 'rgba(100,40,180,0.28)');
     glow.addColorStop(1, 'rgba(60,10,120,0)');
     ctx.fillStyle = glow;
     ctx.beginPath();

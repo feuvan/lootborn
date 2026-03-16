@@ -2,17 +2,17 @@
 import type { EntityDrawer, NPCAction } from '../types';
 import type { DrawUtils } from '../../DrawUtils';
 
-const SKIN        = 0xb08050;
-const SKIN_DARK   = 0x8a6030;
-const SKIN_LIGHT  = 0xc89860;
+const SKIN        = 0x906942;
+const SKIN_DARK   = 0x714f27;
+const SKIN_LIGHT  = 0xa47d4f;
 const KOHL        = 0x1a0a0a;   // dark eye liner
-const ROBE_OUTER  = 0x8a6a3a;
-const ROBE_INNER  = 0x6a4a1a;
+const ROBE_OUTER  = 0x715730;
+const ROBE_INNER  = 0x573d15;
 const ROBE_TRIM   = 0xd4a030;
-const HOOD_COLOR  = 0xc09040;
-const BOOT        = 0x4a3018;
-const SACK_COLOR  = 0x7a5a2a;
-const SACK_LIGHT  = 0xa08040;
+const HOOD_COLOR  = 0x9d7634;
+const BOOT        = 0x3d2714;
+const SACK_COLOR  = 0x644a22;
+const SACK_LIGHT  = 0x836934;
 
 export const MerchantDesertDrawer: EntityDrawer = {
   key: 'npc_merchant_desert',
@@ -87,7 +87,7 @@ export const MerchantDesertDrawer: EntityDrawer = {
     const by = ground + bob;
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, ground + 3 * s, 20 * s, 4.5 * s);
 
     // ── Boots ──

@@ -17,6 +17,8 @@ import { AchievementSystem } from '../systems/AchievementSystem';
 import { SaveSystem } from '../systems/SaveSystem';
 import { SkillEffectSystem } from '../systems/SkillEffectSystem';
 import { MobileControlsSystem, isMobileDevice } from '../systems/MobileControlsSystem';
+import { LightingSystem } from '../systems/LightingSystem';
+import { applyColorGrading } from '../graphics/ColorGradePipeline';
 import { SpriteGenerator } from '../graphics/SpriteGenerator';
 import { AllClasses } from '../data/classes/index';
 import { AllMaps } from '../data/maps/index';
@@ -61,6 +63,8 @@ export class ZoneScene extends Phaser.Scene {
   private lastTileUpdate = 0;
   private _pendingSaveData: SaveData | null = null;
   private mobileControls: MobileControlsSystem | null = null;
+  private lighting!: LightingSystem;
+  private lights_playerLight: import('../systems/LightingSystem').LightSource | null = null;
   private inCombat = false;
   private combatDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -157,6 +161,22 @@ export class ZoneScene extends Phaser.Scene {
     // Camera
     this.cameras.main.startFollow(this.player.sprite, true, 0.08, 0.08);
     this.cameras.main.setZoom(1.8);
+
+    // Lighting system — ambient darkness + point lights
+    this.lighting = new LightingSystem(this);
+    this.lighting.setZone(this.currentMapId);
+    this.registerLightSources();
+
+    // Post-processing: camera vignette (WebGL only)
+    if (this.renderer.type === Phaser.WEBGL) {
+      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.92, 0.22);
+    }
+
+    // Ambient dust particles
+    this.createAmbientDust();
+
+    // Color grading shader (WebGL only, no-op on Canvas)
+    applyColorGrading(this);
 
     // Input
     if (this.input.keyboard) {
@@ -343,6 +363,16 @@ export class ZoneScene extends Phaser.Scene {
       this.updateNPCQuestMarkers();
     }
 
+    // Update lighting — player light follows player, then render
+    if (this.lighting) {
+      const playerLight = this.lights_playerLight;
+      if (playerLight) {
+        playerLight.x = this.player.sprite.x;
+        playerLight.y = this.player.sprite.y;
+      }
+      this.lighting.update(delta);
+    }
+
     EventBus.emit(GameEvents.PLAYER_HEALTH_CHANGED, { hp: this.player.hp, maxHp: this.player.maxHp });
     EventBus.emit(GameEvents.PLAYER_MANA_CHANGED, { mana: this.player.mana, maxMana: this.player.maxMana });
   }
@@ -377,7 +407,7 @@ export class ZoneScene extends Phaser.Scene {
             const needsBlend = tr !== tileType || tl !== tileType || br !== tileType || bl !== tileType;
             let tileKey: string;
             if (needsBlend) {
-              tileKey = SpriteGenerator.generateBlendedTile(this, tileType, [tr, tl, br, bl]);
+              tileKey = SpriteGenerator.generateTransitionTile(this, tileType, [tr, tl, br, bl]);
             } else if (tileType === 5 && this.mapData.theme) {
               tileKey = `tile_camp_ground_${this.mapData.theme}`;
               if (!this.textures.exists(tileKey)) tileKey = 'tile_camp';
@@ -385,7 +415,11 @@ export class ZoneScene extends Phaser.Scene {
               tileKey = `tile_camp_wall_${this.mapData.theme}`;
               if (!this.textures.exists(tileKey)) tileKey = 'tile_camp_wall';
             } else {
-              tileKey = TILE_KEYS[tileType] || 'tile_grass';
+              // Select tile variant based on position hash for visual variety
+              const variantCount = SpriteGenerator.TILE_VARIANTS;
+              const variant = ((col * 374761393 + row * 668265263) >>> 0) % variantCount;
+              const variantKey = `${TILE_KEYS[tileType] || 'tile_grass'}_${variant}`;
+              tileKey = this.textures.exists(variantKey) ? variantKey : (TILE_KEYS[tileType] || 'tile_grass');
             }
             const tile = this.add.image(pos.x, pos.y, tileKey).setScale(1 / TEXTURE_SCALE);
             tile.setDepth(pos.y);
@@ -493,6 +527,90 @@ export class ZoneScene extends Phaser.Scene {
       this.campDecorPositions.push({ col: c + 5, row: r + 1, type: 'torch' });
       this.campDecorPositions.push({ col: c - 2, row: r - 5, type: 'torch' });
       this.campDecorPositions.push({ col: c + 3, row: r - 5, type: 'torch' });
+    }
+  }
+
+  private createAmbientDust(): void {
+    // Generate a small dust particle texture
+    const dustKey = 'dust_particle';
+    if (!this.textures.exists(dustKey)) {
+      const c = document.createElement('canvas');
+      c.width = 8; c.height = 8;
+      const ctx = c.getContext('2d')!;
+      const grad = ctx.createRadialGradient(4, 4, 0, 4, 4, 4);
+      grad.addColorStop(0, 'rgba(200,190,170,0.3)');
+      grad.addColorStop(1, 'rgba(200,190,170,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 8, 8);
+      this.textures.addCanvas(dustKey, c);
+    }
+
+    // Zone-specific tint
+    const tints: Record<string, number> = {
+      emerald_plains: 0x88cc88,
+      twilight_forest: 0x66aa66,
+      anvil_mountains: 0x998888,
+      scorching_desert: 0xffaa44,
+      abyss_rift: 0xff6622,
+    };
+    const tint = tints[this.currentMapId] || 0xccccaa;
+
+    const emitter = this.add.particles(0, 0, dustKey, {
+      x: { min: -GAME_WIDTH, max: GAME_WIDTH * 2 },
+      y: { min: -GAME_HEIGHT, max: GAME_HEIGHT * 2 },
+      lifespan: { min: 6000, max: 12000 },
+      speed: { min: 2, max: 8 },
+      angle: { min: 200, max: 340 },
+      scale: { start: 0.8, end: 1.5 },
+      alpha: { start: 0.15, end: 0 },
+      tint,
+      frequency: 800,
+      quantity: 1,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    emitter.setScrollFactor(0.3);
+    emitter.setDepth(998);
+  }
+
+  private registerLightSources(): void {
+    this.lighting.clearLights();
+
+    // Player subtle halo
+    const playerLight = {
+      x: this.player.sprite.x,
+      y: this.player.sprite.y,
+      radius: 80,
+      color: 0xffeedd,
+      intensity: 0.4,
+      id: 'player',
+    };
+    this.lights_playerLight = playerLight;
+    this.lighting.addLight(playerLight);
+
+    // Camp lights: campfires + torches
+    for (const decor of this.campDecorPositions) {
+      const pos = cartToIso(decor.col, decor.row);
+      if (decor.type === 'campfire') {
+        this.lighting.addLight({
+          x: pos.x,
+          y: pos.y - 8,
+          radius: 120,
+          color: 0xff8800,
+          intensity: 0.85,
+          flicker: true,
+          id: `campfire_${decor.col}_${decor.row}`,
+        });
+      } else if (decor.type === 'torch') {
+        this.lighting.addLight({
+          x: pos.x,
+          y: pos.y - 12,
+          radius: 60,
+          color: 0xff6600,
+          intensity: 0.65,
+          flicker: true,
+          id: `torch_${decor.col}_${decor.row}`,
+        });
+      }
     }
   }
 
