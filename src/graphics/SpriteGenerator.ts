@@ -24,6 +24,17 @@ import { DemonLordDrawer } from './sprites/monsters/DemonLord';
 import { PlayerWarriorDrawer } from './sprites/players/PlayerWarrior';
 import { PlayerMageDrawer } from './sprites/players/PlayerMage';
 import { PlayerRogueDrawer } from './sprites/players/PlayerRogue';
+import { BlacksmithDrawer } from './sprites/npcs/Blacksmith';
+import { BlacksmithAdvancedDrawer } from './sprites/npcs/BlacksmithAdvanced';
+import { MerchantDrawer } from './sprites/npcs/Merchant';
+import { MerchantDesertDrawer } from './sprites/npcs/MerchantDesert';
+import { StashDrawer } from './sprites/npcs/Stash';
+import { QuestElderDrawer } from './sprites/npcs/QuestElder';
+import { QuestScoutDrawer } from './sprites/npcs/QuestScout';
+import { ForestHermitDrawer } from './sprites/npcs/ForestHermit';
+import { QuestDwarfDrawer } from './sprites/npcs/QuestDwarf';
+import { QuestNomadDrawer } from './sprites/npcs/QuestNomad';
+import { QuestWardenDrawer } from './sprites/npcs/QuestWarden';
 
 // ── Frame Layout Constants ──────────────────────────────────────────────────
 const IDLE_START = 0, IDLE_COUNT = 4;
@@ -1334,9 +1345,55 @@ export class SpriteGenerator {
   // ██ NPC SPRITES ██
   // ═══════════════════════════════════════════════════════════════════════
 
+  private generateFromNPCDrawer(drawer: EntityDrawer): void {
+    if (this.shouldSkipGeneration(drawer.key)) return;
+
+    const s = TEXTURE_SCALE;
+    const fw = drawer.frameW * s, fh = drawer.frameH * s;
+    const [canvas, ctx] = this.utils.createCanvas(fw * drawer.totalFrames, fh);
+
+    const actions: [string, number, number][] = [
+      ['working', NPC_WORK_START, NPC_WORK_COUNT],
+      ['alert', NPC_ALERT_START, NPC_ALERT_COUNT],
+      ['idle', NPC_IDLE_START, NPC_IDLE_COUNT],
+      ['talking', NPC_TALK_START, NPC_TALK_COUNT],
+    ];
+
+    for (const [action, start, count] of actions) {
+      for (let f = 0; f < count; f++) {
+        const ox = (start + f) * fw;
+        ctx.save();
+        ctx.translate(ox, 0);
+        drawer.drawFrame(ctx, f, action as any, fw, fh, this.utils);
+        ctx.restore();
+      }
+    }
+
+    this.utils.applyNoiseToRegion(ctx, 0, 0, canvas.width, canvas.height, 3);
+
+    const key = drawer.key;
+    if (this.scene.textures.exists(key)) this.scene.textures.remove(key);
+    const canvasTex = this.scene.textures.addCanvas(key, canvas)!;
+    for (let i = 0; i < drawer.totalFrames; i++) {
+      canvasTex.add(i, 0, i * fw, 0, fw, fh);
+    }
+  }
+
   private generateNPCSprites(): void {
+    const npcDrawers = [
+      BlacksmithDrawer, BlacksmithAdvancedDrawer, MerchantDrawer,
+      MerchantDesertDrawer, StashDrawer, QuestElderDrawer,
+      QuestScoutDrawer, ForestHermitDrawer, QuestDwarfDrawer,
+      QuestNomadDrawer, QuestWardenDrawer,
+    ];
+    for (const drawer of npcDrawers) {
+      this.generateFromNPCDrawer(drawer);
+    }
+    // Template fallback for any NPC not covered by a custom drawer
     for (const npc of NPC_CONFIGS) {
-      this.makeNPCSheet(npc);
+      if (!this.scene.textures.exists(npc.key)) {
+        this.makeNPCSheet(npc);
+      }
     }
   }
 
