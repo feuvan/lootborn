@@ -8,6 +8,13 @@ import { SkeletonDrawer } from './sprites/monsters/Skeleton';
 import { WerewolfDrawer } from './sprites/monsters/Werewolf';
 import { FireElementalDrawer } from './sprites/monsters/FireElemental';
 import { DesertScorpionDrawer } from './sprites/monsters/DesertScorpion';
+import { GoblinDrawer } from './sprites/monsters/Goblin';
+import { GoblinChiefDrawer } from './sprites/monsters/GoblinChief';
+import { ZombieDrawer } from './sprites/monsters/Zombie';
+import { WerewolfAlphaDrawer } from './sprites/monsters/WerewolfAlpha';
+import { GargoyleDrawer } from './sprites/monsters/Gargoyle';
+import { StoneGolemDrawer } from './sprites/monsters/StoneGolem';
+import { MountainTrollDrawer } from './sprites/monsters/MountainTroll';
 
 // ── Frame Layout Constants ──────────────────────────────────────────────────
 const IDLE_START = 0, IDLE_COUNT = 4;
@@ -721,6 +728,13 @@ export class SpriteGenerator {
     this.generateFromDrawer(WerewolfDrawer);
     this.generateFromDrawer(FireElementalDrawer);
     this.generateFromDrawer(DesertScorpionDrawer);
+    this.generateFromDrawer(GoblinDrawer);
+    this.generateFromDrawer(GoblinChiefDrawer);
+    this.generateFromDrawer(ZombieDrawer);
+    this.generateFromDrawer(WerewolfAlphaDrawer);
+    this.generateFromDrawer(GargoyleDrawer);
+    this.generateFromDrawer(StoneGolemDrawer);
+    this.generateFromDrawer(MountainTrollDrawer);
 
     // Existing template-based generation (skip if drawer already handled it)
     for (const cfg of MONSTER_CONFIGS) {
