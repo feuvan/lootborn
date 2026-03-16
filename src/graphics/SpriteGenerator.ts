@@ -21,6 +21,9 @@ import { ImpDrawer } from './sprites/monsters/Imp';
 import { LesserDemonDrawer } from './sprites/monsters/LesserDemon';
 import { SuccubusDrawer } from './sprites/monsters/Succubus';
 import { DemonLordDrawer } from './sprites/monsters/DemonLord';
+import { PlayerWarriorDrawer } from './sprites/players/PlayerWarrior';
+import { PlayerMageDrawer } from './sprites/players/PlayerMage';
+import { PlayerRogueDrawer } from './sprites/players/PlayerRogue';
 
 // ── Frame Layout Constants ──────────────────────────────────────────────────
 const IDLE_START = 0, IDLE_COUNT = 4;
@@ -684,8 +687,14 @@ export class SpriteGenerator {
   // ═══════════════════════════════════════════════════════════════════════
 
   private generatePlayerSheets(): void {
+    this.generateFromDrawer(PlayerWarriorDrawer);
+    this.generateFromDrawer(PlayerMageDrawer);
+    this.generateFromDrawer(PlayerRogueDrawer);
+    // Existing template fallback
     for (const cfg of PLAYER_CONFIGS) {
-      this.makeCharSheet(cfg, PLAYER_FRAMES);
+      if (!this.scene.textures.exists(cfg.textureKey)) {
+        this.makeCharSheet(cfg, PLAYER_FRAMES);
+      }
     }
   }
 
