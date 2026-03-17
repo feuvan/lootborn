@@ -1,8 +1,8 @@
 [package]
-name = "app"
+name = "abyssfire"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Isometric ARPG web game with D2-style loot"
+authors = ["feuvan"]
 license = ""
 repository = ""
 edition = "2021"
