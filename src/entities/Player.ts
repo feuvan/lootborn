@@ -279,11 +279,11 @@ export class Player {
     this.sprite.setAlpha(1);
     this.sprite.setScale(1);
     this.sprite.setAngle(0);
-    // Reset all child transforms that death animation may have modified
+    // Reset child alpha/angle that death animation may have modified
+    // Note: do NOT reset scale — children have intentional scales (e.g. 1/TEXTURE_SCALE)
     for (const child of this.sprite.list) {
       const go = child as any;
       if (go.setAlpha) go.setAlpha(1);
-      if (go.setScale) go.setScale(1);
       if (go.setAngle) go.setAngle(0);
     }
     this.animator.cleanup();
