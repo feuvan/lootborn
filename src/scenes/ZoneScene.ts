@@ -321,6 +321,11 @@ export class ZoneScene extends Phaser.Scene {
       this.showLevelUpBanner(data.level);
     });
 
+    EventBus.removeAllListeners(GameEvents.QUEST_COMPLETED);
+    EventBus.on(GameEvents.QUEST_COMPLETED, (data: { questName: string }) => {
+      this.showQuestCompleteBanner(data.questName);
+    });
+
     EventBus.removeAllListeners(GameEvents.UI_SKILL_CLICK);
     EventBus.on(GameEvents.UI_SKILL_CLICK, (data: { index: number; skillId: string }) => {
       this.tryUseSkill(data.skillId, this.time.now);
@@ -1705,6 +1710,26 @@ export class ZoneScene extends Phaser.Scene {
       this.tweens.add({
         targets: [text, lvlText], alpha: 0, y: '-=20', duration: 600,
         ease: 'Power2', onComplete: () => { text.destroy(); lvlText.destroy(); },
+      });
+    });
+  }
+
+  private showQuestCompleteBanner(questName: string): void {
+    const label = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.22, '任务完成!', {
+      fontSize: '20px', color: '#f1c40f', fontFamily: '"Cinzel", serif',
+      fontStyle: 'bold', stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2500).setAlpha(0);
+
+    const name = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.22 + 28, questName, {
+      fontSize: '14px', color: '#e0d8cc', fontFamily: '"Cinzel", serif',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2500).setAlpha(0);
+
+    this.tweens.add({ targets: [label, name], alpha: 1, duration: 500, ease: 'Power2' });
+    this.time.delayedCall(2500, () => {
+      this.tweens.add({
+        targets: [label, name], alpha: 0, duration: 600,
+        onComplete: () => { label.destroy(); name.destroy(); },
       });
     });
   }

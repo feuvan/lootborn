@@ -61,6 +61,7 @@ export class QuestSystem {
       );
       if (allDone && prog.status === 'active') {
         prog.status = 'completed';
+        EventBus.emit(GameEvents.QUEST_COMPLETED, { questId: quest.id, questName: quest.name });
         EventBus.emit(GameEvents.LOG_MESSAGE, {
           text: `任务完成: ${quest.name}! 返回NPC交付。`,
           type: 'system',
