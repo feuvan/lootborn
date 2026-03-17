@@ -293,12 +293,32 @@ export class ZoneScene extends Phaser.Scene {
     EventBus.removeAllListeners(GameEvents.PLAYER_DIED);
     EventBus.on(GameEvents.PLAYER_DIED, () => {
       // VFXManager handles the fade-to-red via its own listener
+      // Brief white flash on death impact
+      if (this.vfx) {
+        this.vfx.cameraFlash(80, 0.6, 0xffffff);
+        this.vfx.deathBurst(this.player.sprite.x, this.player.sprite.y - 16, 0xcc2222);
+      }
+      // "YOU DIED" text overlay
+      const deathText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.4, '你已死亡', {
+        fontSize: '36px', color: '#cc2222', fontFamily: '"Cinzel", serif',
+        fontStyle: 'bold', stroke: '#000000', strokeThickness: 6,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(2500).setAlpha(0);
+      this.tweens.add({
+        targets: deathText, alpha: 1, duration: 600, ease: 'Power2',
+      });
       this.time.delayedCall(2000, () => {
+        this.tweens.add({
+          targets: deathText, alpha: 0, duration: 400, onComplete: () => deathText.destroy(),
+        });
         const camp = this.campPositions[0];
         this.player.respawnAtCamp(camp.col, camp.row);
-        // Fade back in after respawn
         this.cameras.main.fadeIn(500);
       });
+    });
+
+    EventBus.removeAllListeners(GameEvents.PLAYER_LEVEL_UP);
+    EventBus.on(GameEvents.PLAYER_LEVEL_UP, (data: { level: number }) => {
+      this.showLevelUpBanner(data.level);
     });
 
     EventBus.removeAllListeners(GameEvents.UI_SKILL_CLICK);
@@ -866,6 +886,12 @@ export class ZoneScene extends Phaser.Scene {
       this.player.buffs.push({ stat: skill.buff.stat, value: skill.buff.value + level * 0.02, duration: skill.buff.duration, startTime: time });
       EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
       this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y);
+      // Heal burst for healing buffs, otherwise generic buff flash
+      if (this.vfx) {
+        if (skill.buff.stat === 'hp' || skillId.includes('heal')) {
+          this.vfx.healBurst(this.player.sprite.x, this.player.sprite.y - 16, 10);
+        }
+      }
       return;
     }
 
@@ -886,6 +912,10 @@ export class ZoneScene extends Phaser.Scene {
             : 0xf39c12;
           this.vfx.skillImpactBloom(t.sprite.x, t.sprite.y - 16, impactColor);
         }
+      }
+      // Screen shake on AoE impact
+      if (this.vfx && aoeTargets.length > 0) {
+        this.vfx.cameraShake(100, 0.004 + aoeTargets.length * 0.001);
       }
       if (skillId === 'chain_lightning') {
         this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y,
@@ -1652,6 +1682,31 @@ export class ZoneScene extends Phaser.Scene {
     } else {
       this.tweens.add({ targets: t, y: t.y - 50, alpha: 0, duration: 1200, ease: 'Power2', onComplete: () => t.destroy() });
     }
+  }
+
+  private showLevelUpBanner(level: number): void {
+    const text = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.28, '升级!', {
+      fontSize: '32px', color: '#ffd700', fontFamily: '"Cinzel", serif',
+      fontStyle: 'bold', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2500).setAlpha(0).setScale(0.5);
+
+    const lvlText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.28 + 38, `等级 ${level}`, {
+      fontSize: '18px', color: '#ffcc00', fontFamily: '"Cinzel", serif',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2500).setAlpha(0);
+
+    this.tweens.add({
+      targets: text, alpha: 1, scale: 1, duration: 400, ease: 'Back.easeOut',
+    });
+    this.tweens.add({
+      targets: lvlText, alpha: 1, duration: 500, ease: 'Power2',
+    });
+    this.time.delayedCall(2500, () => {
+      this.tweens.add({
+        targets: [text, lvlText], alpha: 0, y: '-=20', duration: 600,
+        ease: 'Power2', onComplete: () => { text.destroy(); lvlText.destroy(); },
+      });
+    });
   }
 
   private showZoneBanner(): void {
