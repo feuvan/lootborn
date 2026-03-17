@@ -1308,8 +1308,12 @@ export class UIScene extends Phaser.Scene {
     if (ty + tipH > GAME_HEIGHT) ty = GAME_HEIGHT - tipH - 4;
     if (ty < 4) ty = 4;
 
+    const qualityBorderColors: Record<string, number> = {
+      normal: 0x555555, magic: 0x5dade2, rare: 0xf1c40f, legendary: 0xe67e22, set: 0x2ecc71,
+    };
+    const borderColor = qualityBorderColors[item.quality] ?? 0x666677;
     this.tooltipContainer = this.add.container(tx, ty).setDepth(5000);
-    this.tooltipContainer.add(this.add.rectangle(0, 0, tipW, tipH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1, 0x666677));
+    this.tooltipContainer.add(this.add.rectangle(0, 0, tipW, tipH, 0x0a0a18, 0.95).setOrigin(0, 0).setStrokeStyle(1.5, borderColor));
     let ly = 6;
     for (const line of lines) {
       this.tooltipContainer.add(this.add.text(8, ly, line.text, {
