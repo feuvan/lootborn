@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/abyssfire/',
+  base: process.env.NODE_ENV === 'production' ? './' : '/abyssfire/',
 });
