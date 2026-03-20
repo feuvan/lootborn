@@ -159,6 +159,25 @@ export class CharacterAnimator {
   private animTime: number = 0;
   private dead: boolean = false;
 
+  // Transition blending
+  private transitionProgress = 1; // 1 = fully in current state
+  private transitionDuration = 0;
+  private prevBobY = 0;
+  private prevScaleX = 1;
+  private prevScaleY = 1;
+  private prevAngle = 0;
+
+  // Hit-freeze
+  private hitFreezeTimer = 0;
+
+  private static readonly TRANSITION_MS: Record<string, number> = {
+    'idle->walk': 80,
+    'walk->idle': 120,
+    'walk->attack': 60,
+    'attack->idle': 150,
+    'idle->attack': 80,
+  };
+
   constructor(scene: Phaser.Scene, container: Phaser.GameObjects.Container, config: AnimConfig, animPrefix?: string) {
     this.scene = scene;
     this.container = container;
@@ -192,6 +211,7 @@ export class CharacterAnimator {
     if (this.dead || this.state === 'idle') return;
     if (this.state === 'attack' || this.state === 'cast' || this.state === 'hurt') return;
     this.cancelTweens();
+    this.startTransition('idle');
     this.prevState = this.state;
     this.state = 'idle';
     this.playFrameAnim('idle');
@@ -211,6 +231,7 @@ export class CharacterAnimator {
     if (this.dead || this.state === 'walk') return;
     if (this.state === 'attack' || this.state === 'cast' || this.state === 'hurt') return;
     this.cancelTweens();
+    this.startTransition('walk');
     this.prevState = this.state;
     this.state = 'walk';
     this.animTime = 0;
@@ -219,8 +240,31 @@ export class CharacterAnimator {
     this.playFrameAnim('walk');
   }
 
+  /** Freeze animation for the given duration (ms). Called on damage. */
+  triggerHitFreeze(durationMs: number = 35): void {
+    this.hitFreezeTimer = durationMs;
+  }
+
+  private startTransition(toState: string): void {
+    const key = `${this.state}->${toState}`;
+    const ms = CharacterAnimator.TRANSITION_MS[key] ?? 80;
+    this.transitionDuration = ms;
+    this.transitionProgress = 0;
+    this.prevBobY = this.baseY;
+    this.prevScaleX = this.container.scaleX;
+    this.prevScaleY = this.container.scaleY;
+    this.prevAngle = this.container.angle;
+  }
+
   update(delta: number): void {
     if (this.dead) return;
+
+    // Hit-freeze: skip animation updates
+    if (this.hitFreezeTimer > 0) {
+      this.hitFreezeTimer -= delta;
+      return;
+    }
+
     this.animTime += delta;
 
     // Frame-based animations handle the visual; we only do light container transforms
@@ -238,6 +282,28 @@ export class CharacterAnimator {
       } else if (this.state === 'walk') {
         this.updateWalk();
       }
+    }
+
+    // Blend transforms if transitioning
+    if (this.transitionProgress < 1 && this.transitionDuration > 0) {
+      this.transitionProgress = Math.min(1, this.transitionProgress + delta / this.transitionDuration);
+    }
+    if (this.transitionProgress < 1) {
+      const t = this.transitionProgress;
+      const eased = t * t * (3 - 2 * t); // smoothstep
+
+      const currentY = this.container.y;
+      const currentScaleX = this.container.scaleX;
+      const currentScaleY = this.container.scaleY;
+      const currentAngle = this.container.angle;
+
+      const baseContainerY = currentY - this.baseY;
+      const prevY = baseContainerY + this.prevBobY;
+
+      this.container.y = prevY + (currentY - prevY) * eased;
+      this.container.scaleX = this.prevScaleX + (currentScaleX - this.prevScaleX) * eased;
+      this.container.scaleY = this.prevScaleY + (currentScaleY - this.prevScaleY) * eased;
+      this.container.angle = this.prevAngle + (currentAngle - this.prevAngle) * eased;
     }
   }
 
