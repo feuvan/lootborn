@@ -16,6 +16,9 @@ export const ExitPortalDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     utils.fillEllipse(ctx, cx, h - 2 * s, 12 * s, 3 * s);
 
+    // Soft outline glow (bright green — portal)
+    utils.softOutline(ctx, 'rgba(0,200,80,0.25)', 6);
+
     // Outer vortex rings — concentric arc strokes with subtle rotation offsets
     const ringDefs: [number, number, number, string][] = [
       // radius, lineWidth, rotationOffset, color
@@ -74,6 +77,9 @@ export const ExitPortalDrawer: EntityDrawer = {
     coreGlow.addColorStop(1, 'rgba(0,200,80,0)');
     ctx.fillStyle = coreGlow;
     utils.fillCircle(ctx, cx, cy, 3 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Edge sparkle hints — small bright dots at perimeter
     const sparkleAngles = [0, 0.65, 1.30, 1.95, 2.60, 3.25, 3.90, 4.55, 5.20, 5.85];

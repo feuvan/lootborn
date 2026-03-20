@@ -103,6 +103,9 @@ export const BlacksmithAdvancedDrawer: EntityDrawer = {
     utils.drawPart(ctx, cx - 13 * s, by - 26 * s, 10 * s, 21 * s, legColor, 3 * s);
     utils.drawPart(ctx, cx + 3 * s, by - 26 * s, 10 * s, 21 * s, legColor, 3 * s);
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Apron (heavier, with trim) ──
     utils.drawLeatherTexture(ctx, cx - 15 * s + bodyLean, by - 54 * s, 30 * s, 36 * s, APRON);
     // Trim strips
@@ -122,6 +125,9 @@ export const BlacksmithAdvancedDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(0x715c34);
     utils.roundRect(ctx, cx - 2.5 * s + bodyLean, by - 22.5 * s, 5 * s, 4 * s, 1 * s);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm (bare, very muscular) ──
     const laBaseY = by - 50 * s;

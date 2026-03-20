@@ -115,6 +115,9 @@ export const StoneGolemDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(EMBER_COLOR, 0.4);
     ctx.fillRect(torsoX - 9 * s, lowerTorsoY - 9 * s, 18 * s, segGap * 2);
 
+    // Soft outline glow (gray — stone)
+    utils.softOutline(ctx, 'rgba(120,120,130,0.2)', 5);
+
     // Upper torso polygon
     ctx.beginPath();
     ctx.moveTo(torsoX - 10 * s, torsoY - 4 * s);
@@ -130,6 +133,9 @@ export const StoneGolemDrawer: EntityDrawer = {
     ctx.fillStyle = torsoGrad;
     ctx.fill();
     utils.drawStoneTexture(ctx, torsoX - 12 * s, torsoY - 9 * s, 24 * s, 16 * s, STONE_BASE);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Glowing orange cracks between segments
     ctx.strokeStyle = utils.rgb(EMBER_COLOR, 0.5);

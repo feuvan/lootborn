@@ -97,6 +97,9 @@ export const GoblinChiefDrawer: EntityDrawer = {
     // Leather base
     utils.drawLeatherTexture(ctx, torsoX - 8 * s, torsoY - 11 * s, 16 * s, 18 * s, LEATHER);
 
+    // Soft outline glow (purple-green — goblin)
+    utils.softOutline(ctx, 'rgba(80,120,60,0.2)', 5);
+
     // Skin fill
     const torsoGrad = ctx.createRadialGradient(torsoX - 2 * s, torsoY - 3 * s, 0, torsoX, torsoY, 10 * s);
     torsoGrad.addColorStop(0, utils.rgb(SKIN_LIGHT));
@@ -104,6 +107,12 @@ export const GoblinChiefDrawer: EntityDrawer = {
     torsoGrad.addColorStop(1, utils.rgb(SKIN_DARK));
     ctx.fillStyle = torsoGrad;
     utils.fillEllipse(ctx, torsoX, torsoY, 9 * s, 11 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on torso
+    utils.rimLight(ctx, torsoX, torsoY, 9 * s, 11 * s, 'rgba(60,100,40,0.1)');
 
     // ── Shoulder pauldrons ───────────────────────────────────────────────────
     for (const side of [-1, 1]) {

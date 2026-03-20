@@ -139,6 +139,10 @@ export const SandwormDrawer: EntityDrawer = {
     // ── Head ─────────────────────────────────────────────────────────────────
     const headR = 11 * s;
     const headY = headBaseY - headR * 0.5;
+
+    // Soft outline glow (sandy — desert)
+    utils.softOutline(ctx, 'rgba(160,120,60,0.2)', 5);
+
     const headGrad = ctx.createRadialGradient(
       headCX - headR * 0.25, headY - headR * 0.2, 0,
       headCX, headY, headR
@@ -150,6 +154,12 @@ export const SandwormDrawer: EntityDrawer = {
     ctx.beginPath();
     ctx.ellipse(headCX, headY, headR, headR * 0.92, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on head
+    utils.rimLight(ctx, headCX, headY, headR, headR * 0.92, 'rgba(140,100,40,0.1)');
 
     // ── Sensory pits (eyeless indentations) ──────────────────────────────────
     for (const side of [-1, 1]) {

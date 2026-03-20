@@ -67,6 +67,9 @@ export const DesertScorpionDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     utils.fillEllipse(ctx, cx, baseY + 1.5 * s, 18 * s * contractScale, 3 * s);
 
+    // Soft outline glow (sandy — desert)
+    utils.softOutline(ctx, 'rgba(160,120,60,0.2)', 5);
+
     // ── Carapace (body) — segmented overlapping ellipses ────────────────────
     ctx.save();
     ctx.translate(cx, baseY - 6 * s);
@@ -100,6 +103,9 @@ export const DesertScorpionDrawer: EntityDrawer = {
     utils.fillEllipse(ctx, -5 * s, -4 * s, 8 * s, 3 * s);
 
     ctx.restore(); // carapace
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Cephalothorax head ───────────────────────────────────────────────────
     const headX = cx - 16 * s;

@@ -96,6 +96,9 @@ export const MerchantDesertDrawer: EntityDrawer = {
       utils.drawPart(ctx, bx - 4 * s, by - 5 * s, 8 * s, 6 * s, BOOT, 2 * s);
     }
 
+    // Soft outline glow (sandy — desert NPC)
+    utils.softOutline(ctx, 'rgba(160,120,60,0.15)', 5);
+
     // ── Desert robe (full body) ──
     // Robe bottom flares slightly
     ctx.fillStyle = utils.rgb(ROBE_OUTER);
@@ -118,6 +121,9 @@ export const MerchantDesertDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(ROBE_TRIM);
     utils.roundRect(ctx, cx - 14 * s + bodyLean, by - 28 * s, 28 * s, 4 * s, 1 * s);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm (under robe sleeve) ──
     const laX = cx - 18 * s + bodyLean;

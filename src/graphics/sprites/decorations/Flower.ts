@@ -15,6 +15,9 @@ export const FlowerDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     utils.fillEllipse(ctx, cx, h - 0.5 * s, 3 * s, 0.8 * s);
 
+    // Soft outline glow (green — vegetation)
+    utils.softOutline(ctx, 'rgba(60,100,40,0.15)', 3);
+
     // Stem (darkened 30%)
     ctx.strokeStyle = '#153310';
     ctx.lineWidth = 0.9 * s;
@@ -52,6 +55,9 @@ export const FlowerDrawer: EntityDrawer = {
       utils.fillEllipse(ctx, 0, 0, 1.5 * s, 1.1 * s);
       ctx.restore();
     }
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Center dot (stem/leaf color family, darkened 30%)
     ctx.fillStyle = '#947e16';

@@ -14,6 +14,9 @@ export const RockDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, w / 2, h - s, 6.5 * s, 1.5 * s);
 
+    // Soft outline glow (gray — stone)
+    utils.softOutline(ctx, 'rgba(100,100,110,0.15)', 4);
+
     // Angular polygon rock shape via clip path
     ctx.save();
     ctx.beginPath();
@@ -39,6 +42,9 @@ export const RockDrawer: EntityDrawer = {
     ctx.fillRect(0, 0, w, h);
 
     ctx.restore();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Lichen spots (green-grey circles at low alpha)
     const lichenSpots: [number, number, number][] = [

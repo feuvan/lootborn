@@ -100,6 +100,9 @@ export const QuestElderDrawer: EntityDrawer = {
       utils.drawPart(ctx, cx + side * 6 * s - 4 * s, by - 5 * s, 8 * s, 6 * s, BOOT, 2 * s);
     }
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Robe (full length) ──
     ctx.fillStyle = utils.rgb(ROBE);
     ctx.beginPath();
@@ -121,6 +124,9 @@ export const QuestElderDrawer: EntityDrawer = {
 
     // ── Belt sash ──
     utils.drawPart(ctx, cx - 12 * s + bodyLean, by - 28 * s, 24 * s, 4 * s, BELT, 1 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm ──
     const laX = cx - 16 * s + bodyLean;

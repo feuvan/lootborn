@@ -15,6 +15,9 @@ export const BonesDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, w / 2, h - 0.6 * s, 7 * s, 1.2 * s);
 
+    // Soft outline glow (cold/gray — bones)
+    utils.softOutline(ctx, 'rgba(100,100,120,0.15)', 4);
+
     // Blood stain underneath (dark red-brown ellipse)
     ctx.fillStyle = 'rgba(80,10,5,0.20)';
     utils.fillEllipse(ctx, w * 0.48, h * 0.72, 4 * s, 1.8 * s);
@@ -44,6 +47,9 @@ export const BonesDrawer: EntityDrawer = {
     // Skull eye socket hint
     ctx.fillStyle = utils.rgb(0x30282a, 0.55);
     utils.fillEllipse(ctx, skullX - 0.8 * s, skullY - 1.2 * s, 0.9 * s, 0.7 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Dirt/burial overlay at bottom (partially buried effect)
     ctx.fillStyle = 'rgba(60,45,25,0.22)';

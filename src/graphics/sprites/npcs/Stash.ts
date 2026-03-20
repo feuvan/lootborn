@@ -102,6 +102,9 @@ export const StashDrawer: EntityDrawer = {
     utils.drawPart(ctx, cx - 10 * s, by - 23 * s, 8 * s, 19 * s, ROBE, 3 * s);
     utils.drawPart(ctx, cx + 2 * s, by - 23 * s, 8 * s, 19 * s, ROBE, 3 * s);
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Robe body ──
     utils.drawPart(ctx, cx - 12 * s + bodyLean, by - 50 * s, 24 * s, 30 * s, ROBE, 5 * s);
     // Robe highlights
@@ -118,6 +121,9 @@ export const StashDrawer: EntityDrawer = {
 
     // ── Belt ──
     utils.drawPart(ctx, cx - 11 * s + bodyLean, by - 22 * s, 22 * s, 4 * s, BELT, 1 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm + hand ──
     const laX = cx - 16 * s + bodyLean;

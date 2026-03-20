@@ -103,6 +103,9 @@ export const MerchantDrawer: EntityDrawer = {
     utils.drawPart(ctx, cx - 11 * s, by - 24 * s, 8 * s, 20 * s, legColor, 3 * s);
     utils.drawPart(ctx, cx + 3 * s, by - 24 * s, 8 * s, 20 * s, legColor, 3 * s);
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Shirt (back layer) ──
     utils.drawPart(ctx, cx - 13 * s + bodyLean, by - 50 * s, 26 * s, 30 * s, SHIRT, 5 * s);
 
@@ -133,6 +136,9 @@ export const MerchantDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(COIN_COLOR);
     utils.roundRect(ctx, cx - 2 * s + bodyLean, by - 22.5 * s, 4 * s, 3 * s, 1 * s);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm ──
     const laX = cx - 17 * s + bodyLean;

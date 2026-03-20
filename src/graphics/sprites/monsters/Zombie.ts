@@ -123,6 +123,9 @@ export const ZombieDrawer: EntityDrawer = {
       ctx.fillRect(tx - 1 * s, ty, 2 * s, 2 * s);
     }
 
+    // Soft outline glow (cold blue — undead)
+    utils.softOutline(ctx, 'rgba(100,140,180,0.2)', 5);
+
     // Skin body beneath
     const torsoGrad = ctx.createRadialGradient(torsoX - 2 * s, torsoY - 3 * s, 0, torsoX, torsoY, 8 * s);
     torsoGrad.addColorStop(0, utils.rgb(SKIN_LIGHT));
@@ -132,6 +135,12 @@ export const ZombieDrawer: EntityDrawer = {
     ctx.globalAlpha = alpha * 0.5;
     utils.fillEllipse(ctx, torsoX, torsoY, 7.5 * s, 10 * s);
     ctx.globalAlpha = alpha;
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on torso
+    utils.rimLight(ctx, torsoX, torsoY, 7.5 * s, 10 * s, 'rgba(80,120,160,0.1)');
 
     // ── Arms ─────────────────────────────────────────────────────────────────
     for (const side of [-1, 1]) {

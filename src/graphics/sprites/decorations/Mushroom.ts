@@ -15,6 +15,9 @@ export const MushroomDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.26)';
     utils.fillEllipse(ctx, cx, h - 0.8 * s, 4 * s, 1.2 * s);
 
+    // Soft outline glow (green — vegetation)
+    utils.softOutline(ctx, 'rgba(60,100,40,0.15)', 4);
+
     // Thick stem (darkened 30%)
     const stemGrad = ctx.createLinearGradient(cx - 2 * s, h * 0.52, cx + 2 * s, h * 0.52);
     stemGrad.addColorStop(0, '#8c816b');
@@ -44,6 +47,9 @@ export const MushroomDrawer: EntityDrawer = {
     // Cap rim underside hint
     ctx.fillStyle = 'rgba(220,190,150,0.3)';
     utils.fillEllipse(ctx, cx, h * 0.50, 4.5 * s, 1.2 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Spots on cap (small white circles)
     const spots: [number, number, number][] = [

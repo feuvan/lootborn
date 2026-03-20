@@ -113,6 +113,9 @@ export const QuestDwarfDrawer: EntityDrawer = {
     utils.drawPart(ctx, cx - 13 * s, legBase - 15 * s, 10 * s, 17 * s, legColor, 3 * s);
     utils.drawPart(ctx, cx + 3 * s, legBase - 15 * s, 10 * s, 17 * s, legColor, 3 * s);
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Wide torso ──
     const torsoW = 26 * bodyW;
     utils.drawPart(ctx, cx - torsoW * 0.5 * s + bodyLean, by - 48 * s, torsoW * s, 30 * s, TUNIC, 4 * s);
@@ -131,6 +134,9 @@ export const QuestDwarfDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(0x7e6934);
     utils.roundRect(ctx, cx - 2.5 * s + bodyLean, by - 21.5 * s, 5 * s, 4 * s, 1 * s);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm (short, beefy) ──
     const laX = cx - (torsoW * 0.5 + 4) * s + bodyLean;

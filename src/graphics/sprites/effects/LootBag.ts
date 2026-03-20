@@ -15,6 +15,9 @@ export const LootBagDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     utils.fillEllipse(ctx, cx, h - 1.5 * s, 8 * s, 2.2 * s);
 
+    // Soft outline glow (warm/golden — loot)
+    utils.softOutline(ctx, 'rgba(180,140,60,0.2)', 5);
+
     // Main bag body — bulging leather pouch shape
     utils.drawLeatherTexture(ctx, cx - 7 * s, h * 0.28, 14 * s, 13 * s, 0x4a3020);
 
@@ -44,6 +47,9 @@ export const LootBagDrawer: EntityDrawer = {
     ctx.moveTo(cx + 1 * s, h * 0.14);
     ctx.quadraticCurveTo(cx + 4 * s, h * 0.06, cx + 2 * s, h * 0.16);
     ctx.stroke();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Visible stitching — dashed line down center
     ctx.strokeStyle = utils.rgb(0x2a1808, 0.55);

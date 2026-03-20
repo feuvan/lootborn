@@ -160,12 +160,21 @@ export const GargoyleDrawer: EntityDrawer = {
 
     utils.drawStoneTexture(ctx, torsoX - 8 * s, torsoY - 11 * s, 16 * s, 18 * s, STONE_BASE);
 
+    // Soft outline glow (gray — stone)
+    utils.softOutline(ctx, 'rgba(120,120,130,0.2)', 5);
+
     const torsoGrad = ctx.createRadialGradient(torsoX - 2 * s, torsoY - 4 * s, 0, torsoX, torsoY, 10 * s);
     torsoGrad.addColorStop(0, utils.rgb(STONE_LIGHT));
     torsoGrad.addColorStop(0.5, utils.rgb(STONE_BASE));
     torsoGrad.addColorStop(1, utils.rgb(STONE_DARK));
     ctx.fillStyle = torsoGrad;
     utils.fillEllipse(ctx, torsoX, torsoY, 9 * s, 11 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on torso
+    utils.rimLight(ctx, torsoX, torsoY, 9 * s, 11 * s, 'rgba(100,100,110,0.1)');
 
     // Glowing cracks on torso
     ctx.strokeStyle = utils.rgb(CRACK_GLOW, 0.5);

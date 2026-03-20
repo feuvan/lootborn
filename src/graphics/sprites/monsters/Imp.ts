@@ -139,12 +139,21 @@ export const ImpDrawer: EntityDrawer = {
     const torsoX = cx + bodyOffsetX;
     const torsoY = baseY - 22 * s + bodyOffsetY;
 
+    // Soft outline glow (red/orange — demonic)
+    utils.softOutline(ctx, 'rgba(200,50,30,0.25)', 5);
+
     const torsoGrad = ctx.createRadialGradient(torsoX - 2 * s, torsoY - 2 * s, 0, torsoX, torsoY, 7 * s);
     torsoGrad.addColorStop(0, utils.rgb(SKIN_LIGHT));
     torsoGrad.addColorStop(0.5, utils.rgb(SKIN_MID));
     torsoGrad.addColorStop(1, utils.rgb(SKIN_DARK));
     ctx.fillStyle = torsoGrad;
     utils.fillEllipse(ctx, torsoX, torsoY, 6 * s, 8 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on head (oversized)
+    utils.rimLight(ctx, torsoX, torsoY - 16 * s, 10 * s, 9.5 * s, 'rgba(180,40,20,0.12)');
 
     // ── Skinny arms ───────────────────────────────────────────────────────────
     for (const side of [-1, 1]) {

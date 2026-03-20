@@ -90,6 +90,9 @@ export const SkeletonDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, cx, baseY + 1 * s, 14 * s, 3 * s);
 
+    // Soft outline glow (cold blue — undead)
+    utils.softOutline(ctx, 'rgba(100,140,180,0.2)', 5);
+
     // ── Legs: femur + tibia ──────────────────────────────────────────────────
     for (const side of [-1, 1]) {
       const boneId = side === -1 ? 10 : 11;
@@ -248,6 +251,12 @@ export const SkeletonDrawer: EntityDrawer = {
     ctx.beginPath();
     ctx.ellipse(skullCX, skullBaseY, 6.5 * s, 5 * s, 0, 0, Math.PI);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on cranium
+    utils.rimLight(ctx, skullCX, skullBaseY, 8 * s, 9 * s, 'rgba(80,120,160,0.1)');
 
     // Deep eye sockets
     for (const side of [-1, 1]) {

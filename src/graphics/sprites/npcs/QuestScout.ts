@@ -105,6 +105,9 @@ export const QuestScoutDrawer: EntityDrawer = {
     utils.drawPart(ctx, cx - 11 * s, by - 26 * s, 8 * s, 21 * s, legColor, 3 * s);
     utils.drawPart(ctx, cx + 3 * s, by - 26 * s, 8 * s, 21 * s, legColor, 3 * s);
 
+    // Soft outline glow (warm — NPC)
+    utils.softOutline(ctx, 'rgba(180,150,100,0.15)', 5);
+
     // ── Cloak (behind body) ──
     ctx.fillStyle = utils.rgb(CLOAK);
     ctx.beginPath();
@@ -137,6 +140,9 @@ export const QuestScoutDrawer: EntityDrawer = {
     // Sword hilt poking out
     ctx.fillStyle = utils.rgb(utils.darken(BLADE, 20));
     ctx.fillRect(scabbardX - 2 * s, scabbardY - 3 * s, 7 * s, 2 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Arms ──
     const laX = cx - 16 * s + bodyLean;

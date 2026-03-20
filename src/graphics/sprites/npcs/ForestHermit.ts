@@ -97,6 +97,9 @@ export const ForestHermitDrawer: EntityDrawer = {
       utils.drawPart(ctx, cx + side * 6 * s - 4 * s, by - 5 * s, 8 * s, 6 * s, BOOT, 2 * s);
     }
 
+    // Soft outline glow (green — forest NPC)
+    utils.softOutline(ctx, 'rgba(80,140,60,0.15)', 5);
+
     // ── Mossy patched cloak (full body) ──
     ctx.fillStyle = utils.rgb(CLOAK);
     ctx.beginPath();
@@ -116,6 +119,9 @@ export const ForestHermitDrawer: EntityDrawer = {
       ctx.fillStyle = utils.rgb(CLOAK_MOSS, 0.4);
       utils.fillEllipse(ctx, mx, my, 3 * s, 2 * s);
     }
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm ──
     const laX = cx - 17 * s + bodyLean;

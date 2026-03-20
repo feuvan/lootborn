@@ -14,6 +14,9 @@ export const BushDrawer: EntityDrawer = {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     utils.fillEllipse(ctx, w / 2, h - s, 7 * s, 1.5 * s);
 
+    // Soft outline glow (green — vegetation)
+    utils.softOutline(ctx, 'rgba(60,100,40,0.15)', 4);
+
     // Leafy clusters — multiple overlapping small ellipses with green variation (darkened 30%)
     const clusters: [number, number, number, number, number][] = [
       // cx, cy, rx, ry, color
@@ -34,6 +37,9 @@ export const BushDrawer: EntityDrawer = {
       ctx.fillStyle = grad;
       utils.fillEllipse(ctx, w * cxF, h * cyF, w * rxF, h * ryF);
     }
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // Berry accents — tiny red circles scattered (darkened)
     const berryPositions: [number, number][] = [

@@ -106,6 +106,9 @@ export const MountainTrollDrawer: EntityDrawer = {
     const bellyX = cx + bodyOffsetX;
     const bellyY = baseY - 30 * s + bodyOffsetY;
 
+    // Soft outline glow (brown — beast)
+    utils.softOutline(ctx, 'rgba(120,80,40,0.2)', 6);
+
     const bellyGrad = ctx.createRadialGradient(bellyX - 3 * s, bellyY - 3 * s, 0, bellyX, bellyY, 18 * s);
     bellyGrad.addColorStop(0, utils.rgb(BELLY_LIGHT));
     bellyGrad.addColorStop(0.5, utils.rgb(BELLY_COLOR));
@@ -119,6 +122,12 @@ export const MountainTrollDrawer: EntityDrawer = {
 
     // Apply noise to belly for mottled grey-green skin
     utils.applyNoiseToRegion(ctx, bellyX - 18 * s, bellyY - 17 * s, 36 * s, 34 * s, 20);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on belly
+    utils.rimLight(ctx, bellyX, bellyY, 17 * s, 16 * s, 'rgba(100,70,30,0.1)');
 
     // ── Upper torso / shoulders ────────────────────────────────────────────────
     const torsoX = cx + bodyOffsetX;

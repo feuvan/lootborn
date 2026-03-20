@@ -104,6 +104,9 @@ export const QuestNomadDrawer: EntityDrawer = {
       utils.drawPart(ctx, cx + side * 6 * s - 4 * s, by - 6 * s, 8 * s, 7 * s, BOOT, 2 * s);
     }
 
+    // Soft outline glow (sandy — desert NPC)
+    utils.softOutline(ctx, 'rgba(160,120,60,0.15)', 5);
+
     // ── Sandy cloak (full body) ──
     ctx.fillStyle = utils.rgb(CLOAK);
     ctx.beginPath();
@@ -128,6 +131,9 @@ export const QuestNomadDrawer: EntityDrawer = {
     ctx.fillStyle = utils.rgb(CLOAK_TRIM);
     utils.roundRect(ctx, cx - 2 * s + bodyLean, by - 25.5 * s, 4 * s, 3 * s, 1 * s);
     ctx.fill();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
 
     // ── Left arm (pointing if talking) ──
     const laX = cx - 17 * s + bodyLean;

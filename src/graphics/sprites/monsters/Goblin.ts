@@ -106,6 +106,9 @@ export const GoblinDrawer: EntityDrawer = {
 
     utils.drawLeatherTexture(ctx, torsoX - 6 * s, torsoY - 9 * s, 12 * s, 14 * s, LEATHER);
 
+    // Soft outline glow (purple-green — goblin)
+    utils.softOutline(ctx, 'rgba(80,120,60,0.2)', 5);
+
     // Skin showing on sides
     const torsoGrad = ctx.createRadialGradient(torsoX - 2 * s, torsoY - 3 * s, 0, torsoX, torsoY, 8 * s);
     torsoGrad.addColorStop(0, utils.rgb(SKIN_LIGHT));
@@ -120,6 +123,12 @@ export const GoblinDrawer: EntityDrawer = {
     // Vest gap in middle
     ctx.fillStyle = utils.rgb(SKIN, 0.6);
     ctx.fillRect(torsoX - 1.5 * s, torsoY - 8 * s, 3 * s, 12 * s);
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on torso
+    utils.rimLight(ctx, torsoX, torsoY, 7 * s, 9 * s, 'rgba(60,100,40,0.1)');
 
     // ── Arms ─────────────────────────────────────────────────────────────────
     for (const side of [-1, 1]) {

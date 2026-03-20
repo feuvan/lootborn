@@ -95,6 +95,9 @@ export const PlayerMageDrawer: EntityDrawer = {
     const robeTop = torsoY + 2 * s;
     const robeBot = baseY - 4 * s;
 
+    // Soft outline glow
+    utils.softOutline(ctx, 'rgba(200, 200, 220, 0.2)', 5);
+
     // Main robe fill
     const robeGrad = ctx.createLinearGradient(torsoX - robeBotW / 2, robeTop, torsoX + robeBotW / 2, robeBot);
     robeGrad.addColorStop(0, utils.rgb(ROBE_LIGHT));
@@ -144,6 +147,12 @@ export const PlayerMageDrawer: EntityDrawer = {
     ctx.beginPath();
     ctx.arc(torsoX, torsoY - 3 * s, 3.5 * s, 0, Math.PI * 2);
     ctx.stroke();
+
+    // End soft outline
+    utils.softOutlineEnd(ctx);
+
+    // Rim light on chest
+    utils.rimLight(ctx, torsoX, torsoY, 9 * s, 12 * s, 'rgba(180,190,200,0.1)');
 
     // ── Staff ─────────────────────────────────────────────────────────────
     const staffPivotX = torsoX + 10 * s;
