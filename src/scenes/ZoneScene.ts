@@ -197,9 +197,15 @@ export class ZoneScene extends Phaser.Scene {
     // Trail renderer — weapon trails, ground scorch marks
     this.trails = new TrailRenderer(this);
 
-    // Post-processing: camera vignette (WebGL only)
+    // Camera PostFX — painterly mood (WebGL only)
     if (this.renderer.type === Phaser.WEBGL) {
-      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.92, 0.22);
+      const cam = this.cameras.main;
+
+      // Subtle bloom for bright elements (magic, loot, fire)
+      cam.postFX.addBloom(0xffffff, 1, 1, 1.2, 1.5);
+
+      // Vignette for cinematic focus
+      cam.postFX.addVignette(0.5, 0.5, 0.88, 0.35);
     }
 
     // Ambient dust particles
