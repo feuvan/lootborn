@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_WIDTH, TILE_HEIGHT, GAME_WIDTH, GAME_HEIGHT, TEXTURE_SCALE, DPR } from '../config';
-import { cartToIso, worldToTile, euclideanDistance } from '../utils/IsometricUtils';
+import { cartToIso, isoToCart, worldToTile, euclideanDistance } from '../utils/IsometricUtils';
 import { randomInt } from '../utils/MathUtils';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { Player } from '../entities/Player';
@@ -57,9 +57,13 @@ export class ZoneScene extends Phaser.Scene {
   private tileSprites: (Phaser.GameObjects.Image | null)[][] = [];
   private decorSprites: Map<string, Phaser.GameObjects.Image> = new Map();
   private exitSprites: Map<string, Phaser.GameObjects.Image> = new Map();
-  private campDecorSprites: Map<string, Phaser.GameObjects.Image | Phaser.GameObjects.Container> = new Map();
+  private campDecorSprites: Map<string, Phaser.GameObjects.GameObject> = new Map();
   private campParticles: Map<string, Phaser.GameObjects.Particles.ParticleEmitter> = new Map();
   private campDecorPositions: { col: number; row: number; type: string }[] = [];
+  private tileWorldPositions: { x: number; y: number }[][] = [];
+  private decorWorldPositions: Array<{ key: string; type: string; x: number; y: number }> = [];
+  private campDecorWorldPositions: Array<{ key: string; type: string; x: number; y: number }> = [];
+  private exitLookup: Map<string, MapData['exits'][number]> = new Map();
   private visibleTiles: Set<string> = new Set();
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -167,6 +171,7 @@ export class ZoneScene extends Phaser.Scene {
     this.spawnMonsters();
     this.spawnNPCs();
     this.buildCampDecorations();
+    this.rebuildWorldCaches();
     for (const decor of this.campDecorPositions) {
       if (decor.type === 'barrel' || decor.type === 'crate') {
         const dr = Math.round(decor.row);
@@ -478,66 +483,125 @@ export class ZoneScene extends Phaser.Scene {
     EventBus.emit(GameEvents.PLAYER_MANA_CHANGED, { mana: this.player.mana, maxMana: this.player.maxMana });
   }
 
+  private rebuildWorldCaches(): void {
+    this.tileWorldPositions = Array.from({ length: this.mapData.rows }, (_, row) =>
+      Array.from({ length: this.mapData.cols }, (_, col) => cartToIso(col, row))
+    );
+    this.decorWorldPositions = (this.mapData.decorations ?? []).map((decor, index) => {
+      const pos = cartToIso(decor.col, decor.row);
+      return {
+        key: `d_${index}`,
+        type: decor.type,
+        x: pos.x,
+        y: pos.y,
+      };
+    });
+    this.campDecorWorldPositions = this.campDecorPositions.map((decor) => {
+      const pos = cartToIso(decor.col, decor.row);
+      return {
+        key: `camp_${decor.col}_${decor.row}_${decor.type}`,
+        type: decor.type,
+        x: pos.x,
+        y: pos.y,
+      };
+    });
+    this.exitLookup = new Map(this.mapData.exits.map(exit => [`${exit.col},${exit.row}`, exit]));
+  }
+
+  private getExpandedWorldBounds(marginX: number, marginY: number): { left: number; right: number; top: number; bottom: number } {
+    const wv = this.cameras.main.worldView;
+    return {
+      left: wv.x - marginX,
+      right: wv.x + wv.width + marginX,
+      top: wv.y - marginY,
+      bottom: wv.y + wv.height + marginY,
+    };
+  }
+
+  private getVisibleTileBounds(marginTiles: number): {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    minCol: number;
+    maxCol: number;
+    minRow: number;
+    maxRow: number;
+  } {
+    const marginX = TILE_WIDTH * marginTiles;
+    const marginY = TILE_HEIGHT * marginTiles;
+    const bounds = this.getExpandedWorldBounds(marginX, marginY);
+    const corners = [
+      isoToCart(bounds.left, bounds.top),
+      isoToCart(bounds.right, bounds.top),
+      isoToCart(bounds.left, bounds.bottom),
+      isoToCart(bounds.right, bounds.bottom),
+    ];
+    const cols = corners.map(corner => corner.x);
+    const rows = corners.map(corner => corner.y);
+
+    return {
+      ...bounds,
+      minCol: Math.max(0, Math.floor(Math.min(...cols)) - 1),
+      maxCol: Math.min(this.mapData.cols - 1, Math.ceil(Math.max(...cols)) + 1),
+      minRow: Math.max(0, Math.floor(Math.min(...rows)) - 1),
+      maxRow: Math.min(this.mapData.rows - 1, Math.ceil(Math.max(...rows)) + 1),
+    };
+  }
+
   // --- Viewport culling tile rendering ---
   private updateVisibleTiles(): void {
-    const cam = this.cameras.main;
-    const wv = cam.worldView;
-    const camCX = wv.centerX;
-    const camCY = wv.centerY;
-    const viewW = wv.width / 2;
-    const viewH = wv.height / 2;
     const margin = 4;
-
+    const { left, right, top, bottom, minCol, maxCol, minRow, maxRow } = this.getVisibleTileBounds(margin);
     const newVisible = new Set<string>();
 
-    for (let row = 0; row < this.mapData.rows; row++) {
-      for (let col = 0; col < this.mapData.cols; col++) {
-        const pos = cartToIso(col, row);
-        const dx = Math.abs(pos.x - camCX);
-        const dy = Math.abs(pos.y - camCY);
-        if (dx < viewW + TILE_WIDTH * margin && dy < viewH + TILE_HEIGHT * margin) {
-          const key = `${col},${row}`;
-          newVisible.add(key);
-          if (!this.tileSprites[row][col]) {
-            const tileType = this.mapData.tiles[row][col];
-            const tiles = this.mapData.tiles;
-            // Neighbor types for edge blending: TR=(col,row-1), TL=(col-1,row), BR=(col+1,row), BL=(col,row+1)
-            const tr = row > 0 ? tiles[row - 1][col] : tileType;
-            const tl = col > 0 ? tiles[row][col - 1] : tileType;
-            const br = col < this.mapData.cols - 1 ? tiles[row][col + 1] : tileType;
-            const bl = row < this.mapData.rows - 1 ? tiles[row + 1][col] : tileType;
-            const needsBlend = tr !== tileType || tl !== tileType || br !== tileType || bl !== tileType;
-            let tileKey: string;
-            if (needsBlend) {
-              tileKey = SpriteGenerator.generateTransitionTile(this, tileType, [tr, tl, br, bl]);
-            } else if (tileType === 5 && this.mapData.theme) {
-              tileKey = `tile_camp_ground_${this.mapData.theme}`;
-              if (!this.textures.exists(tileKey)) tileKey = 'tile_camp';
-            } else if (tileType === 6 && this.mapData.theme) {
-              tileKey = `tile_camp_wall_${this.mapData.theme}`;
-              if (!this.textures.exists(tileKey)) tileKey = 'tile_camp_wall';
-            } else {
-              // Select tile variant based on position hash for visual variety
-              const variantCount = SpriteGenerator.TILE_VARIANTS;
-              const variant = ((col * 374761393 + row * 668265263) >>> 0) % variantCount;
-              const variantKey = `${TILE_KEYS[tileType] || 'tile_grass'}_${variant}`;
-              tileKey = this.textures.exists(variantKey) ? variantKey : (TILE_KEYS[tileType] || 'tile_grass');
-            }
-            const tile = this.add.image(pos.x, pos.y, tileKey).setScale(1 / TEXTURE_SCALE);
-            tile.setDepth(pos.y);
-            this.tileSprites[row][col] = tile;
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        const pos = this.tileWorldPositions[row][col];
+        if (pos.x < left - TILE_WIDTH || pos.x > right + TILE_WIDTH ||
+            pos.y < top - TILE_HEIGHT || pos.y > bottom + TILE_HEIGHT) {
+          continue;
+        }
 
-            const exit = this.mapData.exits.find(e => e.col === col && e.row === row);
-            if (exit) {
-              if (this.textures.exists('exit_portal')) {
-                const portal = this.add.image(pos.x, pos.y - 8, 'exit_portal').setScale(1 / TEXTURE_SCALE);
-                portal.setDepth(pos.y + 2);
-                this.exitSprites.set(key, portal);
-                // Apply glow + bloom to exit portals
-                if (this.vfx) {
-                  this.vfx.applyGlow(portal, 0x4488ff, 8, 0.1);
-                  this.vfx.applyBloom(portal, 0.8);
-                }
+        const key = `${col},${row}`;
+        newVisible.add(key);
+        if (!this.tileSprites[row][col]) {
+          const tileType = this.mapData.tiles[row][col];
+          const tiles = this.mapData.tiles;
+          const tr = row > 0 ? tiles[row - 1][col] : tileType;
+          const tl = col > 0 ? tiles[row][col - 1] : tileType;
+          const br = col < this.mapData.cols - 1 ? tiles[row][col + 1] : tileType;
+          const bl = row < this.mapData.rows - 1 ? tiles[row + 1][col] : tileType;
+          const needsBlend = tr !== tileType || tl !== tileType || br !== tileType || bl !== tileType;
+          let tileKey: string;
+          if (needsBlend) {
+            tileKey = SpriteGenerator.generateTransitionTile(this, tileType, [tr, tl, br, bl]);
+          } else if (tileType === 5 && this.mapData.theme) {
+            tileKey = `tile_camp_ground_${this.mapData.theme}`;
+            if (!this.textures.exists(tileKey)) tileKey = 'tile_camp';
+          } else if (tileType === 6 && this.mapData.theme) {
+            tileKey = `tile_camp_wall_${this.mapData.theme}`;
+            if (!this.textures.exists(tileKey)) tileKey = 'tile_camp_wall';
+          } else {
+            const variantCount = SpriteGenerator.TILE_VARIANTS;
+            const variant = ((col * 374761393 + row * 668265263) >>> 0) % variantCount;
+            const variantKey = `${TILE_KEYS[tileType] || 'tile_grass'}_${variant}`;
+            tileKey = this.textures.exists(variantKey) ? variantKey : (TILE_KEYS[tileType] || 'tile_grass');
+          }
+          const tile = this.add.image(pos.x, pos.y, tileKey).setScale(1 / TEXTURE_SCALE);
+          tile.setDepth(pos.y);
+          this.tileSprites[row][col] = tile;
+
+          const exit = this.exitLookup.get(key);
+          if (exit) {
+            SpriteGenerator.ensureEffect(this, 'exit_portal');
+            if (this.textures.exists('exit_portal')) {
+              const portal = this.add.image(pos.x, pos.y - 8, 'exit_portal').setScale(1 / TEXTURE_SCALE);
+              portal.setDepth(pos.y + 2);
+              this.exitSprites.set(key, portal);
+              if (this.vfx) {
+                this.vfx.applyGlow(portal, 0x4488ff, 8, 0.1);
+                this.vfx.applyBloom(portal, 0.8);
               }
             }
           }
@@ -569,33 +633,20 @@ export class ZoneScene extends Phaser.Scene {
   }
 
   private updateVisibleDecorations(): void {
-    const decorations = this.mapData.decorations ?? [];
-    const cam = this.cameras.main;
-    const wv = cam.worldView;
-    const camCX = wv.centerX;
-    const camCY = wv.centerY;
-    const viewW = wv.width / 2;
-    const viewH = wv.height / 2;
-    const margin = 5;
-
+    const { left, right, top, bottom } = this.getExpandedWorldBounds(TILE_WIDTH * 5, TILE_HEIGHT * 5);
     const visibleDecorKeys = new Set<string>();
 
-    for (let i = 0; i < decorations.length; i++) {
-      const decor = decorations[i];
-      const pos = cartToIso(decor.col, decor.row);
-      const dx = Math.abs(pos.x - camCX);
-      const dy = Math.abs(pos.y - camCY);
-      const key = `d_${i}`;
+    for (const decor of this.decorWorldPositions) {
+      if (decor.x < left || decor.x > right || decor.y < top || decor.y > bottom) continue;
 
-      if (dx < viewW + TILE_WIDTH * margin && dy < viewH + TILE_HEIGHT * margin) {
-        visibleDecorKeys.add(key);
-        if (!this.decorSprites.has(key)) {
-          const texKey = `decor_${decor.type}`;
-          if (this.textures.exists(texKey)) {
-            const sprite = this.add.image(pos.x, pos.y - 6, texKey).setScale(1 / TEXTURE_SCALE);
-            sprite.setDepth(pos.y + 20);
-            this.decorSprites.set(key, sprite);
-          }
+      visibleDecorKeys.add(decor.key);
+      if (!this.decorSprites.has(decor.key)) {
+        const texKey = `decor_${decor.type}`;
+        SpriteGenerator.ensureDecoration(this, decor.type);
+        if (this.textures.exists(texKey)) {
+          const sprite = this.add.image(decor.x, decor.y - 6, texKey).setScale(1 / TEXTURE_SCALE);
+          sprite.setDepth(decor.y + 20);
+          this.decorSprites.set(decor.key, sprite);
         }
       }
     }
@@ -731,35 +782,26 @@ export class ZoneScene extends Phaser.Scene {
   }
 
   private updateCampDecorations(): void {
-    const cam = this.cameras.main;
-    const wv = cam.worldView;
-    const camCX = wv.centerX;
-    const camCY = wv.centerY;
-    const viewW = wv.width / 2;
-    const viewH = wv.height / 2;
-    const margin = TILE_WIDTH * 4;
+    const { left, right, top, bottom } = this.getExpandedWorldBounds(TILE_WIDTH * 4, TILE_HEIGHT * 4);
     const visibleKeys = new Set<string>();
 
-    for (const decor of this.campDecorPositions) {
-      const pos = cartToIso(decor.col, decor.row);
-      const dx = Math.abs(pos.x - camCX);
-      const dy = Math.abs(pos.y - camCY);
-      if (dx > viewW + margin || dy > viewH + margin) continue;
+    for (const decor of this.campDecorWorldPositions) {
+      if (decor.x < left || decor.x > right || decor.y < top || decor.y > bottom) continue;
 
-      const key = `camp_${decor.col}_${decor.row}_${decor.type}`;
+      const key = decor.key;
       visibleKeys.add(key);
       if (this.campDecorSprites.has(key)) continue;
 
       const texKey = `camp_${decor.type}`;
       if (!this.textures.exists(texKey)) continue;
 
-      const sprite = this.add.image(pos.x, pos.y - 16, texKey).setScale(1 / TEXTURE_SCALE);
-      sprite.setDepth(pos.y + 10);
+      const sprite = this.add.image(decor.x, decor.y - 16, texKey).setScale(1 / TEXTURE_SCALE);
+      sprite.setDepth(decor.y + 10);
       this.campDecorSprites.set(key, sprite);
 
       // Torch: small particle flame on top of pole
       if (decor.type === 'torch') {
-        const torchFire = this.add.particles(pos.x, pos.y - 28, 'particle_flame', {
+        const torchFire = this.add.particles(decor.x, decor.y - 28, 'particle_flame', {
           speed: { min: 5, max: 20 },
           angle: { min: 255, max: 285 },
           scale: { start: 0.5, end: 0.05 },
@@ -770,13 +812,13 @@ export class ZoneScene extends Phaser.Scene {
           blendMode: Phaser.BlendModes.ADD,
           emitting: true,
         });
-        torchFire.setDepth(pos.y + 12);
+        torchFire.setDepth(decor.y + 12);
         this.campParticles.set(key, torchFire);
       }
       // Campfire: particle fire + glow
       if (decor.type === 'campfire') {
         // Fire particles
-        const fireEmitter = this.add.particles(pos.x, pos.y - 20, 'particle_flame', {
+        const fireEmitter = this.add.particles(decor.x, decor.y - 20, 'particle_flame', {
           speed: { min: 10, max: 40 },
           angle: { min: 250, max: 290 },
           scale: { start: 0.8, end: 0.1 },
@@ -787,11 +829,11 @@ export class ZoneScene extends Phaser.Scene {
           blendMode: Phaser.BlendModes.ADD,
           emitting: true,
         });
-        fireEmitter.setDepth(pos.y + 12);
+        fireEmitter.setDepth(decor.y + 12);
         this.campParticles.set(key, fireEmitter);
         // Spark particles (smaller, faster)
         const sparkKey = `${key}_spark`;
-        const sparkEmitter = this.add.particles(pos.x, pos.y - 18, 'particle_circle', {
+        const sparkEmitter = this.add.particles(decor.x, decor.y - 18, 'particle_circle', {
           speed: { min: 15, max: 50 },
           angle: { min: 240, max: 300 },
           scale: { start: 0.4, end: 0 },
@@ -802,12 +844,12 @@ export class ZoneScene extends Phaser.Scene {
           blendMode: Phaser.BlendModes.ADD,
           emitting: true,
         });
-        sparkEmitter.setDepth(pos.y + 13);
+        sparkEmitter.setDepth(decor.y + 13);
         this.campParticles.set(sparkKey, sparkEmitter);
         // Glow circle (pulsing)
-        const glow = this.add.circle(pos.x, pos.y - 8, 60, 0xff8800, 0.08);
+        const glow = this.add.circle(decor.x, decor.y - 8, 60, 0xff8800, 0.08);
         glow.setBlendMode(Phaser.BlendModes.ADD);
-        glow.setDepth(pos.y + 5);
+        glow.setDepth(decor.y + 5);
         this.tweens.add({
           targets: glow,
           alpha: { from: 0.06, to: 0.14 },
@@ -829,7 +871,8 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     for (const [key, sprite] of this.campDecorSprites) {
-      if (!visibleKeys.has(key)) {
+      const baseKey = key.replace(/_glow$/, '');
+      if (!visibleKeys.has(baseKey)) {
         sprite.destroy();
         this.campDecorSprites.delete(key);
       }
@@ -1334,6 +1377,7 @@ export class ZoneScene extends Phaser.Scene {
     const container = this.add.container(worldPos.x, worldPos.y);
     container.setDepth(worldPos.y + 30);
 
+    SpriteGenerator.ensureEffect(this, 'loot_bag');
     if (this.textures.exists('loot_bag')) {
       const bag = this.add.image(0, 0, 'loot_bag').setScale(1 / TEXTURE_SCALE);
       const tintColor = this.getQualityColor(item.quality);
@@ -2039,5 +2083,10 @@ export class ZoneScene extends Phaser.Scene {
     for (const key of this.textures.getTextureKeys()) {
       if (key.startsWith('tile_t_')) this.textures.remove(key);
     }
+    SpriteGenerator.clearZoneTransientTextures(this);
+    this.tileWorldPositions = [];
+    this.decorWorldPositions = [];
+    this.campDecorWorldPositions = [];
+    this.exitLookup.clear();
   }
 }

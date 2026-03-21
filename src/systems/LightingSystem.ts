@@ -59,8 +59,12 @@ export class LightingSystem {
       this.debugVisible = !this.debugVisible;
       if (this.debugEl) this.debugEl.style.display = this.debugVisible ? 'block' : 'none';
       this.debugGfx.setVisible(this.debugVisible);
+      this.renderDirty = true;
     }
   };
+  private lastRenderTime = Number.NEGATIVE_INFINITY;
+  private renderDirty = true;
+  private static readonly RENDER_INTERVAL_MS = 50;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -113,6 +117,7 @@ export class LightingSystem {
       this.ambientAlpha = ambient.alpha;
       this.fogColor = ambient.fogColor ?? 0x111111;
       this.fogAlpha = ambient.fogAlpha ?? 0.03;
+      this.renderDirty = true;
     }
   }
 
@@ -121,32 +126,38 @@ export class LightingSystem {
     if (light.id && light.flicker) {
       this.flickerSeeds.set(light.id, Math.random() * 1000);
     }
+    this.renderDirty = true;
   }
 
   removeLight(id: string): void {
     this.lights = this.lights.filter(l => l.id !== id);
     this.flickerSeeds.delete(id);
+    this.renderDirty = true;
   }
 
   clearLights(): void {
     this.lights = [];
     this.flickerSeeds.clear();
+    this.renderDirty = true;
   }
 
   update(delta: number): void {
     this.time += delta;
     const cam = this.scene.cameras.main;
     const zoom = cam.zoom;
+    let resized = false;
 
     // Resize canvas if the game was resized by Scale manager
     const needW = Math.ceil(cam.width / 2);
     const needH = Math.ceil(cam.height / 2);
     if (needW !== this.renderW || needH !== this.renderH) {
+      resized = true;
       this.resizeCanvas(cam.width, cam.height);
       // Re-register the canvas texture so Phaser picks up the new size
       if (this.scene.textures.exists(this.texKey)) this.scene.textures.remove(this.texKey);
       this.scene.textures.addCanvas(this.texKey, this.canvas);
       this.overlay.setTexture(this.texKey);
+      this.renderDirty = true;
     }
 
     const ctx = this.ctx;
@@ -164,6 +175,10 @@ export class LightingSystem {
       originPxY * (zoom - 1) / zoom,
     );
     this.overlay.setScale(cam.width / (w * zoom), cam.height / (h * zoom));
+
+    if (!resized && !this.renderDirty && (this.time - this.lastRenderTime) < LightingSystem.RENDER_INTERVAL_MS) {
+      return;
+    }
 
     // --- Ambient fill ---
     const ar = (this.ambientColor >> 16) & 0xff;
@@ -255,6 +270,8 @@ export class LightingSystem {
       const src = tex.source[0];
       if (src) src.update();
     }
+    this.lastRenderTime = this.time;
+    this.renderDirty = false;
 
     // Debug: draw visible border using a separate Graphics object (NORMAL blend)
     if (this.debugVisible) {

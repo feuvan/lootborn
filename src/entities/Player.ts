@@ -5,6 +5,7 @@ import { EventBus, GameEvents } from '../utils/EventBus';
 import type { ClassDefinition, SkillDefinition, Stats } from '../data/types';
 import type { CombatEntity, ActiveBuff } from '../systems/CombatSystem';
 import { CharacterAnimator, getAnimConfig } from '../systems/CharacterAnimator';
+import { SpriteGenerator } from '../graphics/SpriteGenerator';
 
 export class Player {
   scene: Phaser.Scene;
@@ -66,6 +67,7 @@ export class Player {
 
     // Use animated sprite sheet
     const spriteKey = `player_${classData.id}`;
+    SpriteGenerator.ensurePlayerSheet(scene, classData.id);
     const hasTexture = scene.textures.exists(spriteKey);
     if (hasTexture) {
       const spr = scene.add.sprite(0, -32, spriteKey, 0).setScale(1 / TEXTURE_SCALE);

@@ -34,6 +34,13 @@
 - `TEXTURE_SCALE=3` 对当前内存预算偏激进。
 - 后续应改成按需生成，或至少把 `TEXTURE_SCALE` 降到 2。
 
+实际修复（2026-03-21）：
+
+- 按当前约束，未改 `DPR`，也未降低 `TEXTURE_SCALE`。
+- `BootScene` 现在只生成地形 tile、营地装饰和少量公共 effect/particle 纹理，不再一次性烘焙全部角色类 sheet。
+- 玩家、怪物、NPC 和普通地图装饰改成首次实际使用时再生成，并在进入新 zone 后按内容逐步补齐。
+- zone 关闭时会额外释放怪物 / NPC / 装饰 / loot / portal 等程序纹理，避免跨 zone 常驻累计。
+
 ### 3. ZoneScene 生命周期清理不完整
 
 - `ZoneScene` 定义了 `shutdown()`，但没有接入 Phaser `SHUTDOWN` 生命周期。
@@ -77,6 +84,16 @@
 
 - 当前卡顿不是单点问题，而是 CPU、GC、GPU pass 叠加。
 - P0 先止血 leak 和大内存项，P1 再做热路径重构。
+
+实际修复（2026-03-21）：
+
+- `ZoneScene.updateVisibleTiles()` 已改成基于 camera 世界边界反推 tile 范围的 bounded scan，并缓存每个 tile / decor / camp decor 的世界坐标。
+- 退出点查询从 tile 循环内的 `Array.find()` 改成了预构建 lookup map，避免热路径重复线性扫描。
+- `UIScene.update()` 里的 HP / MP / EXP / 金币 / 自动战斗 / 自动拾取 / zone 名称 / 技能 CD 文本改成仅在值变化时刷新。
+- minimap 和 quest tracker 额外加了 `250ms` 节流，避免此前整张 minimap 在半个时间窗口内被每帧重画。
+- `LightingSystem` 没有切到新的 DynamicTexture 实现，而是在现有 CanvasTexture 路径上加 `50ms` 节流和脏标记；这样风险更低，且已经能显著减少每秒画布重绘和 GPU 上传次数。
+- `TrailRenderer` 没有上完整对象池，而是改成复用离屏 image stamp，替代高频临时 `Graphics` / `Image` 分配。
+- 额外修复了一个未在初版规划里写出的热点：campfire glow 使用了错误的可见性 key，导致可见 campfire 会反复创建并销毁 glow/tween。
 
 ## P0 实施范围
 
@@ -124,6 +141,12 @@
 - `UIScene` 文本更新改成仅在值变化时刷新。
 - `updateVisibleTiles()` 改成基于相机 tile 边界的增量更新，而不是周期性扫全图。
 - `LightingSystem` 降低更新频率，或改成更适合频繁更新的动态纹理路径。
+
+与原规划的差异：
+
+- 由于本轮明确禁止改 `DPR` 和 `TEXTURE_SCALE`，实际采用的是“懒生成 + 显式回收”替代“直接降分辨率”。
+- `updateVisibleTiles()` 这轮先落了“相机边界裁剪 + 坐标缓存 + lookup map”的 bounded scan，尚未继续做更复杂的环形增量 diff；当前收益已经足够覆盖主要卡顿来源。
+- `LightingSystem` 先保留现有 overlay 架构，只做节流和脏更新；如果后续浏览器 profile 里这块仍然占比高，再考虑迁到 DynamicTexture / shader 路径。
 
 ### P2
 

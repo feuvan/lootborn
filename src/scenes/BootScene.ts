@@ -93,9 +93,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Generate all procedural textures + sprite sheets + animations
+    // Keep boot work bounded; heavyweight entity sheets are generated on demand.
     const generator = new SpriteGenerator(this);
-    generator.generateAll();
+    generator.generateBootTextures();
 
     // Skill effect particle textures
     SkillEffectSystem.generateTextures(this);

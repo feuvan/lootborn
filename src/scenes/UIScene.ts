@@ -76,6 +76,9 @@ export class UIScene extends Phaser.Scene {
   private contextPopup: Phaser.GameObjects.Container | null = null;
   private audioPanel: Phaser.GameObjects.Container | null = null;
   private audioPanelInputCleanup: Array<() => void> = [];
+  private nextMinimapRefreshAt = 0;
+  private nextQuestTrackerRefreshAt = 0;
+  private lastQuestTrackerSignature = '';
 
   constructor() {
     super({ key: 'UIScene' });
@@ -341,6 +344,9 @@ export class UIScene extends Phaser.Scene {
   private handleUiRefresh(data: { player: Player; zone: ZoneScene }): void {
     this.player = data.player;
     this.zone = data.zone;
+    this.nextMinimapRefreshAt = 0;
+    this.nextQuestTrackerRefreshAt = 0;
+    this.lastQuestTrackerSignature = '';
   }
 
   private cleanupAudioPanelInputHandlers(): void {
@@ -1656,7 +1662,8 @@ export class UIScene extends Phaser.Scene {
     const targetHpH = globeH * hpR;
     this.hpBar.height += (targetHpH - this.hpBar.height) * 0.15;
     this.hpBar.y = globeBottom - this.hpBar.height;
-    this.hpText.setText(`${Math.ceil(this.player.hp)}/${this.player.maxHp}`);
+    const hpText = `${Math.ceil(this.player.hp)}/${this.player.maxHp}`;
+    if (this.hpText.text !== hpText) this.hpText.setText(hpText);
     if (hpR < 0.3 && hpR > 0) {
       const pulse = 0.6 + Math.sin(time * 0.008) * 0.4;
       this.hpBar.alpha = pulse;
@@ -1668,23 +1675,30 @@ export class UIScene extends Phaser.Scene {
     const targetManaH = globeH * manaR;
     this.manaBar.height += (targetManaH - this.manaBar.height) * 0.15;
     this.manaBar.y = globeBottom - this.manaBar.height;
-    this.manaText.setText(`${Math.ceil(this.player.mana)}/${this.player.maxMana}`);
+    const manaText = `${Math.ceil(this.player.mana)}/${this.player.maxMana}`;
+    if (this.manaText.text !== manaText) this.manaText.setText(manaText);
     const expN = this.player.expToNextLevel();
     this.expBar.width = (W - px(32)) * (this.player.exp / expN);
-    this.levelText.setText(`Lv.${this.player.level} (${this.player.exp}/${expN})`);
-    this.goldText.setText(`${this.player.gold} G`);
-    this.autoCombatText.setText(`AUTO\n${this.player.autoCombat ? 'ON' : 'OFF'}`)
-      .setColor(this.player.autoCombat ? '#27ae60' : '#666680');
+    const levelText = `Lv.${this.player.level} (${this.player.exp}/${expN})`;
+    if (this.levelText.text !== levelText) this.levelText.setText(levelText);
+    const goldText = `${this.player.gold} G`;
+    if (this.goldText.text !== goldText) this.goldText.setText(goldText);
+    const autoCombatText = `AUTO\n${this.player.autoCombat ? 'ON' : 'OFF'}`;
+    const autoCombatColor = this.player.autoCombat ? '#27ae60' : '#666680';
+    if (this.autoCombatText.text !== autoCombatText) this.autoCombatText.setText(autoCombatText);
+    if (this.autoCombatText.style.color !== autoCombatColor) this.autoCombatText.setColor(autoCombatColor);
 
     // Auto-loot button update
     const alLabels: Record<string, string> = { off: '拾取\nOFF', all: '拾取\n全部', magic: '拾取\n魔法+', rare: '拾取\n稀有+' };
     const alColors: Record<string, string> = { off: '#666680', all: '#e0d8cc', magic: '#2471a3', rare: '#c0934a' };
-    this.autoLootText.setText(alLabels[this.player.autoLootMode] ?? '拾取\nOFF')
-      .setColor(alColors[this.player.autoLootMode] ?? '#666680');
+    const autoLootText = alLabels[this.player.autoLootMode] ?? '拾取\nOFF';
+    const autoLootColor = alColors[this.player.autoLootMode] ?? '#666680';
+    if (this.autoLootText.text !== autoLootText) this.autoLootText.setText(autoLootText);
+    if (this.autoLootText.style.color !== autoLootColor) this.autoLootText.setColor(autoLootColor);
 
     if (this.zone && (this.zone as any).currentMapId) {
       const map = AllMaps[(this.zone as any).currentMapId];
-      if (map) this.zoneLabel.setText(map.name);
+      if (map && this.zoneLabel.text !== map.name) this.zoneLabel.setText(map.name);
     }
 
     const skills = this.player.classData.skills;
@@ -1692,87 +1706,103 @@ export class UIScene extends Phaser.Scene {
       const cd = this.player.skillCooldowns.get(skills[i].id) ?? 0;
       const remaining = cd - time;
       const onCd = remaining > 0;
-      this.skillCooldownOverlays[i].setVisible(onCd);
+      if (this.skillCooldownOverlays[i].visible !== onCd) {
+        this.skillCooldownOverlays[i].setVisible(onCd);
+      }
       // Show remaining seconds on cooldown
       const cdText = this.skillCooldownTexts[i];
       if (onCd) {
         const secs = Math.ceil(remaining / 1000);
-        if (cdText?.active) cdText.setVisible(true).setText(`${secs}`);
+        if (cdText?.active) {
+          if (!cdText.visible) cdText.setVisible(true);
+          const nextText = `${secs}`;
+          if (cdText.text !== nextText) cdText.setText(nextText);
+        }
         // Fade overlay alpha based on cooldown progress
         const totalCd = (skills[i].cooldown ?? 1) * 1000;
         this.skillCooldownOverlays[i].alpha = 0.3 + 0.4 * (remaining / totalCd);
       } else {
-        if (cdText?.active) cdText.setVisible(false);
+        if (cdText?.active && cdText.visible) cdText.setVisible(false);
       }
     }
 
-    if (Math.floor(time / 200) % 2 === 0) this.updateMinimap();
+    if (time >= this.nextMinimapRefreshAt) {
+      this.nextMinimapRefreshAt = time + 250;
+      this.updateMinimap();
+    }
 
-    if (this.zone?.questSystem) {
-      const active = this.zone.questSystem.getActiveQuests();
-      // Sort: main quests first
-      const sorted = active.sort((a, b) => {
-        if (a.quest.category === 'main' && b.quest.category !== 'main') return -1;
-        if (a.quest.category !== 'main' && b.quest.category === 'main') return 1;
-        return 0;
-      });
+    if (this.zone?.questSystem && time >= this.nextQuestTrackerRefreshAt) {
+      this.nextQuestTrackerRefreshAt = time + 250;
+      this.refreshQuestTracker();
+    }
+  }
 
-      // Build line entries
-      const entries: { text: string; isTitle: boolean; isMain: boolean; isDone: boolean }[] = [];
-      const playerCol = this.zone?.player ? Math.round(this.zone.player.tileCol) : 0;
-      const playerRow = this.zone?.player ? Math.round(this.zone.player.tileRow) : 0;
-      for (const { quest, progress } of sorted) {
-        const tag = quest.category === 'main' ? '[主线]' : '[支线]';
-        const statusTag = progress.status === 'completed' ? ' \u2713' : '';
-        entries.push({ text: `${tag} ${quest.name}${statusTag}`, isTitle: true, isMain: quest.category === 'main', isDone: progress.status === 'completed' });
-        for (let i = 0; i < quest.objectives.length; i++) {
-          const obj = quest.objectives[i];
-          const cur = progress.objectives[i]?.current ?? 0;
-          const done = cur >= obj.required;
-          const mark = done ? '\u2713' : `${cur}/${obj.required}`;
-          let locHint = '';
-          if (obj.type === 'explore' && !done && obj.location) {
-            const dc = obj.location.col - playerCol;
-            const dr = obj.location.row - playerRow;
-            const dist = Math.sqrt(dc * dc + dr * dr);
-            if (dist > 3) {
-              const dir = getDirection(dc, dr);
-              const distLabel = dist > 30 ? '很远' : dist > 15 ? '较远' : '附近';
-              locHint = ` (${dir} ${distLabel})`;
-            }
+  private refreshQuestTracker(): void {
+    if (!this.zone?.questSystem) return;
+
+    const active = this.zone.questSystem.getActiveQuests();
+    const sorted = [...active].sort((a, b) => {
+      if (a.quest.category === 'main' && b.quest.category !== 'main') return -1;
+      if (a.quest.category !== 'main' && b.quest.category === 'main') return 1;
+      return 0;
+    });
+
+    const entries: { text: string; isTitle: boolean; isMain: boolean; isDone: boolean }[] = [];
+    const playerCol = this.zone?.player ? Math.round(this.zone.player.tileCol) : 0;
+    const playerRow = this.zone?.player ? Math.round(this.zone.player.tileRow) : 0;
+    for (const { quest, progress } of sorted) {
+      const tag = quest.category === 'main' ? '[主线]' : '[支线]';
+      const statusTag = progress.status === 'completed' ? ' \u2713' : '';
+      entries.push({ text: `${tag} ${quest.name}${statusTag}`, isTitle: true, isMain: quest.category === 'main', isDone: progress.status === 'completed' });
+      for (let i = 0; i < quest.objectives.length; i++) {
+        const obj = quest.objectives[i];
+        const cur = progress.objectives[i]?.current ?? 0;
+        const done = cur >= obj.required;
+        const mark = done ? '\u2713' : `${cur}/${obj.required}`;
+        let locHint = '';
+        if (obj.type === 'explore' && !done && obj.location) {
+          const dc = obj.location.col - playerCol;
+          const dr = obj.location.row - playerRow;
+          const dist = Math.sqrt(dc * dc + dr * dr);
+          if (dist > 3) {
+            const dir = getDirection(dc, dr);
+            const distLabel = dist > 30 ? '很远' : dist > 15 ? '较远' : '附近';
+            locHint = ` (${dir} ${distLabel})`;
           }
-          entries.push({ text: `  ${obj.targetName} ${mark}${locHint}`, isTitle: false, isMain: quest.category === 'main', isDone: done });
         }
+        entries.push({ text: `  ${obj.targetName} ${mark}${locHint}`, isTitle: false, isMain: quest.category === 'main', isDone: done });
       }
+    }
 
-      // Reuse or create text objects
-      let y = 0;
-      for (let i = 0; i < entries.length; i++) {
-        const e = entries[i];
-        let t = this.questTrackerTexts[i];
-        if (!t) {
-          t = this.add.text(0, 0, '', { fontFamily: FONT }).setOrigin(0, 0);
-          this.questTracker.add(t);
-          this.questTrackerTexts.push(t);
-        }
-        t.setVisible(true);
-        t.setText(e.text);
-        t.setY(y);
-        if (e.isTitle) {
-          t.setFontSize(fs(13));
-          t.setColor(e.isMain ? '#e8c252' : '#a89060');
-          t.setFontStyle('bold');
-        } else {
-          t.setFontSize(fs(10));
-          t.setColor(e.isDone ? '#66aa66' : '#aaaaaa');
-          t.setFontStyle('');
-        }
-        y += e.isTitle ? px(18) : px(14);
+    const signature = entries.map(entry => `${entry.text}|${entry.isTitle ? 1 : 0}|${entry.isMain ? 1 : 0}|${entry.isDone ? 1 : 0}`).join('\n');
+    if (signature === this.lastQuestTrackerSignature) return;
+    this.lastQuestTrackerSignature = signature;
+
+    let y = 0;
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      let t = this.questTrackerTexts[i];
+      if (!t) {
+        t = this.add.text(0, 0, '', { fontFamily: FONT }).setOrigin(0, 0);
+        this.questTracker.add(t);
+        this.questTrackerTexts.push(t);
       }
-      // Hide unused text objects
-      for (let i = entries.length; i < this.questTrackerTexts.length; i++) {
-        this.questTrackerTexts[i].setVisible(false);
+      t.setVisible(true);
+      t.setText(e.text);
+      t.setY(y);
+      if (e.isTitle) {
+        t.setFontSize(fs(13));
+        t.setColor(e.isMain ? '#e8c252' : '#a89060');
+        t.setFontStyle('bold');
+      } else {
+        t.setFontSize(fs(10));
+        t.setColor(e.isDone ? '#66aa66' : '#aaaaaa');
+        t.setFontStyle('');
       }
+      y += e.isTitle ? px(18) : px(14);
+    }
+    for (let i = entries.length; i < this.questTrackerTexts.length; i++) {
+      if (this.questTrackerTexts[i].visible) this.questTrackerTexts[i].setVisible(false);
     }
   }
 }

@@ -62,6 +62,84 @@ const NPC_ALERT_START = 8, NPC_ALERT_COUNT = 4;
 const NPC_IDLE_START = 12, NPC_IDLE_COUNT = 6;
 const NPC_TALK_START = 18, NPC_TALK_COUNT = 6;
 
+const PLAYER_DRAWERS: EntityDrawer[] = [
+  PlayerWarriorDrawer,
+  PlayerMageDrawer,
+  PlayerRogueDrawer,
+];
+
+const MONSTER_DRAWERS: EntityDrawer[] = [
+  SlimeDrawer,
+  SkeletonDrawer,
+  WerewolfDrawer,
+  FireElementalDrawer,
+  DesertScorpionDrawer,
+  GoblinDrawer,
+  GoblinChiefDrawer,
+  ZombieDrawer,
+  WerewolfAlphaDrawer,
+  GargoyleDrawer,
+  StoneGolemDrawer,
+  MountainTrollDrawer,
+  SandwormDrawer,
+  PhoenixDrawer,
+  ImpDrawer,
+  LesserDemonDrawer,
+  SuccubusDrawer,
+  DemonLordDrawer,
+];
+
+const NPC_DRAWERS: EntityDrawer[] = [
+  BlacksmithDrawer,
+  BlacksmithAdvancedDrawer,
+  MerchantDrawer,
+  MerchantDesertDrawer,
+  StashDrawer,
+  QuestElderDrawer,
+  QuestScoutDrawer,
+  ForestHermitDrawer,
+  QuestDwarfDrawer,
+  QuestNomadDrawer,
+  QuestWardenDrawer,
+];
+
+const NPC_WORK_RATES = new Map<string, number>([
+  [BlacksmithDrawer.key, 6],
+  [BlacksmithAdvancedDrawer.key, 6],
+  [MerchantDrawer.key, 5],
+  [MerchantDesertDrawer.key, 5],
+  [StashDrawer.key, 3],
+  [QuestElderDrawer.key, 3],
+  [QuestScoutDrawer.key, 5],
+  [ForestHermitDrawer.key, 3],
+  [QuestDwarfDrawer.key, 6],
+  [QuestNomadDrawer.key, 4],
+  [QuestWardenDrawer.key, 5],
+]);
+
+const DECOR_DRAWERS: EntityDrawer[] = [
+  TreeDrawer,
+  BushDrawer,
+  RockDrawer,
+  FlowerDrawer,
+  MushroomDrawer,
+  CactusDrawer,
+  BoulderDrawer,
+  CrystalDrawer,
+  BonesDrawer,
+];
+
+const EFFECT_DRAWERS: EntityDrawer[] = [
+  LootBagDrawer,
+  ExitPortalDrawer,
+];
+
+const PLAYER_DRAWER_BY_KEY = new Map<string, EntityDrawer>(PLAYER_DRAWERS.map(drawer => [drawer.key, drawer]));
+const ENTITY_DRAWER_BY_KEY = new Map<string, EntityDrawer>([...PLAYER_DRAWERS, ...MONSTER_DRAWERS].map(drawer => [drawer.key, drawer]));
+const NPC_DRAWER_BY_KEY = new Map<string, EntityDrawer>(NPC_DRAWERS.map(drawer => [drawer.key, drawer]));
+const DECOR_DRAWER_BY_KEY = new Map<string, EntityDrawer>(DECOR_DRAWERS.map(drawer => [drawer.key, drawer]));
+const EFFECT_DRAWER_BY_KEY = new Map<string, EntityDrawer>(EFFECT_DRAWERS.map(drawer => [drawer.key, drawer]));
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ██ SpriteGenerator ██
 // ═══════════════════════════════════════════════════════════════════════════
@@ -223,6 +301,76 @@ export class SpriteGenerator {
     this.utils = new DrawUtils();
   }
 
+  static ensurePlayerSheet(scene: Phaser.Scene, classId: string): void {
+    this.ensureEntitySheet(scene, `player_${classId}`);
+  }
+
+  static ensureMonsterSheet(scene: Phaser.Scene, spriteKey: string): void {
+    this.ensureEntitySheet(scene, spriteKey);
+  }
+
+  static ensureNPCSheet(scene: Phaser.Scene, npcId: string, npcType: string): void {
+    const uniqueKey = `npc_${npcId}`;
+    if (NPC_DRAWER_BY_KEY.has(uniqueKey)) {
+      this.ensureNPCKey(scene, uniqueKey);
+      return;
+    }
+    this.ensureNPCKey(scene, `npc_${npcType}`);
+  }
+
+  static ensureDecoration(scene: Phaser.Scene, decorType: string): void {
+    const key = `decor_${decorType}`;
+    const drawer = DECOR_DRAWER_BY_KEY.get(key);
+    if (!drawer || scene.textures.exists(key)) return;
+    new SpriteGenerator(scene).generateFromStaticDrawer(drawer);
+  }
+
+  static ensureEffect(scene: Phaser.Scene, effectKey: string): void {
+    const drawer = EFFECT_DRAWER_BY_KEY.get(effectKey);
+    if (!drawer || scene.textures.exists(effectKey)) return;
+    new SpriteGenerator(scene).generateFromStaticDrawer(drawer);
+  }
+
+  static clearZoneTransientTextures(scene: Phaser.Scene): void {
+    for (const key of scene.textures.getTextureKeys()) {
+      const shouldRelease =
+        key.startsWith('monster_') ||
+        key.startsWith('npc_') ||
+        key.startsWith('decor_') ||
+        key === 'loot_bag' ||
+        key === 'exit_portal';
+      if (!shouldRelease) continue;
+      if (this.isExternalTexture(scene, key)) continue;
+      scene.textures.remove(key);
+    }
+  }
+
+  private static ensureEntitySheet(scene: Phaser.Scene, key: string): void {
+    const drawer = ENTITY_DRAWER_BY_KEY.get(key);
+    if (!drawer) return;
+    const generator = new SpriteGenerator(scene);
+    if (!scene.textures.exists(key)) {
+      generator.generateFromDrawer(drawer);
+    }
+    generator.ensureEntityAnimationsRegistered(key, PLAYER_DRAWER_BY_KEY.has(key));
+  }
+
+  private static ensureNPCKey(scene: Phaser.Scene, key: string): void {
+    const drawer = NPC_DRAWER_BY_KEY.get(key);
+    if (!drawer) return;
+    const generator = new SpriteGenerator(scene);
+    if (!scene.textures.exists(key)) {
+      generator.generateFromNPCDrawer(drawer);
+    }
+    generator.ensureNPCAnimationsRegistered(key, NPC_WORK_RATES.get(key) ?? 4);
+  }
+
+  private static isExternalTexture(scene: Phaser.Scene, key: string): boolean {
+    if (!scene.textures.exists(key)) return false;
+    const tex = scene.textures.get(key);
+    return tex.source[0]?.source instanceof HTMLImageElement;
+  }
+
   /** Returns true if the texture was loaded from an external image file (HTMLImageElement),
    *  meaning procedural generation should be skipped in favour of the loaded asset. */
   private shouldSkipGeneration(key: string): boolean {
@@ -232,14 +380,17 @@ export class SpriteGenerator {
   }
 
   generateAll(): void {
-    this.generateTiles();
+    this.generateBootTextures();
     this.generatePlayerSheets();
     this.generateMonsterSheets();
     this.generateNPCSprites();
     this.generateDecorations();
+  }
+
+  generateBootTextures(): void {
+    this.generateTiles();
     this.generateCampDecorations();
     this.generateEffects();
-    this.registerAnimations();
   }
 
   // ── Drawing Utilities (delegates to DrawUtils) ───────────────────────────
@@ -771,9 +922,10 @@ export class SpriteGenerator {
   // ═══════════════════════════════════════════════════════════════════════
 
   private generatePlayerSheets(): void {
-    this.generateFromDrawer(PlayerWarriorDrawer);
-    this.generateFromDrawer(PlayerMageDrawer);
-    this.generateFromDrawer(PlayerRogueDrawer);
+    for (const drawer of PLAYER_DRAWERS) {
+      this.generateFromDrawer(drawer);
+      this.ensureEntityAnimationsRegistered(drawer.key, true);
+    }
   }
 
   private generateFromDrawer(drawer: EntityDrawer): void {
@@ -815,25 +967,10 @@ export class SpriteGenerator {
   }
 
   private generateMonsterSheets(): void {
-    // All monsters use custom drawers
-    this.generateFromDrawer(SlimeDrawer);
-    this.generateFromDrawer(SkeletonDrawer);
-    this.generateFromDrawer(WerewolfDrawer);
-    this.generateFromDrawer(FireElementalDrawer);
-    this.generateFromDrawer(DesertScorpionDrawer);
-    this.generateFromDrawer(GoblinDrawer);
-    this.generateFromDrawer(GoblinChiefDrawer);
-    this.generateFromDrawer(ZombieDrawer);
-    this.generateFromDrawer(WerewolfAlphaDrawer);
-    this.generateFromDrawer(GargoyleDrawer);
-    this.generateFromDrawer(StoneGolemDrawer);
-    this.generateFromDrawer(MountainTrollDrawer);
-    this.generateFromDrawer(SandwormDrawer);
-    this.generateFromDrawer(PhoenixDrawer);
-    this.generateFromDrawer(ImpDrawer);
-    this.generateFromDrawer(LesserDemonDrawer);
-    this.generateFromDrawer(SuccubusDrawer);
-    this.generateFromDrawer(DemonLordDrawer);
+    for (const drawer of MONSTER_DRAWERS) {
+      this.generateFromDrawer(drawer);
+      this.ensureEntityAnimationsRegistered(drawer.key, false);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -875,18 +1012,10 @@ export class SpriteGenerator {
   }
 
   private generateNPCSprites(): void {
-    // All NPCs use custom drawers
-    this.generateFromNPCDrawer(BlacksmithDrawer);
-    this.generateFromNPCDrawer(BlacksmithAdvancedDrawer);
-    this.generateFromNPCDrawer(MerchantDrawer);
-    this.generateFromNPCDrawer(MerchantDesertDrawer);
-    this.generateFromNPCDrawer(StashDrawer);
-    this.generateFromNPCDrawer(QuestElderDrawer);
-    this.generateFromNPCDrawer(QuestScoutDrawer);
-    this.generateFromNPCDrawer(ForestHermitDrawer);
-    this.generateFromNPCDrawer(QuestDwarfDrawer);
-    this.generateFromNPCDrawer(QuestNomadDrawer);
-    this.generateFromNPCDrawer(QuestWardenDrawer);
+    for (const drawer of NPC_DRAWERS) {
+      this.generateFromNPCDrawer(drawer);
+      this.ensureNPCAnimationsRegistered(drawer.key, NPC_WORK_RATES.get(drawer.key) ?? 4);
+    }
   }
 
   /** Generate a single-frame static texture from an EntityDrawer (decorations, effects). */
@@ -908,12 +1037,7 @@ export class SpriteGenerator {
   // ═══════════════════════════════════════════════════════════════════════
 
   private generateDecorations(): void {
-    // Custom drawers — richer art, replace old template implementations
-    const decorDrawers = [
-      TreeDrawer, BushDrawer, RockDrawer, FlowerDrawer, MushroomDrawer,
-      CactusDrawer, BoulderDrawer, CrystalDrawer, BonesDrawer,
-    ];
-    for (const drawer of decorDrawers) {
+    for (const drawer of DECOR_DRAWERS) {
       this.generateFromStaticDrawer(drawer);
     }
   }
@@ -1129,95 +1253,91 @@ export class SpriteGenerator {
   }
 
   private generateEffects(): void {
-    // Custom drawers — richer art, replace old template implementations
-    this.generateFromStaticDrawer(LootBagDrawer);
-    this.generateFromStaticDrawer(ExitPortalDrawer);
+    for (const drawer of EFFECT_DRAWERS) {
+      this.generateFromStaticDrawer(drawer);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
   // ██ ANIMATION REGISTRATION ██
   // ═══════════════════════════════════════════════════════════════════════
 
-  private registerAnimations(): void {
+  private hasEntityAnimationsRegistered(key: string, isPlayer: boolean): boolean {
+    const actions = isPlayer
+      ? ['idle', 'walk', 'attack', 'hurt', 'death', 'cast']
+      : ['idle', 'walk', 'attack', 'hurt', 'death'];
+    return actions.every(action => this.scene.anims.exists(`${key}_${action}`));
+  }
+
+  private ensureEntityAnimationsRegistered(key: string, isPlayer: boolean): void {
+    if (!this.hasEntityAnimationsRegistered(key, isPlayer)) {
+      this.registerEntityAnimations(key, isPlayer);
+    }
+  }
+
+  private registerEntityAnimations(key: string, isPlayer: boolean): void {
+    const anims = this.scene.anims;
+    const defs: [string, number, number, number, number][] = [
+      ['idle', IDLE_START, IDLE_COUNT, 6, -1],
+      ['walk', WALK_START, WALK_COUNT, 10, -1],
+      ['attack', ATK_START, ATK_COUNT, 12, 0],
+      ['hurt', HURT_START, HURT_COUNT, 10, 0],
+      ['death', DEATH_START, DEATH_COUNT, 6, 0],
+    ];
+    if (isPlayer) {
+      defs.push(['cast', CAST_START, CAST_COUNT, 8, 0]);
+    }
+    for (const [action, start, count, rate, repeat] of defs) {
+      const animKey = `${key}_${action}`;
+      if (anims.exists(animKey)) anims.remove(animKey);
+      anims.create({
+        key: animKey,
+        frames: anims.generateFrameNumbers(key, { start, end: start + count - 1 }),
+        frameRate: rate,
+        repeat,
+      });
+    }
+  }
+
+  private hasNPCAnimationsRegistered(key: string): boolean {
+    return ['working', 'alert', 'idle', 'talking'].every(action => this.scene.anims.exists(`${key}_${action}`));
+  }
+
+  private ensureNPCAnimationsRegistered(key: string, workRate: number): void {
+    if (!this.hasNPCAnimationsRegistered(key)) {
+      this.registerNPCAnimations(key, workRate);
+    }
+  }
+
+  private registerNPCAnimations(key: string, workRate: number): void {
     const anims = this.scene.anims;
 
-    const registerEntitySet = (key: string, isPlayer: boolean) => {
-      const defs: [string, number, number, number, number][] = [
-        ['idle', IDLE_START, IDLE_COUNT, 6, -1],
-        ['walk', WALK_START, WALK_COUNT, 10, -1],
-        ['attack', ATK_START, ATK_COUNT, 12, 0],
-        ['hurt', HURT_START, HURT_COUNT, 10, 0],
-        ['death', DEATH_START, DEATH_COUNT, 6, 0],
-      ];
-      if (isPlayer) {
-        defs.push(['cast', CAST_START, CAST_COUNT, 8, 0]);
-      }
-      for (const [action, start, count, rate, repeat] of defs) {
-        const animKey = `${key}_${action}`;
-        if (anims.exists(animKey)) anims.remove(animKey);
-        anims.create({
-          key: animKey,
-          frames: anims.generateFrameNumbers(key, { start, end: start + count - 1 }),
-          frameRate: rate,
-          repeat,
-        });
-      }
-    };
+    const workKey = `${key}_working`;
+    if (anims.exists(workKey)) anims.remove(workKey);
+    anims.create({ key: workKey, frames: anims.generateFrameNumbers(key, { start: NPC_WORK_START, end: NPC_WORK_START + NPC_WORK_COUNT - 1 }), frameRate: workRate, repeat: -1 });
 
-    const registerNPCSet = (key: string, workRate: number) => {
-      const workKey = `${key}_working`;
-      if (anims.exists(workKey)) anims.remove(workKey);
-      anims.create({ key: workKey, frames: anims.generateFrameNumbers(key, { start: NPC_WORK_START, end: NPC_WORK_START + NPC_WORK_COUNT - 1 }), frameRate: workRate, repeat: -1 });
+    const alertKey = `${key}_alert`;
+    if (anims.exists(alertKey)) anims.remove(alertKey);
+    anims.create({ key: alertKey, frames: anims.generateFrameNumbers(key, { start: NPC_ALERT_START, end: NPC_ALERT_START + NPC_ALERT_COUNT - 1 }), frameRate: 6, repeat: 0 });
 
-      const alertKey = `${key}_alert`;
-      if (anims.exists(alertKey)) anims.remove(alertKey);
-      anims.create({ key: alertKey, frames: anims.generateFrameNumbers(key, { start: NPC_ALERT_START, end: NPC_ALERT_START + NPC_ALERT_COUNT - 1 }), frameRate: 6, repeat: 0 });
+    const idleKey = `${key}_idle`;
+    if (anims.exists(idleKey)) anims.remove(idleKey);
+    anims.create({ key: idleKey, frames: anims.generateFrameNumbers(key, { start: NPC_IDLE_START, end: NPC_IDLE_START + NPC_IDLE_COUNT - 1 }), frameRate: 4, repeat: -1 });
 
-      const idleKey = `${key}_idle`;
-      if (anims.exists(idleKey)) anims.remove(idleKey);
-      anims.create({ key: idleKey, frames: anims.generateFrameNumbers(key, { start: NPC_IDLE_START, end: NPC_IDLE_START + NPC_IDLE_COUNT - 1 }), frameRate: 4, repeat: -1 });
+    const talkKey = `${key}_talking`;
+    if (anims.exists(talkKey)) anims.remove(talkKey);
+    anims.create({ key: talkKey, frames: anims.generateFrameNumbers(key, { start: NPC_TALK_START, end: NPC_TALK_START + NPC_TALK_COUNT - 1 }), frameRate: 5, repeat: -1 });
+  }
 
-      const talkKey = `${key}_talking`;
-      if (anims.exists(talkKey)) anims.remove(talkKey);
-      anims.create({ key: talkKey, frames: anims.generateFrameNumbers(key, { start: NPC_TALK_START, end: NPC_TALK_START + NPC_TALK_COUNT - 1 }), frameRate: 5, repeat: -1 });
-    };
-
-    // Players (with cast animation)
-    registerEntitySet(PlayerWarriorDrawer.key, true);
-    registerEntitySet(PlayerMageDrawer.key, true);
-    registerEntitySet(PlayerRogueDrawer.key, true);
-
-    // Monsters
-    registerEntitySet(SlimeDrawer.key, false);
-    registerEntitySet(SkeletonDrawer.key, false);
-    registerEntitySet(WerewolfDrawer.key, false);
-    registerEntitySet(FireElementalDrawer.key, false);
-    registerEntitySet(DesertScorpionDrawer.key, false);
-    registerEntitySet(GoblinDrawer.key, false);
-    registerEntitySet(GoblinChiefDrawer.key, false);
-    registerEntitySet(ZombieDrawer.key, false);
-    registerEntitySet(WerewolfAlphaDrawer.key, false);
-    registerEntitySet(GargoyleDrawer.key, false);
-    registerEntitySet(StoneGolemDrawer.key, false);
-    registerEntitySet(MountainTrollDrawer.key, false);
-    registerEntitySet(SandwormDrawer.key, false);
-    registerEntitySet(PhoenixDrawer.key, false);
-    registerEntitySet(ImpDrawer.key, false);
-    registerEntitySet(LesserDemonDrawer.key, false);
-    registerEntitySet(SuccubusDrawer.key, false);
-    registerEntitySet(DemonLordDrawer.key, false);
-
-    // NPCs — work rate reflects their accessory animation speed
-    registerNPCSet(BlacksmithDrawer.key, 6);          // hammer
-    registerNPCSet(BlacksmithAdvancedDrawer.key, 6);  // hammer
-    registerNPCSet(MerchantDrawer.key, 5);            // coinbag
-    registerNPCSet(MerchantDesertDrawer.key, 5);      // coinbag
-    registerNPCSet(StashDrawer.key, 3);               // book
-    registerNPCSet(QuestElderDrawer.key, 3);          // staff
-    registerNPCSet(QuestScoutDrawer.key, 5);          // sword
-    registerNPCSet(ForestHermitDrawer.key, 3);        // staff
-    registerNPCSet(QuestDwarfDrawer.key, 6);          // pickaxe
-    registerNPCSet(QuestNomadDrawer.key, 4);          // lantern
-    registerNPCSet(QuestWardenDrawer.key, 5);         // sword
+  private registerAnimations(): void {
+    for (const drawer of PLAYER_DRAWERS) {
+      this.registerEntityAnimations(drawer.key, true);
+    }
+    for (const drawer of MONSTER_DRAWERS) {
+      this.registerEntityAnimations(drawer.key, false);
+    }
+    for (const drawer of NPC_DRAWERS) {
+      this.registerNPCAnimations(drawer.key, NPC_WORK_RATES.get(drawer.key) ?? 4);
+    }
   }
 }

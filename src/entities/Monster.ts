@@ -6,6 +6,7 @@ import { randomInt } from '../utils/MathUtils';
 import type { MonsterDefinition, Stats } from '../data/types';
 import type { CombatEntity, ActiveBuff } from '../systems/CombatSystem';
 import { CharacterAnimator, getAnimConfig } from '../systems/CharacterAnimator';
+import { SpriteGenerator } from '../graphics/SpriteGenerator';
 
 function fs(basePx: number): string {
   return `${Math.round(basePx * DPR)}px`;
@@ -72,6 +73,7 @@ export class Monster {
 
     // Use animated sprite sheet if available
     const spriteKey = definition.spriteKey;
+    SpriteGenerator.ensureMonsterSheet(scene, spriteKey);
     const hasTexture = scene.textures.exists(spriteKey);
     const size = definition.elite ? 48 : 36;
 

@@ -3,6 +3,7 @@ import { TEXTURE_SCALE, DPR } from '../config';
 import { cartToIso } from '../utils/IsometricUtils';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import type { NPCDefinition } from '../data/types';
+import { SpriteGenerator } from '../graphics/SpriteGenerator';
 
 function fs(basePx: number): string {
   return `${Math.round(basePx * DPR)}px`;
@@ -39,6 +40,7 @@ export class NPC {
     this.sprite.setDepth(worldPos.y + 80);
 
     // Use animated sprite sheet: try unique npc_<id> first, fall back to npc_<type>
+    SpriteGenerator.ensureNPCSheet(scene, definition.id, definition.type);
     const uniqueKey = `npc_${definition.id}`;
     const typeKey = `npc_${definition.type}`;
     this.spriteKey = scene.textures.exists(uniqueKey) ? uniqueKey : typeKey;

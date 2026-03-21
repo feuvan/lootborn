@@ -5,6 +5,7 @@ import { AllClasses } from '../data/classes/index';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { audioManager } from '../systems/audio/AudioManager';
 import type { SaveData } from '../data/types';
+import { SpriteGenerator } from '../graphics/SpriteGenerator';
 
 function fs(basePx: number): string {
   return `${Math.round(basePx * DPR)}px`;
@@ -351,6 +352,7 @@ export class MenuScene extends Phaser.Scene {
 
       // Animated class icon preview
       const spriteKey = `player_${cls.id}`;
+      SpriteGenerator.ensurePlayerSheet(this, cls.id);
       if (this.textures.exists(spriteKey)) {
         const preview = this.add.sprite(cx - px(130), y, spriteKey, 0).setScale(0.7 / TEXTURE_SCALE);
         const idleKey = `${spriteKey}_idle`;
