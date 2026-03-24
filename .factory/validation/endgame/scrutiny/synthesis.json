@@ -1,12 +1,12 @@
 {
   "milestone": "endgame",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
-      "passed": false,
+      "passed": true,
       "command": "npx vitest run",
-      "exitCode": 1
+      "exitCode": 0
     },
     "typecheck": {
       "passed": true,
@@ -21,94 +21,39 @@
   },
   "reviewsSummary": {
     "total": 5,
-    "passed": 0,
-    "failed": 5,
+    "passed": 4,
+    "failed": 1,
     "failedFeatures": [
-      "achievement-panel",
-      "difficulty-system",
-      "gem-socketing-ui",
-      "random-dungeons",
-      "save-migration"
+      "difficulty-system"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "achievement-panel",
-      "severity": "blocking",
-      "description": "Level achievements are still tied to the monster-kill flow via `handleMonsterDeath()` and an explicit `checkLevel(this.player.level)` call there, rather than being modeled as a single generic progression path for all sources. The feature spec requires real-time level progress tracking from all sources, and the milestone scrutiny synthesis flagged this exact gap; the implementation therefore does not fully satisfy the level-tracking requirement."
-    },
-    {
-      "featureId": "achievement-panel",
-      "severity": "blocking",
-      "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler whenever the panel has more than one page, but unlike the dialogue panel pattern there is no matching `off`/cleanup on panel destroy. Opening and closing the achievement panel repeatedly stacks wheel listeners, causing duplicate scrolling and stale handlers to keep firing after the panel closes."
-    },
-    {
       "featureId": "difficulty-system",
       "severity": "blocking",
-      "description": "The Continue button only opens the difficulty selector when `save.completedDifficulties.length > 0`; otherwise it immediately loads the save. That means any save lacking this new field—such as pre-feature saves or a stale save loaded before the unlock is persisted—can never reach the selector, even though `save.difficulty` still defaults to normal and Nightmare/Hell should be selectable once prerequisites are met."
-    },
-    {
-      "featureId": "gem-socketing-ui",
-      "severity": "blocking",
-      "description": "Only one Diamond gem (`g_diamond_1`) exists, so the implementation does not meet the requirement that higher tiers provide larger bonuses for all gem types. Ruby/Sapphire/Emerald/Topaz have T1-T3, but Diamond lacks T2/T3 definitions and corresponding stat mappings."
-    },
-    {
-      "featureId": "random-dungeons",
-      "severity": "blocking",
-      "description": "The spec requires at least 2 dungeon-exclusive legendary/set items, but the implementation only defines two exclusive legendaries in `DUNGEON_EXCLUSIVE_LEGENDARIES` and no dungeon-exclusive set item at all. This does not satisfy the required 'legendary/set' content mix."
-    },
-    {
-      "featureId": "random-dungeons",
-      "severity": "blocking",
-      "description": "`exitDungeon()` restarts Abyss Rift at `DUNGEON_PORTAL_COL` / `DUNGEON_PORTAL_ROW - 2`, which returns the player to the portal area instead of the Abyss Rift entrance required by the feature ('exiting returns to Abyss Rift'). The same file already defines `ABYSS_ENTRANCE_COL/ROW` for the required entrance location but does not use them here."
-    },
-    {
-      "featureId": "save-migration",
-      "severity": "blocking",
-      "description": "`load()` migrates in-memory data with `migrateV1toV2(data)` but never writes the upgraded record back to Dexie. The spec requires a loaded v1 save to be upgraded to v2 on next save path, and the common load flow here returns a mutated object without persisting it; if the player loads and quits without triggering ZoneScene autosave/quicksave, the database still contains version 1. This misses the required automatic upgrade behavior for the load path itself and leaves repeated migrations on every subsequent load."
-    }
-  ],
-  "nonBlockingIssues": [
-    {
-      "featureId": "gem-socketing-ui",
-      "severity": "non_blocking",
-      "description": "The test asserts gem `maxStack` is 10, while the feature description/handoff claimed gems are stackable to 20. This mismatch means the review transcript and tests overstate the implemented behavior, and the skill's prescribed test coverage did not catch the discrepancy between spec and code."
+      "description": "The Continue button only opens the difficulty selector when `completedDifficulties.length > 0`. A save whose persisted `difficulty` is `nightmare` or `hell` but has an empty or missing `completedDifficulties` array loads directly via `loadGame(save)`, which bypasses difficulty re-selection and breaks the requirement that difficulty persist across save/load for such saves."
     }
   ],
   "appliedUpdates": [
     {
       "target": "library",
-      "description": "Documented UIScene wheel-handler cleanup pattern for scrollable panels to avoid stacked listeners on reopen.",
-      "sourceFeature": "achievement-panel"
+      "description": "Documented the MenuScene difficulty-selector persistence caveat for saves whose `difficulty` is set but whose `completedDifficulties` array is empty or missing.",
+      "sourceFeature": "difficulty-system"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "skills/ui-worker",
-      "suggestion": "Require explicit cleanup of scene-level input listeners when scrollable panels register wheel or keyboard handlers, and ask reviewers to verify handler teardown in runtime UI code.",
-      "evidence": "achievement-panel added a global wheel handler without cleanup, while UIScene already had a safe dialogue-panel pattern that was not followed.",
-      "isSystemic": false
-    },
-    {
-      "target": "AGENTS.md",
-      "suggestion": "Add guidance that unlock/selection UI for migrated saves must remain reachable even when newly introduced save fields are absent or stale.",
-      "evidence": "difficulty-system gated the selector on completedDifficulties presence, which blocks the required unlock flow for saves that have not yet persisted the new field.",
+      "suggestion": "Document Phaser canvas interaction limits and the need to use keyboard shortcuts or coordinate-based clicks when browser-validating in-game UI.",
+      "evidence": "The gem-socketing-ui worker transcript shows repeated failed browser interaction attempts against the canvas UI before ending the feature, while mission guidance already notes the coordinate-click caveat.",
       "isSystemic": false
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Add a rule forbidding new EventBus enums unless immediately used.",
-      "reason": "ambiguous"
-    },
-    {
-      "observation": "Change gem stack-size guidance based on transcript/spec mismatch.",
-      "reason": "ambiguous"
-    },
-    {
-      "observation": "Mandate tests-first ordering from worker transcripts.",
-      "reason": "ambiguous"
+      "observation": "The immediate autosave rule for progression unlocks should be added again as new library guidance.",
+      "reason": "already-documented"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/endgame/scrutiny/synthesis.json"
 }

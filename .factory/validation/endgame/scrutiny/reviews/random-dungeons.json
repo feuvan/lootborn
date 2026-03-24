@@ -1,34 +1,15 @@
 {
   "featureId": "random-dungeons",
-  "reviewedAt": "2026-03-25T00:00:00Z",
+  "reviewedAt": "2026-03-24T18:19:54Z",
   "commitId": "f7f32789cfc37b49c05ac0121273914990429466",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The feature adds a procedural dungeon framework, portal wiring, minimap support, and focused tests, but it still misses a required dungeon-exclusive set item and returns players to the dungeon portal area instead of the Abyss Rift entrance when exiting a run.",
-    "issues": [
-      {
-        "file": "src/data/dungeonData.ts",
-        "line": 124,
-        "severity": "blocking",
-        "description": "The spec requires at least 2 dungeon-exclusive legendary/set items, but the implementation only defines two exclusive legendaries in `DUNGEON_EXCLUSIVE_LEGENDARIES` and no dungeon-exclusive set item at all. This does not satisfy the required 'legendary/set' content mix."
-      },
-      {
-        "file": "src/scenes/ZoneScene.ts",
-        "line": 3777,
-        "severity": "blocking",
-        "description": "`exitDungeon()` restarts Abyss Rift at `DUNGEON_PORTAL_COL` / `DUNGEON_PORTAL_ROW - 2`, which returns the player to the portal area instead of the Abyss Rift entrance required by the feature ('exiting returns to Abyss Rift'). The same file already defines `ABYSS_ENTRANCE_COL/ROW` for the required entrance location but does not use them here."
-      }
-    ]
+    "summary": "Reviewed the original failing implementation and the follow-up fix. The original failure points are now addressed: dungeon-exclusive set content exists and is wired into loot/set handling, and dungeon exits/save-return paths now use the Abyss Rift entrance coordinates. The remaining random-dungeons implementation matches the feature requirements at code level.",
+    "issues": []
   },
-  "sharedStateObservations": [
-    {
-      "area": "conventions",
-      "observation": "The worker treated loot-table data assertions as sufficient proof of guaranteed boss drops, but this codebase's runtime guarantees are enforced in `LootSystem` / `ZoneScene`, not by `MonsterDefinition.lootTable` alone.",
-      "evidence": ".factory/library/architecture.md notes that `MonsterDefinition.lootTable` is mostly descriptive; the new tests in `src/__tests__/DungeonSystem.test.ts:432-459` only assert loot-table contents / helper return values rather than exercising the runtime drop path."
-    }
-  ],
-  "addressesFailureFrom": null,
-  "summary": "Reviewed the random-dungeons implementation via handoff, transcript skeleton, commit diff, and relevant runtime files. The feature is close, but it fails the spec because it lacks any dungeon-exclusive set item and still exits dungeon runs to the portal area rather than the Abyss Rift entrance."
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/endgame/scrutiny/reviews/random-dungeons.json",
+  "summary": "Reviewed the handoff, transcript skeleton, original failure report, original feature diff, and follow-up fix diff for random-dungeons. The fix adequately resolves the prior blocking issues by adding dungeon-exclusive set support and correcting Abyss Rift entrance return/save behavior, so this review passes."
 }

@@ -1,34 +1,15 @@
 {
   "featureId": "achievement-panel",
-  "reviewedAt": "2026-03-25T00:00:00Z",
+  "reviewedAt": "2026-03-24T18:19:33Z",
   "commitId": "7373165c289d44cbf6b961d992b564fecb105b17",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The feature adds the V-key achievement panel, unlock toast, reward display, and stat bonus aggregation, but it misses required real-time level tracking from all level-up sources and leaks achievement-panel wheel handlers each time the panel is opened.",
-    "issues": [
-      {
-        "file": "src/scenes/ZoneScene.ts",
-        "line": 2399,
-        "severity": "blocking",
-        "description": "Level achievements are still tied to the monster-kill flow via `handleMonsterDeath()` and an explicit `checkLevel(this.player.level)` call there, rather than being modeled as a single generic progression path for all sources. The feature spec requires real-time level progress tracking from all sources, and the milestone scrutiny synthesis flagged this exact gap; the implementation therefore does not fully satisfy the level-tracking requirement."
-      },
-      {
-        "file": "src/scenes/UIScene.ts",
-        "line": 3361,
-        "severity": "blocking",
-        "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler whenever the panel has more than one page, but unlike the dialogue panel pattern there is no matching `off`/cleanup on panel destroy. Opening and closing the achievement panel repeatedly stacks wheel listeners, causing duplicate scrolling and stale handlers to keep firing after the panel closes."
-      }
-    ]
+    "summary": "Reviewed the original achievement-panel implementation and the later fix commit that addressed its two prior blockers. The feature now satisfies the requested panel UI, unlock toast, reward/idempotency behavior, and real-time level-achievement tracking path without the prior wheel-listener leak.",
+    "issues": []
   },
-  "sharedStateObservations": [
-    {
-      "area": "knowledge",
-      "observation": "UIScene already has a safe pattern for wheel-scroll cleanup by overriding panel destroy and unregistering the handler, but that pattern is not documented in shared state and was missed when implementing achievement panel scrolling.",
-      "evidence": "src/scenes/UIScene.ts:1772-1784 unregisters the dialogue wheel handler on destroy, while src/scenes/UIScene.ts:3361 adds an achievement wheel handler with no corresponding cleanup."
-    }
-  ],
-  "addressesFailureFrom": null,
-  "summary": "Reviewed the transcript skeleton, handoff, ui-worker skill, commit 7373165 diff, and relevant runtime code. Most UI requirements are implemented, but the feature fails scrutiny because level progress tracking is not fully modeled for all sources and the achievement panel leaks wheel event handlers."
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/endgame/scrutiny/reviews/achievement-panel.json",
+  "summary": "Reviewed the worker handoff, transcript skeleton, ui-worker skill, original feature diff (7373165), and fix diff (f83b1f2). The original review's two blockers are adequately addressed: level achievements are now checked from the dedicated level-up handler for all sources, and the achievement panel wheel handler is cleaned up on destroy following the documented UIScene pattern. Report written to the requested review path."
 }

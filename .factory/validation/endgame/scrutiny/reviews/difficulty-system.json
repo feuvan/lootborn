@@ -1,28 +1,28 @@
 {
   "featureId": "difficulty-system",
-  "reviewedAt": "2026-03-24T18:03:01.602979Z",
-  "commitId": "5970857",
+  "reviewedAt": "2026-03-25T00:00:00Z",
+  "commitId": "597085748a3cbe571d65ec7e3c4bf1fc5b0430c0",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "Implementation covers save persistence and most difficulty scaling paths, but it fails a core unlock-flow requirement: saves that have only the current difficulty selected and no completed difficulties never show the difficulty selector, so a player who beat the game on Normal cannot choose unlocked Nightmare after returning to the menu until another save occurs with completedDifficulties already populated. This blocks the advertised Normal→Nightmare→Hell selection flow for existing/end-of-run saves.",
+    "summary": "The fix addressed the original persistence gap by autosaving completed difficulties immediately, but the feature still does not fully meet the spec: the menu difficulty selector only appears for saves that already have at least one completed difficulty, so migrated or externally provided saves with difficulty='nightmare'/'hell' but an empty completedDifficulties array cannot re-select their saved difficulty and are forced into Normal.",
     "issues": [
       {
         "file": "src/scenes/MenuScene.ts",
         "line": 315,
         "severity": "blocking",
-        "description": "The Continue button only opens the difficulty selector when `save.completedDifficulties.length > 0`; otherwise it immediately loads the save. That means any save lacking this new field—such as pre-feature saves or a stale save loaded before the unlock is persisted—can never reach the selector, even though `save.difficulty` still defaults to normal and Nightmare/Hell should be selectable once prerequisites are met."
+        "description": "The Continue button only opens the difficulty selector when `completedDifficulties.length > 0`. A save whose persisted `difficulty` is 'nightmare' or 'hell' but has an empty/missing `completedDifficulties` array loads directly via `loadGame(save)`, and ZoneScene.restoreFromSave() does not read the startup payload to preserve the selected difficulty outside the save object. That makes the persisted difficulty effectively non-selectable from the menu and violates the requirement that difficulty persist across save/load for such saves."
       }
     ]
   },
   "sharedStateObservations": [
     {
-      "area": "conventions",
-      "observation": "The feature relies on a MenuScene gate (`completedDifficulties.length > 0`) to decide whether a runtime selector should appear, but neither AGENTS.md nor library notes document that new progress-unlock UI should remain reachable for migrated saves that may not yet have the new save fields populated.",
-      "evidence": "src/scenes/MenuScene.ts:315-320 gates selector access on presence of saved completions; mission AGENTS.md Save Data Compatibility only mentions adding optional fields/defaults, not UI reachability expectations for migrated saves."
+      "area": "knowledge",
+      "observation": "The prior endgame scrutiny fix discovered an important runtime rule: progression-critical unlocks must trigger an immediate save if UI availability depends on them. That rule is documented in .factory/library/architecture.md, and this worker correctly followed it by calling autoSave() after marking a difficulty complete.",
+      "evidence": "src/scenes/ZoneScene.ts:2404-2406 adds `this.completedDifficulties.push(this.difficulty); this.autoSave();`; .factory/library/architecture.md documents 'Progress-critical runtime mutations are not automatically persisted when they happen'."
     }
   ],
-  "addressesFailureFrom": null,
-  "summary": "Reviewed handoff, transcript skeleton, skill file, and commit 5970857. Found one blocking issue: MenuScene only exposes the new difficulty selector for saves that already contain non-empty `completedDifficulties`, which breaks the required unlock-selection flow for saves missing that field and prevents reliable access to Nightmare/Hell after progression unless the save has already been rewritten with the new data. Report written to the requested review path."
+  "addressesFailureFrom": ".factory/validation/endgame/scrutiny/reviews/difficulty-system.json",
+  "summary": "Reviewed worker session 12740fee-71cf-493d-8bec-61d56a4097b8, its handoff, transcript skeleton, and commit 597085748a3cbe571d65ec7e3c4bf1fc5b0430c0. The fix successfully closes the original issue where difficulty unlock progress could be lost before a later save by autosaving immediately on demon_lord completion. However, the feature still has a blocking persistence gap in the menu flow: the difficulty selector is hidden unless completedDifficulties is non-empty, so saves that persist a non-normal difficulty without that array cannot reselect or preserve the saved difficulty through Continue."
 }

@@ -89,6 +89,7 @@ Architectural decisions, patterns, and conventions discovered during the mission
 
 - Save-position recovery is enforced at runtime in `ZoneScene.restoreFromSave()`: after map generation, if a saved tile is unwalkable, the player is reset to the nearest camp/campfire and a Chinese reset log is shown. This is an important compatibility guard for migrated saves and map-layout changes.
 - Progress-critical runtime mutations are not automatically persisted when they happen. Features that unlock content during gameplay (for example difficulty unlocks) must either trigger an explicit save or be designed so UI availability does not depend on a later save path.
+- MenuScene difficulty selection currently only opens when `completedDifficulties.length > 0`; workers touching difficulty persistence or migrated saves should verify Continue-flow behavior for saves whose `difficulty` is already `nightmare`/`hell` but whose unlock array is empty or missing.
 
 ## Combat / Stats Pipeline Caveats
 
