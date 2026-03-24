@@ -1,0 +1,28 @@
+{
+  "featureId": "difficulty-system",
+  "reviewedAt": "2026-03-24T17:41:10Z",
+  "commitId": "597085748a3cbe571d65ec7e3c4bf1fc5b0430c0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds a dedicated DifficultySystem, save persistence, and applies scaling in overworld and dungeon flows, but the MenuScene gating hides the selector until a save already has completed difficulties. That leaves Nightmare inaccessible immediately after clearing Normal because the auto-save performed at boss kill does not persist the newly completed difficulty before returning to the menu.",
+    "issues": [
+      {
+        "file": "src/scenes/MenuScene.ts",
+        "line": 315,
+        "severity": "blocking",
+        "description": "The difficulty selector is only shown when `save.completedDifficulties.length > 0`. After beating demon_lord, `completedDifficulties` is updated in memory in `ZoneScene.onMonsterKilled()`, but there is no auto-save after that mutation. If the player presses ESC to return to menu, `returnToMenu()` saves first, but if the game is closed/crashes or the player expects the unlock toast to mean the new difficulty is immediately available on the next menu visit, the Continue flow can still skip the selector because the save file was last written before the boss kill. The feature requires Nightmare/Hell to become selectable after clear; gating selector visibility on persisted `completedDifficulties` makes unlock availability depend on an additional later save rather than the clear event itself."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The repository library documents ZoneScene restart/transition behavior but does not record that progress-critical state changes made during runtime (such as newly unlocked difficulties) are not persisted until a later explicit auto-save or menu return save. That persistence nuance affected this feature review because the unlock is applied in memory during `onMonsterKilled()` and saved only if another save path runs afterward.",
+      "evidence": "src/scenes/ZoneScene.ts:2396-2402 mutates `completedDifficulties`; src/scenes/ZoneScene.ts:466 triggers autoSave only on scene create, while return-to-menu save occurs later at 2784-2791. .factory/library/architecture.md documents zone restarts but not this delayed persistence behavior."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill, and commit 597085748a3cbe571d65ec7e3c4bf1fc5b0430c0. Found one blocking issue: difficulty unlock availability depends on a later save because the menu only shows the selector when persisted `completedDifficulties` already exists, so the Normal→Nightmare/Hell progression is not reliably available immediately after clearing the prerequisite difficulty."
+}

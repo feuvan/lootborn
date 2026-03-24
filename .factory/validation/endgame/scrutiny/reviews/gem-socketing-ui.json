@@ -1,0 +1,39 @@
+{
+  "featureId": "gem-socketing-ui",
+  "reviewedAt": "2026-03-24T17:43:28.302229Z",
+  "commitId": "12aaa81",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature delivers the socket panel, insert/remove flows, Chinese UI text, tooltip display, and save migration support, but it does not fully satisfy the promised stat-flow behavior because DEX/LCK gem bonuses never enter combat calculations for crit/dodge/magic-find semantics.",
+    "issues": [
+      {
+        "file": "src/systems/CombatSystem.ts",
+        "line": 239,
+        "severity": "blocking",
+        "description": "Combat still computes dodge and crit from defender.stats.dex / attacker.stats.dex / attacker.stats.lck only, ignoring equipStats.dex and equipStats.lck. As a result, Emerald and Diamond socket bonuses do not flow through to dodge/crit despite the feature spec requiring gem stats to flow through getEquipmentStats() → CombatSystem."
+      },
+      {
+        "file": "src/systems/CombatSystem.ts",
+        "line": 262,
+        "severity": "non_blocking",
+        "description": "Physical and spell skill stat scaling still uses attacker.stats.str / attacker.stats.int rather than effective stats including equipStats.str / equipStats.int at the point of calculation. ZoneScene currently works around this by pre-baking some bonuses into Player.baseDamage/max mana via recalcDerived(), but the CombatSystem pipeline itself does not directly honor equipped primary stats, which is inconsistent with the commit/handoff claim that gem stats fully flow through getTypedEquipStats() → CombatSystem."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker used the ui-worker feature but also modified core combat/stat pipeline files and wrote pure-system tests; the feature transcript explicitly invoked systems-worker instead. The recorded feature metadata lists skillName as ui-worker, so the current skill split is blurry for UI features that also require stat/combat wiring.",
+      "evidence": "features.json lists gem-socketing-ui.skillName = ui-worker, but transcript skeleton for worker session deb5674f-bce1-45f2-a479-a2953212e930 shows Skill invocation of systems-worker and code changes in src/systems/CombatSystem.ts, src/entities/Player.ts, and src/systems/InventorySystem.ts."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Equipment primary-stat bonuses are partially applied in Player.recalcDerived() but CombatSystem still reads raw attacker.stats / defender.stats for crit and dodge. This split stat model is subtle and should be documented as an architectural caution because it is easy for workers to assume getTypedEquipStats() fully drives combat-derived primary stat behavior when it does not.",
+      "evidence": "src/entities/Player.ts recalculates baseDamage/max resources with equipStats primary stats, while src/systems/CombatSystem.ts lines 239-248 still read raw stats.dex/lck and line 262 reads raw stats.str/int."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, transcript skeleton, and relevant source/tests for gem-socketing-ui. The feature is close, but I marked it failed because Emerald/Diamond-derived DEX/LCK bonuses do not reach CombatSystem crit/dodge calculations, so the implemented stat flow is incomplete relative to the feature requirements. Report written to the requested scrutiny review path."
+}

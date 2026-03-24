@@ -1,0 +1,34 @@
+{
+  "featureId": "save-migration",
+  "reviewedAt": "2026-03-24T17:41:03Z",
+  "commitId": "c3cb86b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature mostly implements the requested v1→v2 migration and runtime position reset, but it misses one required safe default and includes a placeholder test that does not verify version stamping behavior.",
+    "issues": [
+      {
+        "file": "src/systems/SaveSystem.ts",
+        "line": 42,
+        "severity": "blocking",
+        "description": "`migrateV1toV2()` does not initialize the required `companions` field for v1 saves. The feature spec explicitly requires missing fields to default to an empty companions collection, but the migration only fills inventory/equipment/stash/quests/exploration/achievements/homestead/settings/difficulty/dialogue/lore-related fields. Loading a true v1 save will still leave `save.companions` absent."
+      },
+      {
+        "file": "src/__tests__/SaveMigration.test.ts",
+        "line": 416,
+        "severity": "non_blocking",
+        "description": "The `save() sets version to CURRENT_SAVE_VERSION (2)` test is only a placeholder: it constructs `new SaveSystem()` and asserts the constant equals 2, but never calls `save()` or verifies the object written to Dexie. This leaves the advertised save-stamping behavior untested despite the feature claiming coverage for it."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The worker discovered that save-position recovery is enforced at runtime in `ZoneScene.restoreFromSave()` using `campPositions` after map generation, which is an important save/load integration pattern not currently captured in `.factory/library/`.",
+      "evidence": "src/scenes/ZoneScene.ts:2847-2863 performs the unwalkable-position guard using `findNearestWalkablePosition(...)` and resets the player before continuing restore logic; `.factory/library/architecture.md` does not document this save-position safety pattern."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit `c3cb86b` and the worker transcript/handoff for `save-migration`. The implementation correctly adds versioning, migration, and runtime camp reset logic, but it fails the feature because `companions` is not initialized for migrated v1 saves as required. I also found one non-blocking test-quality gap: the version-stamping test is only a placeholder and does not exercise `SaveSystem.save()`."
+}
