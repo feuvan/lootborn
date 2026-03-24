@@ -39,4 +39,8 @@ export const GameEvents = {
   LORE_COLLECTED: 'lore:collected',
   RANDOM_EVENT_TRIGGERED: 'random_event:triggered',
   RANDOM_EVENT_RESOLVED: 'random_event:resolved',
+  HIDDEN_AREA_DISCOVERED: 'hidden_area:discovered',
+  STORY_DECORATION_INTERACT: 'story_decoration:interact',
+  SUBDUNGEON_ENTER: 'subdungeon:enter',
+  SUBDUNGEON_EXIT: 'subdungeon:exit',
 } as const;

@@ -522,4 +522,6 @@ export interface SaveData {
   miniBossDialogueSeen?: string[];
   /** Lore collectible IDs that have been discovered. */
   loreCollected?: string[];
+  /** Hidden area IDs that have been discovered and had rewards collected. */
+  discoveredHiddenAreas?: string[];
 }

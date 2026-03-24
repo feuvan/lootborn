@@ -38,7 +38,8 @@ import { LoreByZone } from '../data/loreCollectibles';
 import type { LoreEntry } from '../data/loreCollectibles';
 import { NPCDefinitions } from '../data/npcs';
 import { AllQuests } from '../data/quests/all_quests';
-import type { MapData, ClassDefinition, ItemInstance, SaveData } from '../data/types';
+import type { MapData, ClassDefinition, ItemInstance, SaveData, HiddenArea, SubDungeonEntrance, StoryDecoration, SubDungeonMapData } from '../data/types';
+import { AllSubDungeons, SubDungeonMiniBosses } from '../data/subDungeons';
 import type { UIScene } from './UIScene';
 
 const TILE_KEYS = ['tile_grass', 'tile_dirt', 'tile_stone', 'tile_water', 'tile_wall', 'tile_camp', 'tile_camp_wall'];
@@ -134,6 +135,21 @@ export class ZoneScene extends Phaser.Scene {
   private targetIndicator: Phaser.GameObjects.Ellipse | null = null;
   private currentTargetId: string | null = null;
   private ambientDustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  // ─── Zone Content Wiring ───────────────────────────────────────────────
+  /** Hidden areas that have been discovered in the current session (persisted via save). */
+  private discoveredHiddenAreas: Set<string> = new Set();
+  /** Sprites for hidden area reward chests/gold piles that have been revealed. */
+  private hiddenAreaSprites: { sprite: Phaser.GameObjects.Container; area: HiddenArea; rewardIndex: number; col: number; row: number }[] = [];
+  /** Sub-dungeon entrance portal sprites. */
+  private subDungeonEntranceSprites: { sprite: Phaser.GameObjects.Container; entrance: SubDungeonEntrance; col: number; row: number }[] = [];
+  /** Story decoration sprites with interaction tooltips. */
+  private storyDecorationSprites: { sprite: Phaser.GameObjects.Container; decoration: StoryDecoration; col: number; row: number }[] = [];
+  /** Active tooltip for story decorations. */
+  private storyDecorationTooltip: Phaser.GameObjects.Container | null = null;
+  /** Whether we are currently inside a sub-dungeon. */
+  private isInSubDungeon = false;
+  /** The parent zone info for returning from a sub-dungeon. */
+  private parentZoneInfo: { mapId: string; returnCol: number; returnRow: number } | null = null;
   private readonly contextMenuHandler = (e: Event): void => {
     e.preventDefault();
   };
@@ -142,15 +158,25 @@ export class ZoneScene extends Phaser.Scene {
     super({ key: 'ZoneScene' });
   }
 
-  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any }): void {
+  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[] }): void {
     this.currentMapId = data.mapId || 'emerald_plains';
-    if (!AllMaps[this.currentMapId]) this.currentMapId = 'emerald_plains';
-    this.mapData = AllMaps[this.currentMapId];
+    this.isInSubDungeon = !!data.subDungeon;
+    this.parentZoneInfo = data.parentZoneInfo ?? null;
+    if (data.subDungeon) {
+      // For sub-dungeons, we generate a simple map on the fly
+      this.mapData = this.generateSubDungeonMap(data.subDungeon);
+    } else {
+      if (!AllMaps[this.currentMapId]) this.currentMapId = 'emerald_plains';
+      this.mapData = AllMaps[this.currentMapId];
+    }
     this.campPositions = this.mapData.camps.map(c => ({ col: c.col, row: c.row }));
     this._pendingSaveData = data.saveData ?? null;
+    if (data.discoveredHiddenAreas) {
+      this.discoveredHiddenAreas = new Set(data.discoveredHiddenAreas);
+    }
   }
 
-  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[] }): void {
+  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[]; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[] }): void {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     // `scene.restart()` reuses the same scene instance, so transient guards must
     // be cleared explicitly when entering a new zone.
@@ -162,6 +188,11 @@ export class ZoneScene extends Phaser.Scene {
     this.lootDrops = [];
     this.potionDrops = [];
     this.statusTintApplied.clear();
+    // Clean up zone content wiring fields
+    this.hiddenAreaSprites = [];
+    this.subDungeonEntranceSprites = [];
+    this.storyDecorationSprites = [];
+    this.storyDecorationTooltip = null;
 
     this.combatSystem = new CombatSystem();
     this.lootSystem = new LootSystem();
@@ -235,9 +266,12 @@ export class ZoneScene extends Phaser.Scene {
 
     this.spawnMonsters();
     this.spawnNPCs();
+    this.spawnFieldNPCs();
     this.spawnRarePets();
     this.spawnMiniBoss();
     this.spawnLoreCollectibles();
+    this.spawnSubDungeonEntrances();
+    this.spawnStoryDecorations();
     this.spawnMercenarySprite();
     this.spawnPetSprite();
     this.buildCampDecorations();
@@ -379,6 +413,20 @@ export class ZoneScene extends Phaser.Scene {
     const npc = this.findNPCAt(tile.col, tile.row);
     if (npc && npc.isNearPlayer(this.player.tileCol, this.player.tileRow, 3)) {
       this.interactNPC(npc);
+      return;
+    }
+
+    // Sub-dungeon entrance interaction
+    const subEntrance = this.findSubDungeonEntranceAt(tile.col, tile.row);
+    if (subEntrance && euclideanDistance(this.player.tileCol, this.player.tileRow, subEntrance.col, subEntrance.row) <= 3) {
+      this.enterSubDungeon(subEntrance);
+      return;
+    }
+
+    // Hidden area reward chest interaction
+    const hiddenChest = this.findHiddenAreaChestAt(tile.col, tile.row);
+    if (hiddenChest && euclideanDistance(this.player.tileCol, this.player.tileRow, hiddenChest.col, hiddenChest.row) <= 2) {
+      this.collectHiddenAreaReward(hiddenChest);
       return;
     }
 
@@ -607,6 +655,9 @@ export class ZoneScene extends Phaser.Scene {
     this.checkExitProximity();
     this.checkRarePetPickup();
     this.checkLorePickup();
+    this.checkHiddenAreaDiscovery();
+    this.checkStoryDecorationProximity();
+    this.checkSubDungeonEntranceProximity();
 
     // Throttled viewport tile update
     if (time - this.lastTileUpdate > 100) {
@@ -2396,6 +2447,7 @@ export class ZoneScene extends Phaser.Scene {
         mapId: targetMap,
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
         loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
         playerStats: {
           level: this.player.level,
           exp: this.player.exp,
@@ -2425,7 +2477,11 @@ export class ZoneScene extends Phaser.Scene {
     for (const exit of this.mapData.exits) {
       const dist = euclideanDistance(this.player.tileCol, this.player.tileRow, exit.col, exit.row);
       if (dist < 1.5) {
-        this.changeZone(exit.targetMap, exit.targetCol, exit.targetRow);
+        if (this.isInSubDungeon) {
+          this.exitSubDungeon();
+        } else {
+          this.changeZone(exit.targetMap, exit.targetCol, exit.targetRow);
+        }
         return;
       }
     }
@@ -2470,6 +2526,7 @@ export class ZoneScene extends Phaser.Scene {
         dialogueState: this.getDialogueState(),
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
         loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
       });
     } catch (_e) { /* silent fail */ }
   }
@@ -2544,6 +2601,11 @@ export class ZoneScene extends Phaser.Scene {
     // 11. Lore collectibles collected
     if (save.loreCollected) {
       this.loreCollected = new Set(save.loreCollected);
+    }
+
+    // 12. Discovered hidden areas
+    if ((save as any).discoveredHiddenAreas) {
+      this.discoveredHiddenAreas = new Set((save as any).discoveredHiddenAreas);
     }
   }
 
@@ -2711,6 +2773,32 @@ export class ZoneScene extends Phaser.Scene {
   /** Spawn the zone's mini-boss at its fixed position. */
   private spawnMiniBoss(): void {
     this.miniBossMonster = null;
+
+    // Sub-dungeon mini-boss
+    if (this.isInSubDungeon) {
+      const subDungeonId = this.currentMapId;
+      const subDungeonData = AllSubDungeons[subDungeonId];
+      if (subDungeonData) {
+        const bossId = subDungeonData.miniBoss.monsterId;
+        const bossDef = SubDungeonMiniBosses[bossId];
+        if (bossDef) {
+          const c = subDungeonData.miniBoss.col;
+          const r = subDungeonData.miniBoss.row;
+          if (c >= 0 && c < this.mapData.cols && r >= 0 && r < this.mapData.rows) {
+            const monster = new Monster(this, bossDef, c, r);
+            const affixes = this.eliteAffixSystem.rollAffixes(subDungeonData.parentZone, true);
+            if (affixes.length > 0) {
+              monster.applyEliteAffixes(affixes, this.eliteAffixSystem);
+            }
+            this.monsters.push(monster);
+            this.miniBossMonster = monster;
+          }
+        }
+      }
+      return;
+    }
+
+    // Regular zone mini-boss
     const miniBossDef = MiniBossByZone[this.currentMapId];
     const spawnPos = MiniBossSpawns[this.currentMapId];
     if (!miniBossDef || !spawnPos) return;
@@ -2945,6 +3033,595 @@ export class ZoneScene extends Phaser.Scene {
   /** Get lore collected IDs — used by UIScene for lore log. */
   getLoreCollected(): Set<string> {
     return this.loreCollected;
+  }
+
+  // ─── Zone Content Wiring: Field NPCs ─────────────────────────────────
+
+  /** Spawn field NPCs defined in mapData.fieldNpcs at their map positions. */
+  private spawnFieldNPCs(): void {
+    if (!this.mapData.fieldNpcs) return;
+    for (const fieldNpc of this.mapData.fieldNpcs) {
+      const def = NPCDefinitions[fieldNpc.npcId];
+      if (!def) continue;
+      const npc = new NPC(this, def, fieldNpc.col, fieldNpc.row);
+      this.npcs.push(npc);
+    }
+  }
+
+  // ─── Zone Content Wiring: Hidden Areas ───────────────────────────────
+
+  /** Check if player has walked near any hidden area and reveal rewards. */
+  private checkHiddenAreaDiscovery(): void {
+    if (!this.mapData.hiddenAreas) return;
+    for (const area of this.mapData.hiddenAreas) {
+      if (this.discoveredHiddenAreas.has(area.id)) continue;
+      const dist = euclideanDistance(this.player.tileCol, this.player.tileRow, area.col, area.row);
+      if (dist <= area.radius) {
+        this.discoverHiddenArea(area);
+      }
+    }
+  }
+
+  /** Reveal a hidden area — show discovery text, spawn reward sprites. */
+  private discoverHiddenArea(area: HiddenArea): void {
+    this.discoveredHiddenAreas.add(area.id);
+
+    // Emit discovery event
+    EventBus.emit(GameEvents.HIDDEN_AREA_DISCOVERED, { area });
+
+    // Show discovery floating text
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: `发现隐藏区域: ${area.name}`,
+      type: 'system',
+    });
+
+    // Show discovery text as banner
+    const dp = this.screenPos(0.5, 0.3);
+    const discoveryBanner = this.add.text(dp.x, dp.y, area.discoveryText, {
+      fontSize: fs(14),
+      color: '#FFD700',
+      fontFamily: '"Cinzel", serif',
+      stroke: '#000000',
+      strokeThickness: Math.round(3 * DPR),
+      wordWrap: { width: Math.round(400 * DPR) },
+      align: 'center',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_FLOATING_TEXT_DEPTH).setAlpha(0);
+    this.tweens.add({
+      targets: discoveryBanner, alpha: 1, duration: 300, ease: 'Power2',
+      hold: 3000,
+      yoyo: true,
+      onComplete: () => discoveryBanner.destroy(),
+    });
+
+    // Spawn reward sprites
+    for (let i = 0; i < area.rewards.length; i++) {
+      const reward = area.rewards[i];
+      this.spawnHiddenAreaRewardSprite(area, reward, i);
+    }
+  }
+
+  /** Spawn a reward sprite (chest or gold pile) for a hidden area reward. */
+  private spawnHiddenAreaRewardSprite(area: HiddenArea, reward: import('../data/types').HiddenAreaReward, rewardIndex: number): void {
+    const { x: worldX, y: worldY } = cartToIso(reward.col, reward.row);
+    const container = this.add.container(worldX, worldY);
+    container.setDepth(worldY + 100);
+
+    if (reward.type === 'chest') {
+      // Treasure chest sprite (golden rectangle)
+      const chest = this.add.rectangle(0, -12, Math.round(20 * DPR), Math.round(14 * DPR), 0xDAA520);
+      chest.setStrokeStyle(Math.round(2 * DPR), 0x8B6914);
+      container.add(chest);
+      // Chest lid
+      const lid = this.add.rectangle(0, -20, Math.round(22 * DPR), Math.round(6 * DPR), 0xCD853F);
+      lid.setStrokeStyle(Math.round(1 * DPR), 0x8B6914);
+      container.add(lid);
+      // Glow effect
+      const glow = this.add.ellipse(0, 0, Math.round(36 * DPR), Math.round(18 * DPR), 0xFFD700, 0.3);
+      container.add(glow);
+      this.tweens.add({ targets: glow, alpha: 0.1, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    } else if (reward.type === 'gold_pile') {
+      // Gold pile (stacked gold circles)
+      for (let j = 0; j < 5; j++) {
+        const coin = this.add.ellipse(
+          randomInt(-6, 6) * DPR, (-8 - j * 3) * DPR,
+          Math.round(8 * DPR), Math.round(6 * DPR), 0xFFD700
+        );
+        coin.setStrokeStyle(Math.round(1 * DPR), 0xDAA520);
+        container.add(coin);
+      }
+    } else if (reward.type === 'lore') {
+      // Lore scroll visual
+      const scroll = this.add.rectangle(0, -12, Math.round(14 * DPR), Math.round(18 * DPR), 0xDEB887);
+      scroll.setStrokeStyle(Math.round(1 * DPR), 0x8B7355);
+      container.add(scroll);
+    }
+
+    // Interactable label
+    const label = this.add.text(0, -30 * DPR, reward.type === 'chest' ? '宝箱' : reward.type === 'gold_pile' ? '金币堆' : '卷轴', {
+      fontSize: fs(9),
+      color: '#FFD700',
+      fontFamily: 'sans-serif',
+      stroke: '#000000',
+      strokeThickness: Math.round(2 * DPR),
+    }).setOrigin(0.5);
+    container.add(label);
+
+    container.setSize(Math.round(40 * DPR), Math.round(40 * DPR));
+    container.setInteractive();
+
+    this.hiddenAreaSprites.push({ sprite: container, area, rewardIndex, col: reward.col, row: reward.row });
+  }
+
+  /** Find a hidden area chest near a given tile coordinate. */
+  private findHiddenAreaChestAt(col: number, row: number): { sprite: Phaser.GameObjects.Container; area: HiddenArea; rewardIndex: number; col: number; row: number } | null {
+    for (const hs of this.hiddenAreaSprites) {
+      if (Math.abs(hs.col - col) < 1.5 && Math.abs(hs.row - row) < 1.5) return hs;
+    }
+    return null;
+  }
+
+  /** Collect a hidden area reward — grant items/gold/exp and destroy the sprite. */
+  private collectHiddenAreaReward(entry: { sprite: Phaser.GameObjects.Container; area: HiddenArea; rewardIndex: number; col: number; row: number }): void {
+    const reward = entry.area.rewards[entry.rewardIndex];
+    if (!reward) return;
+
+    if (reward.type === 'chest') {
+      // Generate a loot drop based on quality
+      const quality = reward.value as string || 'magic';
+      const item = this.lootSystem.generateEquipment(
+        this.mapData.levelRange[1],
+        quality === 'legendary' ? 'legendary' : quality === 'rare' ? 'rare' : 'magic',
+      );
+      if (item) {
+        this.inventorySystem.addItem(item);
+        EventBus.emit(GameEvents.LOG_MESSAGE, {
+          text: `从宝箱中获得: ${item.name}`,
+          type: 'loot',
+        });
+        EventBus.emit(GameEvents.INVENTORY_CHANGED, {});
+      }
+    } else if (reward.type === 'gold_pile') {
+      const goldAmount = parseInt(reward.value || '100', 10);
+      this.player.gold += goldAmount;
+      EventBus.emit(GameEvents.LOG_MESSAGE, {
+        text: `获得 ${goldAmount} 金币`,
+        type: 'loot',
+      });
+    } else if (reward.type === 'lore') {
+      EventBus.emit(GameEvents.LOG_MESSAGE, {
+        text: `发现远古卷轴`,
+        type: 'system',
+      });
+    }
+
+    // Animate and destroy
+    this.tweens.add({
+      targets: entry.sprite,
+      alpha: 0, scaleX: 1.3, scaleY: 1.3,
+      duration: 400,
+      onComplete: () => { entry.sprite.destroy(); },
+    });
+
+    const idx = this.hiddenAreaSprites.indexOf(entry);
+    if (idx !== -1) this.hiddenAreaSprites.splice(idx, 1);
+  }
+
+  // ─── Zone Content Wiring: Sub-Dungeon Entrances ──────────────────────
+
+  /** Spawn sub-dungeon entrance portal sprites. */
+  private spawnSubDungeonEntrances(): void {
+    if (!this.mapData.subDungeonEntrances || this.isInSubDungeon) return;
+    for (const entrance of this.mapData.subDungeonEntrances) {
+      const { x: worldX, y: worldY } = cartToIso(entrance.col, entrance.row);
+      const container = this.add.container(worldX, worldY);
+      container.setDepth(worldY + 100);
+
+      // Portal base (dark ellipse)
+      const portalBase = this.add.ellipse(0, 0, Math.round(32 * DPR), Math.round(16 * DPR), 0x220044, 0.7);
+      container.add(portalBase);
+
+      // Portal ring (purple glowing ring)
+      const portalRing = this.add.ellipse(0, -16 * DPR, Math.round(28 * DPR), Math.round(36 * DPR));
+      portalRing.setStrokeStyle(Math.round(3 * DPR), 0x9933FF);
+      portalRing.setFillStyle(0x6600CC, 0.3);
+      container.add(portalRing);
+
+      // Inner glow
+      const innerGlow = this.add.ellipse(0, -16 * DPR, Math.round(18 * DPR), Math.round(24 * DPR), 0xCC66FF, 0.4);
+      container.add(innerGlow);
+
+      // Pulsing animation
+      this.tweens.add({ targets: innerGlow, alpha: 0.15, scaleX: 0.8, scaleY: 0.8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: portalRing, alpha: 0.6, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+      // Label
+      const label = this.add.text(0, -40 * DPR, entrance.name, {
+        fontSize: fs(10),
+        color: '#CC88FF',
+        fontFamily: 'sans-serif',
+        stroke: '#000000',
+        strokeThickness: Math.round(2 * DPR),
+      }).setOrigin(0.5);
+      container.add(label);
+
+      container.setSize(Math.round(40 * DPR), Math.round(50 * DPR));
+      container.setInteractive();
+
+      this.subDungeonEntranceSprites.push({ sprite: container, entrance, col: entrance.col, row: entrance.row });
+    }
+  }
+
+  /** Find a sub-dungeon entrance near a tile position. */
+  private findSubDungeonEntranceAt(col: number, row: number): SubDungeonEntrance | null {
+    for (const se of this.subDungeonEntranceSprites) {
+      if (Math.abs(se.col - col) < 1.5 && Math.abs(se.row - row) < 1.5) return se.entrance;
+    }
+    return null;
+  }
+
+  /** Check proximity to sub-dungeon entrances for auto-entry hint. */
+  private checkSubDungeonEntranceProximity(): void {
+    // No auto-entry — entrance is click-only. This is a placeholder for proximity visual cues.
+    // When player is near, we could show a tooltip, but the portal glow + label are already visible.
+  }
+
+  /** Enter a sub-dungeon from the current zone. */
+  private enterSubDungeon(entrance: SubDungeonEntrance): void {
+    const subDungeonData = AllSubDungeons[entrance.targetSubDungeon];
+    if (!subDungeonData) {
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '此入口暂时无法进入', type: 'system' });
+      return;
+    }
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.autoSave();
+
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: `进入${subDungeonData.name}...`,
+      type: 'system',
+    });
+    EventBus.emit(GameEvents.SUBDUNGEON_ENTER, { dungeonId: subDungeonData.id, name: subDungeonData.name });
+
+    const doRestart = () => {
+      this.scene.restart({
+        classId: this.player.classData.id,
+        mapId: subDungeonData.id,
+        subDungeon: subDungeonData,
+        parentZoneInfo: {
+          mapId: this.currentMapId,
+          returnCol: entrance.col,
+          returnRow: entrance.row,
+        },
+        miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+        loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+        playerStats: {
+          level: this.player.level,
+          exp: this.player.exp,
+          gold: this.player.gold,
+          hp: this.player.hp,
+          mana: this.player.mana,
+          stats: { ...this.player.stats },
+          freeStatPoints: this.player.freeStatPoints,
+          freeSkillPoints: this.player.freeSkillPoints,
+          skillLevels: Object.fromEntries(this.player.skillLevels),
+          buffs: [...this.player.buffs],
+          autoCombat: this.player.autoCombat,
+          autoLootMode: this.player.autoLootMode,
+        },
+      });
+    };
+
+    if (this.vfx) {
+      this.vfx.zoneTransition(doRestart);
+    } else {
+      doRestart();
+    }
+  }
+
+  /** Exit the current sub-dungeon and return to the parent zone. */
+  private exitSubDungeon(): void {
+    if (!this.parentZoneInfo || this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: '离开副本，返回主地图...',
+      type: 'system',
+    });
+    EventBus.emit(GameEvents.SUBDUNGEON_EXIT, { mapId: this.parentZoneInfo.mapId });
+
+    const parentInfo = this.parentZoneInfo;
+    const doRestart = () => {
+      this.scene.restart({
+        classId: this.player.classData.id,
+        mapId: parentInfo.mapId,
+        miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+        loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+        playerStats: {
+          level: this.player.level,
+          exp: this.player.exp,
+          gold: this.player.gold,
+          hp: this.player.hp,
+          mana: this.player.mana,
+          stats: { ...this.player.stats },
+          freeStatPoints: this.player.freeStatPoints,
+          freeSkillPoints: this.player.freeSkillPoints,
+          skillLevels: Object.fromEntries(this.player.skillLevels),
+          buffs: [...this.player.buffs],
+          autoCombat: this.player.autoCombat,
+          autoLootMode: this.player.autoLootMode,
+        },
+      });
+    };
+
+    if (this.vfx) {
+      this.vfx.zoneTransition(doRestart);
+    } else {
+      doRestart();
+    }
+  }
+
+  /** Generate a MapData from a SubDungeonMapData definition. */
+  private generateSubDungeonMap(subDungeon: SubDungeonMapData): MapData {
+    const { cols, rows, seed } = subDungeon;
+    // Generate simple tile grid with walls on borders, floor inside
+    const tiles: number[][] = [];
+    const collisions: boolean[][] = [];
+    for (let r = 0; r < rows; r++) {
+      const tileRow: number[] = [];
+      const collRow: boolean[] = [];
+      for (let c = 0; c < cols; c++) {
+        if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
+          tileRow.push(4); // wall
+          collRow.push(false);
+        } else {
+          // Use seed-based pseudo-random for variation
+          const hash = ((c * 374761393 + r * 668265263 + seed) >>> 0) % 100;
+          if (hash < 10) {
+            tileRow.push(2); // stone
+          } else if (hash < 15) {
+            tileRow.push(1); // dirt
+          } else {
+            tileRow.push(2); // mostly stone for dungeons
+          }
+          collRow.push(true);
+        }
+      }
+      tiles.push(tileRow);
+      collisions.push(collRow);
+    }
+
+    // Add some random walls for interior structure
+    const rng = (x: number, y: number) => ((x * 374761393 + y * 668265263 + seed * 7) >>> 0) % 100;
+    for (let r = 3; r < rows - 3; r++) {
+      for (let c = 3; c < cols - 3; c++) {
+        if (rng(c, r) < 8) {
+          tiles[r][c] = 4;
+          collisions[r][c] = false;
+        }
+      }
+    }
+
+    // Ensure playerStart and exit are walkable
+    const ps = subDungeon.playerStart;
+    tiles[ps.row][ps.col] = 2;
+    collisions[ps.row][ps.col] = true;
+    const ex = subDungeon.exit;
+    tiles[ex.row][ex.col] = 2;
+    collisions[ex.row][ex.col] = true;
+
+    // Ensure spawn positions and mini-boss positions are walkable
+    for (const spawn of subDungeon.spawns) {
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const sr = spawn.row + dr;
+          const sc = spawn.col + dc;
+          if (sr > 0 && sr < rows - 1 && sc > 0 && sc < cols - 1) {
+            if (tiles[sr][sc] === 4) {
+              tiles[sr][sc] = 2;
+              collisions[sr][sc] = true;
+            }
+          }
+        }
+      }
+    }
+    const mb = subDungeon.miniBoss;
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const sr = mb.row + dr;
+        const sc = mb.col + dc;
+        if (sr > 0 && sr < rows - 1 && sc > 0 && sc < cols - 1) {
+          if (tiles[sr][sc] === 4) {
+            tiles[sr][sc] = 2;
+            collisions[sr][sc] = true;
+          }
+        }
+      }
+    }
+
+    // Create MapData structure
+    const mapData: MapData = {
+      id: subDungeon.id,
+      name: subDungeon.name,
+      cols,
+      rows,
+      tiles,
+      collisions,
+      spawns: subDungeon.spawns.map(s => ({ ...s })),
+      camps: [], // No camps in sub-dungeons
+      playerStart: { ...subDungeon.playerStart },
+      exits: [{
+        col: subDungeon.exit.col,
+        row: subDungeon.exit.row,
+        targetMap: subDungeon.parentZone,
+        targetCol: subDungeon.exit.returnCol,
+        targetRow: subDungeon.exit.returnRow,
+      }],
+      levelRange: [...subDungeon.levelRange] as [number, number],
+      bgColor: subDungeon.bgColor,
+      theme: subDungeon.theme,
+      seed: subDungeon.seed,
+    };
+
+    return mapData;
+  }
+
+  // ─── Zone Content Wiring: Story Decorations ──────────────────────────
+
+  /** Spawn story decoration sprites at their map positions. */
+  private spawnStoryDecorations(): void {
+    if (!this.mapData.storyDecorations) return;
+    for (const decoration of this.mapData.storyDecorations) {
+      const { x: worldX, y: worldY } = cartToIso(decoration.col, decoration.row);
+      const container = this.add.container(worldX, worldY);
+      container.setDepth(worldY + 50);
+
+      // Try to use decoration sprite by type
+      const texKey = `decor_${decoration.spriteType}`;
+      SpriteGenerator.ensureDecoration(this, decoration.spriteType);
+      if (this.textures.exists(texKey)) {
+        const sprite = this.add.image(0, -8, texKey).setScale(1 / TEXTURE_SCALE);
+        container.add(sprite);
+      } else {
+        // Fallback: colored rectangle
+        const color = this.getStoryDecorationColor(decoration.spriteType);
+        const rect = this.add.rectangle(0, -10, Math.round(18 * DPR), Math.round(22 * DPR), color, 0.8);
+        rect.setStrokeStyle(Math.round(1 * DPR), 0x444444);
+        container.add(rect);
+      }
+
+      // Name label
+      const label = this.add.text(0, -28 * DPR, decoration.name, {
+        fontSize: fs(8),
+        color: '#CCCCAA',
+        fontFamily: 'sans-serif',
+        stroke: '#000000',
+        strokeThickness: Math.round(2 * DPR),
+      }).setOrigin(0.5).setAlpha(0);
+      container.add(label);
+
+      // Interaction indicator (small sparkle)
+      const sparkle = this.add.ellipse(8 * DPR, -20 * DPR, Math.round(4 * DPR), Math.round(4 * DPR), 0xFFFFCC, 0.6);
+      container.add(sparkle);
+      this.tweens.add({ targets: sparkle, alpha: 0.2, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+      this.storyDecorationSprites.push({ sprite: container, decoration, col: decoration.col, row: decoration.row });
+    }
+  }
+
+  /** Get a fallback color for story decoration sprites based on type. */
+  private getStoryDecorationColor(spriteType: string): number {
+    switch (spriteType) {
+      case 'ruins': return 0x888877;
+      case 'skeletal_remains': return 0xCCBBAA;
+      case 'ancient_statue': return 0xAABBCC;
+      case 'broken_altar': return 0x998877;
+      case 'war_banner': return 0xBB4444;
+      case 'charred_tree': return 0x554433;
+      case 'collapsed_pillar': return 0xBBBBAA;
+      case 'ritual_circle': return 0x7744AA;
+      case 'frozen_corpse': return 0x88BBDD;
+      case 'sand_buried_structure': return 0xCCBB88;
+      default: return 0x999999;
+    }
+  }
+
+  /** Check proximity to story decorations — show/hide tooltip. */
+  private checkStoryDecorationProximity(): void {
+    let closestDecor: { sprite: Phaser.GameObjects.Container; decoration: StoryDecoration; col: number; row: number } | null = null;
+    let closestDist = Infinity;
+
+    for (const sd of this.storyDecorationSprites) {
+      const dist = euclideanDistance(this.player.tileCol, this.player.tileRow, sd.col, sd.row);
+      if (dist <= 3 && dist < closestDist) {
+        closestDist = dist;
+        closestDecor = sd;
+      }
+    }
+
+    if (closestDecor) {
+      // Show name label
+      const label = closestDecor.sprite.getAt(1) as Phaser.GameObjects.Text;
+      if (label && label.alpha < 1) label.setAlpha(1);
+
+      // Show tooltip if close enough
+      if (closestDist <= 2) {
+        this.showStoryDecorationTooltip(closestDecor.decoration, closestDecor.sprite.x, closestDecor.sprite.y);
+      } else {
+        this.hideStoryDecorationTooltip();
+      }
+    } else {
+      this.hideStoryDecorationTooltip();
+      // Hide all name labels
+      for (const sd of this.storyDecorationSprites) {
+        const label = sd.sprite.getAt(1) as Phaser.GameObjects.Text;
+        if (label && label.alpha > 0) label.setAlpha(0);
+      }
+    }
+  }
+
+  /** Show a tooltip with the story decoration's description text. */
+  private showStoryDecorationTooltip(decoration: StoryDecoration, worldX: number, worldY: number): void {
+    // Skip if already showing tooltip for same decoration
+    if (this.storyDecorationTooltip && (this.storyDecorationTooltip.getData('decorId') === decoration.id)) return;
+    this.hideStoryDecorationTooltip();
+
+    const container = this.add.container(worldX, worldY - 50 * DPR);
+    container.setDepth(ZONE_FLOATING_TEXT_DEPTH);
+    container.setData('decorId', decoration.id);
+
+    const tooltipWidth = Math.round(280 * DPR);
+    const padding = Math.round(8 * DPR);
+
+    // Title
+    const title = this.add.text(0, 0, decoration.name, {
+      fontSize: fs(11),
+      color: '#FFD700',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold',
+      wordWrap: { width: tooltipWidth - padding * 2 },
+    }).setOrigin(0.5, 0);
+    container.add(title);
+
+    // Description
+    const desc = this.add.text(0, title.height + Math.round(4 * DPR), decoration.description, {
+      fontSize: fs(9),
+      color: '#DDDDCC',
+      fontFamily: 'sans-serif',
+      wordWrap: { width: tooltipWidth - padding * 2 },
+      lineSpacing: Math.round(2 * DPR),
+    }).setOrigin(0.5, 0);
+    container.add(desc);
+
+    // Background
+    const totalHeight = title.height + desc.height + Math.round(8 * DPR) + padding * 2;
+    const bg = this.add.rectangle(0, -padding, tooltipWidth, totalHeight, 0x1a1a2e, 0.9);
+    bg.setStrokeStyle(Math.round(1 * DPR), 0x555555);
+    bg.setOrigin(0.5, 0);
+    container.addAt(bg, 0);
+
+    // Reposition text relative to background
+    title.setY(-padding + Math.round(4 * DPR));
+    desc.setY(title.y + title.height + Math.round(4 * DPR));
+
+    this.storyDecorationTooltip = container;
+
+    // Emit interaction event
+    EventBus.emit(GameEvents.STORY_DECORATION_INTERACT, { decoration });
+  }
+
+  /** Hide the story decoration tooltip. */
+  private hideStoryDecorationTooltip(): void {
+    if (this.storyDecorationTooltip) {
+      this.storyDecorationTooltip.destroy();
+      this.storyDecorationTooltip = null;
+    }
+  }
+
+  /** Get discovered hidden area IDs — for save data. */
+  getDiscoveredHiddenAreas(): Set<string> {
+    return this.discoveredHiddenAreas;
   }
 
   private respawnMonster(dead: Monster): void {
@@ -4037,6 +4714,14 @@ export class ZoneScene extends Phaser.Scene {
       ls.sprite.destroy();
     }
     this.loreSprites = [];
+    // Clean up zone content wiring sprites
+    for (const hs of this.hiddenAreaSprites) hs.sprite.destroy();
+    this.hiddenAreaSprites = [];
+    for (const se of this.subDungeonEntranceSprites) se.sprite.destroy();
+    this.subDungeonEntranceSprites = [];
+    for (const sd of this.storyDecorationSprites) sd.sprite.destroy();
+    this.storyDecorationSprites = [];
+    this.hideStoryDecorationTooltip();
     this.miniBossMonster = null;
     this.miniBossDialogueActive = false;
     this.input.off('pointerdown', this.handlePointerDown, this);
