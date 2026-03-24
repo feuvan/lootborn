@@ -1802,6 +1802,16 @@ export class UIScene extends Phaser.Scene {
             player.addExp(choice.reward.exp);
             EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得 ${choice.reward.exp} 经验`, type: 'loot' });
           }
+          if (choice.reward.items && this.zone) {
+            for (const itemId of choice.reward.items) {
+              const item = this.zone.lootSystem.createItem(itemId, player?.level ?? 1, 'normal');
+              if (item) {
+                item.identified = true;
+                this.zone.inventorySystem.addItem(item);
+                EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得物品: ${item.name}`, type: 'loot' });
+              }
+            }
+          }
         }
 
         // Navigate to next node

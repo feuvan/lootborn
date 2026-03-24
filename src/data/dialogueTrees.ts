@@ -37,9 +37,9 @@ export const elderDialogueTree: DialogueTree = {
     },
     reward_ask: {
       id: 'reward_ask',
-      text: '村庄虽然不富裕，但我们会尽力回报帮助我们的人。完成任务后你会获得金币和经验奖励，表现出色的话还有特殊物品。',
+      text: '村庄虽然不富裕，但我们会尽力回报帮助我们的人。完成任务后你会获得金币和经验奖励，表现出色的话还有特殊物品。这些是提前给你的补给。',
       choices: [
-        { text: '好的，我来帮忙', nextNodeId: 'help' },
+        { text: '好的，我来帮忙（获得补给）', nextNodeId: 'help', reward: { gold: 30, exp: 50 } },
         { text: '我再想想', nextNodeId: 'farewell' },
       ],
     },
@@ -127,9 +127,9 @@ export const scoutDialogueTree: DialogueTree = {
     },
     explore_first: {
       id: 'explore_first',
-      text: '谨慎是好事。森林分为几个区域——北部密林、废弃墓地和古老遗迹。每个地方都可能有线索。',
+      text: '谨慎是好事。森林分为几个区域——北部密林、废弃墓地和古老遗迹。每个地方都可能有线索。拿着这个，在森林里也许用得上。',
       choices: [
-        { text: '我去侦察各个区域', nextNodeId: 'accept_explore', questTrigger: 'q_explore_forest' },
+        { text: '谢谢补给，我去侦察各个区域', nextNodeId: 'accept_explore', questTrigger: 'q_explore_forest', reward: { gold: 50, exp: 80 } },
         { text: '哪个区域最危险？', nextNodeId: 'dangerous_area' },
       ],
     },
@@ -234,9 +234,9 @@ export const dwarfDialogueTree: DialogueTree = {
     },
     treasure: {
       id: 'treasure',
-      text: '我族的宝藏不是金银珠宝，而是秘银——一种比钢铁更坚韧、更轻巧的金属。如果你能帮我找回秘银矿脉，我可以为你锻造一件武器。',
+      text: '我族的宝藏不是金银珠宝，而是秘银——一种比钢铁更坚韧、更轻巧的金属。如果你能帮我找回秘银矿脉，我可以为你锻造一件武器。先收下这些金币作为诚意。',
       choices: [
-        { text: '听起来不错，我帮你', nextNodeId: 'reclaim' },
+        { text: '听起来不错，我帮你（获得金币）', nextNodeId: 'reclaim', reward: { gold: 100, exp: 120 } },
         { text: '还有什么值钱的东西？', nextNodeId: 'more_treasure' },
       ],
     },
@@ -356,9 +356,9 @@ export const nomadDialogueTree: DialogueTree = {
     },
     simple_tasks: {
       id: 'simple_tasks',
-      text: '当然。沙漠里水源稀缺，如果你能击败一些怪物搜集水囊，那就帮了大忙了。另外蝎毒也是珍贵的材料。',
+      text: '当然。沙漠里水源稀缺，如果你能击败一些怪物搜集水囊，那就帮了大忙了。另外蝎毒也是珍贵的材料。拿着这些沙漠补给上路吧。',
       choices: [
-        { text: '我去收集水源', nextNodeId: 'accept_water', questTrigger: 'q_water_supply' },
+        { text: '我去收集水源（获得补给）', nextNodeId: 'accept_water', questTrigger: 'q_water_supply', reward: { gold: 80, exp: 150 } },
         { text: '我去采集蝎毒', nextNodeId: 'accept_venom', questTrigger: 'q_scorpion_venom' },
         { text: '还是先了解沙漠情况吧', nextNodeId: 'accept_explore', questTrigger: 'q_explore_desert' },
       ],
@@ -480,9 +480,9 @@ export const wardenDialogueTree: DialogueTree = {
     },
     prepare: {
       id: 'prepare',
-      text: '明智之举。你可以先在深渊外围做些准备任务。清除一些小恶魔，收集虚空水晶来强化你的装备。',
+      text: '明智之举。你可以先在深渊外围做些准备任务。清除一些小恶魔，收集虚空水晶来强化你的装备。这是守望者的紧急物资，拿去用吧。',
       choices: [
-        { text: '我去清除小恶魔', nextNodeId: 'accept_souls', questTrigger: 'q_corrupted_souls' },
+        { text: '感谢补给，我去清除小恶魔', nextNodeId: 'accept_souls', questTrigger: 'q_corrupted_souls', reward: { gold: 150, exp: 300 } },
         { text: '虚空水晶在哪里？', nextNodeId: 'crystal_location' },
         { text: '还是直接进去吧', nextNodeId: 'accept_explore', questTrigger: 'q_explore_abyss' },
       ],

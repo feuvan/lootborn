@@ -146,6 +146,36 @@ export class ZoneScene extends Phaser.Scene {
   private storyDecorationSprites: { sprite: Phaser.GameObjects.Container; decoration: StoryDecoration; col: number; row: number }[] = [];
   /** Active tooltip for story decorations. */
   private storyDecorationTooltip: Phaser.GameObjects.Container | null = null;
+  // ─── Escort / Defend Quest Runtime ──────────────────────────────────
+  /** Escort NPC sprite + state for active escort quests. */
+  private escortNpcSprite: Phaser.GameObjects.Container | null = null;
+  private escortNpcHpBar: Phaser.GameObjects.Rectangle | null = null;
+  private escortNpcHpBarBg: Phaser.GameObjects.Rectangle | null = null;
+  private escortNpcNameLabel: Phaser.GameObjects.Text | null = null;
+  private escortNpcTileCol = 0;
+  private escortNpcTileRow = 0;
+  private escortNpcHp = 0;
+  private escortNpcMaxHp = 0;
+  private escortQuestId: string | null = null;
+  private escortDestCol = 0;
+  private escortDestRow = 0;
+
+  /** Defend target sprite + state for active defend quests. */
+  private defendTargetSprite: Phaser.GameObjects.Container | null = null;
+  private defendTargetHpBar: Phaser.GameObjects.Rectangle | null = null;
+  private defendTargetHpBarBg: Phaser.GameObjects.Rectangle | null = null;
+  private defendTargetNameLabel: Phaser.GameObjects.Text | null = null;
+  private defendTargetHp = 0;
+  private defendTargetMaxHp = 0;
+  private defendQuestId: string | null = null;
+  private defendCurrentWave = 0;
+  private defendTotalWaves = 0;
+  private defendWaveTimer = 0;
+  private defendWaveActive = false;
+  private defendWaveMonsters: Monster[] = [];
+  private defendTargetCol = 0;
+  private defendTargetRow = 0;
+
   /** Whether we are currently inside a sub-dungeon. */
   private isInSubDungeon = false;
   /** The parent zone info for returning from a sub-dungeon. */
@@ -274,6 +304,8 @@ export class ZoneScene extends Phaser.Scene {
     this.spawnStoryDecorations();
     this.spawnMercenarySprite();
     this.spawnPetSprite();
+    this.spawnEscortNpc();
+    this.spawnDefendTarget();
     this.buildCampDecorations();
     this.rebuildWorldCaches();
     for (const decor of this.campDecorPositions) {
@@ -612,6 +644,8 @@ export class ZoneScene extends Phaser.Scene {
     this.updateMercenary(time, delta);
     this.updatePetFollower(time, delta);
     this.handlePetCombat(time);
+    this.updateEscortNpc(time, delta);
+    this.updateDefendQuest(time, delta);
     this.updateEliteAffixBehaviors(time);
     this.updateStatusEffects(time);
     this.updateCombatState();
@@ -2073,19 +2107,8 @@ export class ZoneScene extends Phaser.Scene {
             });
           }
         }
-        // Handle escort destination check
-        if (obj.type === 'escort' && obj.location && progress.objectives[i].current < obj.required) {
-          const dx = this.player.tileCol - obj.location.col;
-          const dy = this.player.tileRow - obj.location.row;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist <= obj.location.radius) {
-            this.questSystem.updateProgress('escort', obj.targetId);
-            EventBus.emit(GameEvents.LOG_MESSAGE, {
-              text: `护送完成: ${obj.targetName}`,
-              type: 'system',
-            });
-          }
-        }
+        // Escort destination check is handled by updateEscortNpc() —
+        // completion is gated on the escort NPC arriving, not just the player.
       }
     }
   }
@@ -2349,6 +2372,9 @@ export class ZoneScene extends Phaser.Scene {
 
     // Progress talk quests
     this.questSystem.updateProgress('talk', def.id);
+
+    // Wire craft quest phases: if NPC matches a craft quest's craftNpc or deliverNpc, advance progress
+    this.advanceCraftQuestFromNpc(def.id);
 
     switch (def.type) {
       case 'blacksmith':
@@ -4504,6 +4530,427 @@ export class ZoneScene extends Phaser.Scene {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // ─── Escort Quest Runtime ─────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+
+  /** Spawn escort NPC if any escort quest is active in this zone. */
+  private spawnEscortNpc(): void {
+    this.destroyEscortNpc();
+    const activeQuests = this.questSystem.getActiveQuests();
+    for (const { quest, progress } of activeQuests) {
+      if (quest.type !== 'escort' || progress.status !== 'active') continue;
+      if (quest.zone !== this.currentMapId) continue;
+      if (!quest.escortNpc) continue;
+
+      const en = quest.escortNpc;
+      this.escortNpcTileCol = en.startCol;
+      this.escortNpcTileRow = en.startRow;
+      this.escortDestCol = en.destCol;
+      this.escortDestRow = en.destRow;
+      this.escortQuestId = quest.id;
+
+      // HP scales with zone level
+      const baseHp = quest.level * 20 + 100;
+      this.escortNpcHp = baseHp;
+      this.escortNpcMaxHp = baseHp;
+
+      const worldPos = cartToIso(this.escortNpcTileCol, this.escortNpcTileRow);
+      this.escortNpcSprite = this.add.container(worldPos.x, worldPos.y);
+      this.escortNpcSprite.setDepth(worldPos.y + 60);
+
+      // Body — golden NPC color
+      const body = this.add.rectangle(0, -20, 28, 36, 0xe67e22);
+      body.setStrokeStyle(1.5, 0xffffff, 0.6);
+      this.escortNpcSprite.add(body);
+
+      // Shadow
+      const shadow = this.add.ellipse(0, 4, 26, 7, 0x000000, 0.25);
+      this.escortNpcSprite.add(shadow);
+      this.escortNpcSprite.sendToBack(shadow);
+
+      // Friendly indicator (orange diamond)
+      const indicator = this.add.rectangle(0, -46, 6, 6, 0xe67e22);
+      indicator.setAngle(45);
+      this.escortNpcSprite.add(indicator);
+
+      // HP bar
+      this.escortNpcHpBarBg = this.add.rectangle(0, -44, 28, 4, 0x1a1a1a);
+      this.escortNpcHpBarBg.setStrokeStyle(0.5, 0x333333);
+      this.escortNpcSprite.add(this.escortNpcHpBarBg);
+
+      this.escortNpcHpBar = this.add.rectangle(-14, -44, 28, 4, 0x27ae60);
+      this.escortNpcHpBar.setOrigin(0, 0.5);
+      this.escortNpcSprite.add(this.escortNpcHpBar);
+
+      // Name label
+      this.escortNpcNameLabel = this.add.text(0, -54, en.name, {
+        fontSize: fs(10), color: '#e67e22', fontFamily: '"Noto Sans SC", sans-serif',
+        stroke: '#000000', strokeThickness: Math.round(2 * DPR),
+      }).setOrigin(0.5);
+      this.escortNpcSprite.add(this.escortNpcNameLabel);
+
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${en.name} 出现了！护送目标已标记。`, type: 'system' });
+      break; // Only one escort quest at a time
+    }
+  }
+
+  private destroyEscortNpc(): void {
+    if (this.escortNpcSprite) {
+      this.escortNpcSprite.destroy();
+      this.escortNpcSprite = null;
+      this.escortNpcHpBar = null;
+      this.escortNpcHpBarBg = null;
+      this.escortNpcNameLabel = null;
+    }
+    this.escortQuestId = null;
+  }
+
+  /** Update escort NPC: follow player, take damage from nearby monsters, check arrival. */
+  private updateEscortNpc(time: number, _delta: number): void {
+    if (!this.escortNpcSprite || !this.escortQuestId) return;
+
+    // Follow player (stay 1-2 tiles behind)
+    const dx = this.player.tileCol - this.escortNpcTileCol;
+    const dy = this.player.tileRow - this.escortNpcTileRow;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 2) {
+      const speed = 0.05; // tiles per frame (slightly slower than player)
+      const nx = dx / dist;
+      const ny = dy / dist;
+      let newCol = this.escortNpcTileCol + nx * speed;
+      let newRow = this.escortNpcTileRow + ny * speed;
+      newCol = Math.max(1, Math.min(this.mapData.cols - 2, newCol));
+      newRow = Math.max(1, Math.min(this.mapData.rows - 2, newRow));
+      const checkCol = Math.round(newCol);
+      const checkRow = Math.round(newRow);
+      if (this.mapData.collisions[checkRow]?.[checkCol]) {
+        this.escortNpcTileCol = newCol;
+        this.escortNpcTileRow = newRow;
+      }
+    }
+
+    // Nearby monsters attack escort NPC (aggro if within 4 tiles)
+    for (const monster of this.monsters) {
+      if (!monster.isAlive()) continue;
+      const md = euclideanDistance(monster.tileCol, monster.tileRow, this.escortNpcTileCol, this.escortNpcTileRow);
+      if (md < 4 && monster.isAggro() && time - (monster as unknown as { lastEscortAttack?: number }).lastEscortAttack! > 2000) {
+        const dmg = Math.max(1, Math.floor(monster.definition.damage * 0.3));
+        this.escortNpcHp -= dmg;
+        (monster as unknown as { lastEscortAttack?: number }).lastEscortAttack = time;
+        this.showDamageText(this.escortNpcSprite.x, this.escortNpcSprite.y - 10, dmg, false, false, true);
+        if (this.escortNpcHp <= 0) {
+          this.handleEscortNpcDeath();
+          return;
+        }
+      }
+    }
+
+    // Update sprite position
+    const worldPos = cartToIso(this.escortNpcTileCol, this.escortNpcTileRow);
+    this.escortNpcSprite.setPosition(worldPos.x, worldPos.y);
+    this.escortNpcSprite.setDepth(worldPos.y + 60);
+
+    // Update HP bar
+    if (this.escortNpcHpBar) {
+      const hpRatio = this.escortNpcHp / this.escortNpcMaxHp;
+      this.escortNpcHpBar.width = Math.max(0, 28 * hpRatio);
+      this.escortNpcHpBar.fillColor = hpRatio > 0.5 ? 0x27ae60 : hpRatio > 0.25 ? 0xf39c12 : 0xe74c3c;
+    }
+
+    // Check if escort NPC has arrived at destination (gate on NPC proximity, not just player)
+    const escortDx = this.escortNpcTileCol - this.escortDestCol;
+    const escortDy = this.escortNpcTileRow - this.escortDestRow;
+    const escortDist = Math.sqrt(escortDx * escortDx + escortDy * escortDy);
+    if (escortDist <= 5) {
+      // Also check player is nearby
+      const playerDist = euclideanDistance(this.player.tileCol, this.player.tileRow, this.escortDestCol, this.escortDestRow);
+      if (playerDist <= 6) {
+        // Escort complete
+        const quest = this.questSystem.quests.get(this.escortQuestId);
+        if (quest) {
+          for (const obj of quest.objectives) {
+            if (obj.type === 'escort') {
+              this.questSystem.updateProgress('escort', obj.targetId);
+            }
+          }
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: `护送完成! ${quest.escortNpc?.name ?? ''}安全到达目的地。`, type: 'system' });
+        }
+        this.destroyEscortNpc();
+      }
+    }
+  }
+
+  /** Handle escort NPC death — fail the associated quest. */
+  private handleEscortNpcDeath(): void {
+    if (!this.escortNpcSprite || !this.escortQuestId) return;
+    // Death animation
+    if (this.vfx) {
+      this.vfx.deathBurst(this.escortNpcSprite.x, this.escortNpcSprite.y - 16, 0xe67e22);
+    }
+    this.tweens.add({
+      targets: this.escortNpcSprite,
+      alpha: 0, scaleX: 0.5, scaleY: 0.5, duration: 600, ease: 'Power2',
+      onComplete: () => { this.destroyEscortNpc(); },
+    });
+    // Fail the quest
+    this.questSystem.failQuest(this.escortQuestId);
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '护送目标已死亡! 任务失败。', type: 'system' });
+  }
+
+  // ---------------------------------------------------------------------------
+  // ─── Defend Quest Runtime ─────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+
+  /** Spawn defend target if any defend quest is active in this zone. */
+  private spawnDefendTarget(): void {
+    this.destroyDefendTarget();
+    const activeQuests = this.questSystem.getActiveQuests();
+    for (const { quest, progress } of activeQuests) {
+      if (quest.type !== 'defend' || progress.status !== 'active') continue;
+      if (quest.zone !== this.currentMapId) continue;
+      if (!quest.defendTarget) continue;
+
+      const dt = quest.defendTarget;
+      this.defendTargetCol = dt.col;
+      this.defendTargetRow = dt.row;
+      this.defendQuestId = quest.id;
+      this.defendTotalWaves = dt.totalWaves;
+      // Resume wave count from progress
+      const waveObj = quest.objectives.find(o => o.type === 'defend_wave');
+      const progressObj = waveObj ? progress.objectives[quest.objectives.indexOf(waveObj)] : undefined;
+      this.defendCurrentWave = progressObj?.current ?? 0;
+      this.defendWaveTimer = 0;
+      this.defendWaveActive = false;
+      this.defendWaveMonsters = [];
+
+      // HP scales with zone level and waves
+      const baseHp = quest.level * 30 + 200;
+      this.defendTargetHp = baseHp;
+      this.defendTargetMaxHp = baseHp;
+
+      const worldPos = cartToIso(dt.col, dt.row);
+      this.defendTargetSprite = this.add.container(worldPos.x, worldPos.y);
+      this.defendTargetSprite.setDepth(worldPos.y + 50);
+
+      // Defend target — large red/brown structure
+      const base = this.add.rectangle(0, -16, 40, 48, 0x8b4513);
+      base.setStrokeStyle(2, 0xc0392b);
+      this.defendTargetSprite.add(base);
+
+      // Glow indicator
+      const glow = this.add.ellipse(0, 8, 48, 12, 0xe74c3c, 0.3);
+      this.defendTargetSprite.add(glow);
+      this.defendTargetSprite.sendToBack(glow);
+
+      // HP bar
+      this.defendTargetHpBarBg = this.add.rectangle(0, -48, 36, 5, 0x1a1a1a);
+      this.defendTargetHpBarBg.setStrokeStyle(0.5, 0x333333);
+      this.defendTargetSprite.add(this.defendTargetHpBarBg);
+
+      this.defendTargetHpBar = this.add.rectangle(-18, -48, 36, 5, 0xe74c3c);
+      this.defendTargetHpBar.setOrigin(0, 0.5);
+      this.defendTargetSprite.add(this.defendTargetHpBar);
+
+      // Name label
+      this.defendTargetNameLabel = this.add.text(0, -58, dt.name, {
+        fontSize: fs(10), color: '#e74c3c', fontFamily: '"Noto Sans SC", sans-serif',
+        stroke: '#000000', strokeThickness: Math.round(2 * DPR),
+      }).setOrigin(0.5);
+      this.defendTargetSprite.add(this.defendTargetNameLabel);
+
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${dt.name} 需要保护！准备迎接敌袭。`, type: 'system' });
+      break;
+    }
+  }
+
+  private destroyDefendTarget(): void {
+    if (this.defendTargetSprite) {
+      this.defendTargetSprite.destroy();
+      this.defendTargetSprite = null;
+      this.defendTargetHpBar = null;
+      this.defendTargetHpBarBg = null;
+      this.defendTargetNameLabel = null;
+    }
+    this.defendQuestId = null;
+    this.defendWaveMonsters = [];
+    this.defendWaveActive = false;
+  }
+
+  /** Update defend quest: spawn waves, track target HP, advance progress. */
+  private updateDefendQuest(time: number, _delta: number): void {
+    if (!this.defendTargetSprite || !this.defendQuestId) return;
+
+    // Check if all waves are done
+    if (this.defendCurrentWave >= this.defendTotalWaves && !this.defendWaveActive) {
+      // All waves cleared, target still alive — quest complete!
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '所有浪潮已击退！防守成功！', type: 'system' });
+      this.destroyDefendTarget();
+      return;
+    }
+
+    const playerDist = euclideanDistance(this.player.tileCol, this.player.tileRow, this.defendTargetCol, this.defendTargetRow);
+
+    // Start next wave when player is within 15 tiles and no wave is active
+    if (!this.defendWaveActive && playerDist < 15) {
+      if (this.defendWaveTimer === 0) {
+        this.defendWaveTimer = time;
+      }
+      // 5-second delay between waves
+      if (time - this.defendWaveTimer > 5000) {
+        this.spawnDefendWave(this.defendCurrentWave);
+        this.defendWaveActive = true;
+        this.defendWaveTimer = 0;
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: `第 ${this.defendCurrentWave + 1}/${this.defendTotalWaves} 波敌人来袭!`, type: 'system' });
+      }
+    }
+
+    // Check if current wave is cleared
+    if (this.defendWaveActive) {
+      const aliveWaveMonsters = this.defendWaveMonsters.filter(m => m.isAlive());
+      if (aliveWaveMonsters.length === 0) {
+        // Wave cleared
+        this.defendCurrentWave++;
+        this.defendWaveActive = false;
+        this.defendWaveTimer = time; // Start timer for next wave
+
+        // Update quest progress
+        const quest = this.questSystem.quests.get(this.defendQuestId!);
+        if (quest) {
+          const waveObj = quest.objectives.find(o => o.type === 'defend_wave');
+          if (waveObj) {
+            this.questSystem.updateProgress('defend_wave', waveObj.targetId);
+          }
+        }
+      } else {
+        // Wave monsters attack defend target
+        for (const monster of aliveWaveMonsters) {
+          const md = euclideanDistance(monster.tileCol, monster.tileRow, this.defendTargetCol, this.defendTargetRow);
+          if (md < 3 && time - ((monster as unknown as { lastDefendAttack?: number }).lastDefendAttack ?? 0) > 2000) {
+            const dmg = Math.max(1, Math.floor(monster.definition.damage * 0.2));
+            this.defendTargetHp -= dmg;
+            (monster as unknown as { lastDefendAttack?: number }).lastDefendAttack = time;
+            this.showDamageText(this.defendTargetSprite!.x, this.defendTargetSprite!.y - 10, dmg, false, false, true);
+            if (this.defendTargetHp <= 0) {
+              this.handleDefendTargetDestroyed();
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // Update HP bar
+    if (this.defendTargetHpBar) {
+      const hpRatio = this.defendTargetHp / this.defendTargetMaxHp;
+      this.defendTargetHpBar.width = Math.max(0, 36 * hpRatio);
+      this.defendTargetHpBar.fillColor = hpRatio > 0.5 ? 0xe74c3c : hpRatio > 0.25 ? 0xf39c12 : 0x7f0000;
+    }
+  }
+
+  /** Spawn a wave of enemies around the defend target. */
+  private spawnDefendWave(waveIndex: number): void {
+    const quest = this.questSystem.quests.get(this.defendQuestId ?? '');
+    if (!quest) return;
+
+    const zoneMonsters = MonstersByZone[this.currentMapId];
+    if (!zoneMonsters || zoneMonsters.length === 0) return;
+
+    const monstersPerWave = 3 + waveIndex; // Scale with wave number
+    const spawnRadius = 8;
+
+    for (let i = 0; i < monstersPerWave; i++) {
+      const angle = (Math.PI * 2 * i) / monstersPerWave;
+      const spawnCol = Math.round(this.defendTargetCol + Math.cos(angle) * spawnRadius);
+      const spawnRow = Math.round(this.defendTargetRow + Math.sin(angle) * spawnRadius);
+
+      // Pick a random monster definition from the zone
+      const def = zoneMonsters[randomInt(0, zoneMonsters.length - 1)];
+      if (!def) continue;
+
+      // Scale monster stats with wave
+      const scaledDef = { ...def, hp: Math.floor(def.hp * (1 + waveIndex * 0.3)), damage: Math.floor(def.damage * (1 + waveIndex * 0.2)) };
+
+      const clampedCol = Math.max(2, Math.min(this.mapData.cols - 3, spawnCol));
+      const clampedRow = Math.max(2, Math.min(this.mapData.rows - 3, spawnRow));
+
+      const monster = new Monster(this, scaledDef, clampedCol, clampedRow);
+      monster.state = 'chase';
+      this.monsters.push(monster);
+      this.defendWaveMonsters.push(monster);
+    }
+  }
+
+  /** Handle defend target destruction — fail the quest. */
+  private handleDefendTargetDestroyed(): void {
+    if (!this.defendTargetSprite || !this.defendQuestId) return;
+    if (this.vfx) {
+      this.vfx.deathBurst(this.defendTargetSprite.x, this.defendTargetSprite.y - 16, 0xe74c3c);
+    }
+    this.tweens.add({
+      targets: this.defendTargetSprite,
+      alpha: 0, scaleX: 0.3, scaleY: 0.3, duration: 800, ease: 'Power2',
+      onComplete: () => { this.destroyDefendTarget(); },
+    });
+    // Fail the quest
+    this.questSystem.failQuest(this.defendQuestId);
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '防守目标被摧毁! 任务失败。', type: 'system' });
+  }
+
+  // ---------------------------------------------------------------------------
+  // ─── Craft Quest Wiring ───────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+
+  /** Advance craft quest phases when player interacts with the appropriate NPC. */
+  private advanceCraftQuestFromNpc(npcId: string): void {
+    const activeQuests = this.questSystem.getActiveQuests();
+    for (const { quest, progress } of activeQuests) {
+      if (quest.type !== 'craft' || progress.status !== 'active') continue;
+      if (!quest.craftPhases) continue;
+
+      // Check if this NPC is the craft NPC and the collect phase is done
+      if (quest.craftPhases.craftNpc === npcId) {
+        // Check that all craft_collect objectives are satisfied
+        const collectDone = quest.objectives
+          .filter(o => o.type === 'craft_collect')
+          .every(o => {
+            const idx = quest.objectives.indexOf(o);
+            return progress.objectives[idx].current >= o.required;
+          });
+        if (collectDone) {
+          const craftObj = quest.objectives.find(o => o.type === 'craft_craft');
+          if (craftObj) {
+            const craftIdx = quest.objectives.indexOf(craftObj);
+            if (progress.objectives[craftIdx].current < craftObj.required) {
+              this.questSystem.updateProgress('craft_craft', craftObj.targetId);
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: `制作完成: ${craftObj.targetName}`, type: 'system' });
+            }
+          }
+        }
+      }
+
+      // Check if this NPC is the deliver NPC and the craft phase is done
+      if (quest.craftPhases.deliverNpc === npcId) {
+        const craftDone = quest.objectives
+          .filter(o => o.type === 'craft_craft')
+          .every(o => {
+            const idx = quest.objectives.indexOf(o);
+            return progress.objectives[idx].current >= o.required;
+          });
+        if (craftDone) {
+          const deliverObj = quest.objectives.find(o => o.type === 'craft_deliver');
+          if (deliverObj) {
+            const deliverIdx = quest.objectives.indexOf(deliverObj);
+            if (progress.objectives[deliverIdx].current < deliverObj.required) {
+              this.questSystem.updateProgress('craft_deliver', deliverObj.targetId);
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: `交付完成: ${deliverObj.targetName}`, type: 'system' });
+            }
+          }
+        }
+      }
+    }
+  }
+
   /** Find the nearest alive monster to a given tile position. */
   private findMonsterNear(col: number, row: number): Monster | null {
     let best: Monster | null = null;
@@ -4704,6 +5151,8 @@ export class ZoneScene extends Phaser.Scene {
     this.isPortaling = false;
     this.destroyMercenarySprite();
     this.destroyPetSprite();
+    this.destroyEscortNpc();
+    this.destroyDefendTarget();
     // Clean up rare pet spawn sprites
     for (const ps of this.petSpawnSprites) {
       ps.sprite.destroy();
