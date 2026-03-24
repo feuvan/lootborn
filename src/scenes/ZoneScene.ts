@@ -42,6 +42,7 @@ import type { MapData, ClassDefinition, ItemInstance, SaveData, HiddenArea, SubD
 import { AllSubDungeons, SubDungeonMiniBosses } from '../data/subDungeons';
 import { DungeonSystem } from '../systems/DungeonSystem';
 import type { DungeonRunState, DungeonFloorConfig } from '../systems/DungeonSystem';
+import { DifficultySystem, DIFFICULTY_UNLOCK_MESSAGES } from '../systems/DifficultySystem';
 import { DungeonBossDef, DungeonMidBossDef } from '../data/dungeonData';
 import type { UIScene } from './UIScene';
 
@@ -91,6 +92,7 @@ export class ZoneScene extends Phaser.Scene {
   private lootDrops: { sprite: Phaser.GameObjects.Container; item: ItemInstance; col: number; row: number }[] = [];
   private potionDrops: { sprite: Phaser.GameObjects.Container; type: 'hp' | 'mp'; amount: number; col: number; row: number }[] = [];
   private difficulty: 'normal' | 'nightmare' | 'hell' = 'normal';
+  private completedDifficulties: string[] = [];
   private cachedEquipStats: EquipStats | null = null;
   private _deathSaveUsed = false;
   private _dodgeCounterReady = false;
@@ -1555,8 +1557,8 @@ export class ZoneScene extends Phaser.Scene {
             EventBus.emit(GameEvents.LOG_MESSAGE, { text: '闪避反击就绪！下次攻击必定暴击', type: 'combat' });
           }
         } else {
-          const diffMult = this.difficulty === 'hell' ? 2 : this.difficulty === 'nightmare' ? 1.5 : 1;
-          const finalDmg = Math.floor(result.damage * diffMult);
+          // Difficulty damage scaling is already applied at monster spawn time via DifficultySystem.scaleMonster
+          const finalDmg = result.damage;
           this.player.hp = Math.max(0, this.player.hp - finalDmg);
 
           // Thorns heal (set bonus: recover % maxHp on hit taken)
@@ -1885,8 +1887,10 @@ export class ZoneScene extends Phaser.Scene {
         : (monsterDefs.length > 0 ? monsterDefs[0].id : null);
 
       if (!mId) continue;
-      const def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
+      let def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
       if (!def) continue;
+      // Apply difficulty scaling to ambush monsters
+      def = DifficultySystem.scaleMonster(def, this.difficulty);
 
       // Spawn near the player (within 3-5 tiles)
       const angle = Math.random() * Math.PI * 2;
@@ -1998,8 +2002,10 @@ export class ZoneScene extends Phaser.Scene {
         : (monsterDefs.length > 0 ? monsterDefs[0].id : null);
 
       if (!mId) continue;
-      const def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
+      let def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
       if (!def) continue;
+      // Apply difficulty scaling to rescue event monsters
+      def = DifficultySystem.scaleMonster(def, this.difficulty);
 
       const angle = Math.random() * Math.PI * 2;
       const dist = 2 + Math.random() * 3;
@@ -2325,12 +2331,12 @@ export class ZoneScene extends Phaser.Scene {
     // Clear status effects on death
     this.statusEffects.clearEntity(monster.id);
 
-    const diffMult = this.difficulty === 'hell' ? 3 : this.difficulty === 'nightmare' ? 2 : 1;
+    // Difficulty exp/gold scaling is already applied at monster spawn time via DifficultySystem.scaleMonster
     const homeBonus = this.homesteadSystem.getTotalBonuses();
     const eq = this.getEquipStats();
     const expBonus = 1 + (homeBonus['expBonus'] ?? 0) / 100 + (eq.expBonus ?? 0) / 100;
-    const exp = Math.floor(monster.definition.expReward * diffMult * expBonus);
-    const gold = randomInt(monster.definition.goldReward[0], monster.definition.goldReward[1]) * diffMult;
+    const exp = Math.floor(monster.definition.expReward * expBonus);
+    const gold = randomInt(monster.definition.goldReward[0], monster.definition.goldReward[1]);
     this.player.addExp(exp);
     this.player.gold += gold;
 
@@ -2373,6 +2379,39 @@ export class ZoneScene extends Phaser.Scene {
     this.achievementSystem.checkLevel(this.player.level);
 
     this.questSystem.updateProgress('kill', monster.definition.id);
+
+    // Difficulty completion check: killing demon_lord in Abyss Rift completes current difficulty
+    if (!this.isInDungeon && DifficultySystem.shouldMarkCompleted(
+      monster.definition.id, this.currentMapId, this.difficulty, this.completedDifficulties,
+    )) {
+      this.completedDifficulties.push(this.difficulty);
+      const unlocked = DifficultySystem.getNewlyUnlockedDifficulty(this.completedDifficulties);
+      if (unlocked) {
+        const msg = DIFFICULTY_UNLOCK_MESSAGES[unlocked];
+        if (msg) {
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: msg, type: 'system' });
+          // Floating announcement text
+          const cx = GAME_WIDTH * DPR / 2;
+          const cy = GAME_HEIGHT * DPR / 3;
+          const announce = this.add.text(cx, cy, msg, {
+            fontSize: fs(24),
+            color: '#ff8800',
+            fontFamily: '"Noto Sans SC", sans-serif',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: Math.round(3 * DPR),
+          }).setOrigin(0.5).setDepth(ZONE_FLOATING_TEXT_DEPTH);
+          this.tweens.add({
+            targets: announce,
+            y: cy - 60,
+            alpha: 0,
+            duration: 3000,
+            ease: 'Power2',
+            onComplete: () => announce.destroy(),
+          });
+        }
+      }
+    }
 
     // Boss pet drops: certain bosses have a chance to drop specific pets
     if (monster.definition.elite) {
@@ -2769,7 +2808,7 @@ export class ZoneScene extends Phaser.Scene {
         achievements: this.achievementSystem.getUnlockedData(),
         settings: { autoCombat: this.player.autoCombat, musicVolume: 0.5, sfxVolume: 0.7, autoLootMode: this.player.autoLootMode },
         difficulty: this.difficulty,
-        completedDifficulties: [],
+        completedDifficulties: [...this.completedDifficulties],
         mercenary: this.mercenarySystem?.toSaveData(),
         dialogueState: this.getDialogueState(),
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
@@ -2830,6 +2869,7 @@ export class ZoneScene extends Phaser.Scene {
     this.player.autoCombat = save.settings?.autoCombat ?? false;
     this.player.autoLootMode = save.settings?.autoLootMode ?? 'off';
     this.difficulty = save.difficulty ?? 'normal';
+    this.completedDifficulties = save.completedDifficulties ?? [];
 
     // 8. Mercenary
     if (save.mercenary) {
@@ -2884,6 +2924,9 @@ export class ZoneScene extends Phaser.Scene {
       // Apply dungeon depth scaling if inside random dungeon
       if (this.isInDungeon && this.dungeonFloorConfig && this.dungeonRunState) {
         def = DungeonSystem.scaleMonster(def, this.dungeonFloorConfig, this.dungeonRunState.difficulty);
+      } else {
+        // Apply overworld difficulty scaling (Nightmare/Hell HP, damage, defense, exp)
+        def = DifficultySystem.scaleMonster(def, this.difficulty);
       }
 
       for (let i = 0; i < spawn.count; i++) {
@@ -3034,8 +3077,10 @@ export class ZoneScene extends Phaser.Scene {
       const subDungeonData = AllSubDungeons[subDungeonId];
       if (subDungeonData) {
         const bossId = subDungeonData.miniBoss.monsterId;
-        const bossDef = SubDungeonMiniBosses[bossId];
+        let bossDef = SubDungeonMiniBosses[bossId];
         if (bossDef) {
+          // Apply difficulty scaling to sub-dungeon mini-boss
+          bossDef = DifficultySystem.scaleMonster(bossDef, this.difficulty);
           const c = subDungeonData.miniBoss.col;
           const r = subDungeonData.miniBoss.row;
           if (c >= 0 && c < this.mapData.cols && r >= 0 && r < this.mapData.rows) {
@@ -3053,9 +3098,12 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     // Regular zone mini-boss
-    const miniBossDef = MiniBossByZone[this.currentMapId];
+    let miniBossDef = MiniBossByZone[this.currentMapId];
     const spawnPos = MiniBossSpawns[this.currentMapId];
     if (!miniBossDef || !spawnPos) return;
+
+    // Apply difficulty scaling to zone mini-boss
+    miniBossDef = DifficultySystem.scaleMonster(miniBossDef, this.difficulty);
 
     const c = spawnPos.col;
     const r = spawnPos.row;
@@ -4984,8 +5032,8 @@ export class ZoneScene extends Phaser.Scene {
         if (time - monster.lastAttackTime >= monster.definition.attackSpeed) {
           monster.lastAttackTime = time;
           const result = this.combatSystem.calculateDamage(monster.toCombatEntity(), this.mercenarySystem.toCombatEntity()!);
-          const diffMult = this.difficulty === 'hell' ? 2 : this.difficulty === 'nightmare' ? 1.5 : 1;
-          const finalDmg = Math.floor(result.damage * diffMult);
+          // Difficulty damage scaling is already applied at monster spawn time via DifficultySystem.scaleMonster
+          const finalDmg = result.damage;
           const { died } = this.mercenarySystem.takeDamage(finalDmg);
           this.showDamageText(
             this.mercenarySprite.x, this.mercenarySprite.y - 10,
@@ -5354,11 +5402,13 @@ export class ZoneScene extends Phaser.Scene {
       const spawnRow = Math.round(this.defendTargetRow + Math.sin(angle) * spawnRadius);
 
       // Pick a random monster definition from the zone
-      const def = zoneMonsters[randomInt(0, zoneMonsters.length - 1)];
-      if (!def) continue;
+      const rawDef = zoneMonsters[randomInt(0, zoneMonsters.length - 1)];
+      if (!rawDef) continue;
+      // Apply difficulty scaling first, then wave scaling
+      const diffDef = DifficultySystem.scaleMonster(rawDef, this.difficulty);
 
       // Scale monster stats with wave
-      const scaledDef = { ...def, hp: Math.floor(def.hp * (1 + waveIndex * 0.3)), damage: Math.floor(def.damage * (1 + waveIndex * 0.2)) };
+      const scaledDef = { ...diffDef, hp: Math.floor(diffDef.hp * (1 + waveIndex * 0.3)), damage: Math.floor(diffDef.damage * (1 + waveIndex * 0.2)) };
 
       const clampedCol = Math.max(2, Math.min(this.mapData.cols - 3, spawnCol));
       const clampedRow = Math.max(2, Math.min(this.mapData.rows - 3, spawnRow));

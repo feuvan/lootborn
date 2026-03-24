@@ -6,6 +6,8 @@ import { EventBus, GameEvents } from '../utils/EventBus';
 import { audioManager } from '../systems/audio/AudioManager';
 import type { SaveData } from '../data/types';
 import { SpriteGenerator } from '../graphics/SpriteGenerator';
+import { DifficultySystem, DIFFICULTY_ORDER, DIFFICULTY_LABELS } from '../systems/DifficultySystem';
+import type { Difficulty } from '../systems/DifficultySystem';
 
 function fs(basePx: number): string {
   return `${Math.round(basePx * DPR)}px`;
@@ -40,6 +42,7 @@ export class MenuScene extends Phaser.Scene {
   private classContainer: Phaser.GameObjects.Container | null = null;
   private helpContainer: Phaser.GameObjects.Container | null = null;
   private jukeboxContainer: Phaser.GameObjects.Container | null = null;
+  private difficultyContainer: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -308,7 +311,15 @@ export class MenuScene extends Phaser.Scene {
         .setStrokeStyle(1.5, 0xc0934a, 0.8).setInteractive({ useHandCursor: true });
       bg.on('pointerover', () => { bg.setStrokeStyle(2, 0xc0934a, 1); bg.setFillStyle(0x1a1a2e, 0.95); });
       bg.on('pointerout', () => { bg.setStrokeStyle(1.5, 0xc0934a, 0.8); bg.setFillStyle(0x12121e, 0.9); });
-      bg.on('pointerdown', () => this.loadGame(save));
+      bg.on('pointerdown', () => {
+        const hasCompletedDiffs = save.completedDifficulties && save.completedDifficulties.length > 0;
+        if (hasCompletedDiffs) {
+          this.menuContainer?.destroy(); this.menuContainer = null;
+          this.showDifficultySelector(save);
+        } else {
+          this.loadGame(save);
+        }
+      });
       this.menuContainer.add(bg);
 
       this.menuContainer.add(this.add.text(cx, y - px(6), label, {
@@ -836,6 +847,128 @@ export class MenuScene extends Phaser.Scene {
       mapId: save.player.currentMap,
       saveData: save,
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Difficulty Selector
+  // ---------------------------------------------------------------------------
+
+  private showDifficultySelector(save: SaveData): void {
+    if (this.difficultyContainer) { this.difficultyContainer.destroy(); }
+    this.difficultyContainer = this.add.container(0, 0).setDepth(10);
+
+    const cx = W / 2;
+    const completedDiffs = save.completedDifficulties ?? [];
+    const states = DifficultySystem.getDifficultyStates(completedDiffs);
+    const currentDiff = save.difficulty ?? 'normal';
+
+    // Title
+    this.difficultyContainer.add(this.add.text(cx, px(275), '选 择 难 度', {
+      fontSize: fs(22),
+      color: '#c0934a',
+      fontFamily: '"Noto Sans SC", sans-serif',
+      fontStyle: 'bold',
+    }).setOrigin(0.5));
+
+    // Difficulty colors
+    const DIFF_COLORS: Record<Difficulty, number> = {
+      normal: 0x4a8c4a,
+      nightmare: 0xc0392b,
+      hell: 0x8b0000,
+    };
+    const DIFF_TEXT_COLORS: Record<Difficulty, string> = {
+      normal: '#4ade80',
+      nightmare: '#ef4444',
+      hell: '#ff4444',
+    };
+    const DIFF_DESCS: Record<Difficulty, string> = {
+      normal: '标准难度',
+      nightmare: '怪物伤害×1.5, 经验×2',
+      hell: '怪物伤害×2, 经验×3',
+    };
+
+    DIFFICULTY_ORDER.forEach((diff, i) => {
+      const y = px(340) + i * px(80);
+      const state = states[diff];
+      const isLocked = state === 'locked';
+      const isCompleted = state === 'completed';
+      const isCurrent = diff === currentDiff;
+
+      const borderColor = isLocked ? 0x333344 : DIFF_COLORS[diff];
+      const bgAlpha = isLocked ? 0.5 : 0.9;
+      const borderAlpha = isLocked ? 0.3 : (isCurrent ? 1.0 : 0.6);
+
+      const bg = this.add.rectangle(cx, y, px(340), px(65), 0x12121e, bgAlpha)
+        .setStrokeStyle(isCurrent ? 2.5 : 1.5, borderColor, borderAlpha);
+
+      if (!isLocked) {
+        bg.setInteractive({ useHandCursor: true });
+        bg.on('pointerover', () => {
+          bg.setStrokeStyle(2.5, borderColor, 1);
+          bg.setFillStyle(0x1a1a2e, 0.95);
+        });
+        bg.on('pointerout', () => {
+          bg.setStrokeStyle(isCurrent ? 2.5 : 1.5, borderColor, borderAlpha);
+          bg.setFillStyle(0x12121e, bgAlpha);
+        });
+        bg.on('pointerdown', () => {
+          save.difficulty = diff;
+          this.difficultyContainer?.destroy(); this.difficultyContainer = null;
+          this.loadGame(save);
+        });
+      }
+
+      this.difficultyContainer!.add(bg);
+
+      // Difficulty label with state indicator
+      let label = DIFFICULTY_LABELS[diff];
+      if (isCompleted) {
+        label = `✓ ${label}`;
+      } else if (isLocked) {
+        label = `🔒 ${label}`;
+      }
+
+      const textColor = isLocked ? '#555555' : (isCurrent ? '#ffffff' : DIFF_TEXT_COLORS[diff]);
+
+      this.difficultyContainer!.add(this.add.text(cx, y - px(10), label, {
+        fontSize: fs(20),
+        color: textColor,
+        fontFamily: '"Noto Sans SC", sans-serif',
+        fontStyle: isCurrent ? 'bold' : 'normal',
+      }).setOrigin(0.5));
+
+      // Description text
+      const descText = isLocked ? '未解锁 — 需要通关上一难度' : DIFF_DESCS[diff];
+      this.difficultyContainer!.add(this.add.text(cx, y + px(14), descText, {
+        fontSize: fs(13),
+        color: isLocked ? '#444444' : '#888880',
+        fontFamily: '"Noto Sans SC", sans-serif',
+      }).setOrigin(0.5));
+
+      // Current difficulty indicator
+      if (isCurrent && !isLocked) {
+        this.difficultyContainer!.add(this.add.text(cx + px(140), y - px(10), '当前', {
+          fontSize: fs(11),
+          color: '#c0934a',
+          fontFamily: '"Noto Sans SC", sans-serif',
+        }).setOrigin(0.5));
+      }
+    });
+
+    // Back button
+    const backY = px(340) + 3 * px(80);
+    const backBg = this.add.rectangle(cx, backY, px(200), px(45), 0x12121e, 0.9)
+      .setStrokeStyle(1.5, 0x555566, 0.4).setInteractive({ useHandCursor: true });
+    backBg.on('pointerover', () => { backBg.setStrokeStyle(2, 0x888899, 0.8); backBg.setFillStyle(0x1a1a2e, 0.95); });
+    backBg.on('pointerout', () => { backBg.setStrokeStyle(1.5, 0x555566, 0.4); backBg.setFillStyle(0x12121e, 0.9); });
+    backBg.on('pointerdown', () => {
+      this.difficultyContainer?.destroy(); this.difficultyContainer = null;
+      this.showMainMenu(save);
+    });
+    this.difficultyContainer.add(backBg);
+    this.difficultyContainer.add(this.add.text(cx, backY, '返回', {
+      fontSize: fs(16), color: '#888880', fontFamily: '"Noto Sans SC", sans-serif',
+    }).setOrigin(0.5));
   }
 
   private startGame(classId: string): void {
