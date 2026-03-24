@@ -78,6 +78,7 @@ export class ZoneScene extends Phaser.Scene {
   private difficulty: 'normal' | 'nightmare' | 'hell' = 'normal';
   private cachedEquipStats: EquipStats | null = null;
   private _deathSaveUsed = false;
+  private _dodgeCounterReady = false;
   private lastAutoLootCheck = 0;
   private totalKills = 0;
   private exploredZones: Set<string> = new Set();
@@ -1008,6 +1009,16 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     this.player.useSkill(skillId, time, level, this.getEquipStats().cooldownReduction);
+
+    // freeCast: X% chance to not consume mana when casting a skill
+    const eqFc = this.getEquipStats();
+    if (eqFc.freeCast > 0 && this.combatSystem.checkFreeCast(eqFc.freeCast)) {
+      // Refund the mana that was just spent
+      this.player.mana = Math.min(this.player.maxMana, this.player.mana + scaledManaCost);
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '免费施法！法力未消耗', type: 'combat' });
+      EventBus.emit(GameEvents.PLAYER_MANA_CHANGED, { mana: this.player.mana, maxMana: this.player.maxMana });
+    }
+
     if (skill.buff || skill.aoe || skill.range > 2) {
       this.player.playCast();
     } else {
@@ -1097,6 +1108,12 @@ export class ZoneScene extends Phaser.Scene {
         const result = this.combatSystem.calculateDamage(monster.toCombatEntity(), this.player.toCombatEntity(this.getEquipStats()));
         if (result.isDodged) {
           this.showDamageText(this.player.sprite.x, this.player.sprite.y, 0, false, true);
+          // dodgeCounter: after dodging, next attack is guaranteed crit
+          const eqDc = this.getEquipStats();
+          if (eqDc.dodgeCounter > 0) {
+            this._dodgeCounterReady = true;
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '闪避反击就绪！下次攻击必定暴击', type: 'combat' });
+          }
         } else {
           const diffMult = this.difficulty === 'hell' ? 2 : this.difficulty === 'nightmare' ? 1.5 : 1;
           const finalDmg = Math.floor(result.damage * diffMult);
@@ -1153,7 +1170,19 @@ export class ZoneScene extends Phaser.Scene {
       if (dist <= this.player.attackRange && time - this.player.lastAttackTime >= this.player.attackSpeed) {
         this.player.lastAttackTime = time;
         this.player.playAttack(target.sprite.x, target.sprite.y);
-        const result = this.combatSystem.calculateDamage(this.player.toCombatEntity(this.getEquipStats()), target.toCombatEntity());
+        const eq = this.getEquipStats();
+
+        // dodgeCounter: guaranteed crit after dodge
+        const forceCrit = this._dodgeCounterReady;
+        if (forceCrit) {
+          this._dodgeCounterReady = false;
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: '闪避反击！暴击！', type: 'combat' });
+        }
+
+        const result = this.combatSystem.calculateDamage(
+          this.player.toCombatEntity(eq), target.toCombatEntity(),
+          undefined, 1, undefined, forceCrit,
+        );
         target.takeDamage(result.damage, this.player.sprite.x, this.player.sprite.y);
         this.applySteal(result);
         this.showDamageText(target.sprite.x, target.sprite.y, result.damage, result.isCrit);
@@ -1178,6 +1207,35 @@ export class ZoneScene extends Phaser.Scene {
           const angle = Math.atan2(target.sprite.y - this.player.sprite.y, target.sprite.x - this.player.sprite.x);
           this.trails.stampSlash(target.sprite.x, target.sprite.y - 16, angle, 0xffffcc);
         }
+
+        // critDoubleStrike: on crit, X% chance for immediate extra attack
+        if (result.isCrit && eq.critDoubleStrike > 0 && target.isAlive()) {
+          if (this.combatSystem.checkCritDoubleStrike(eq.critDoubleStrike, true)) {
+            const extraResult = this.combatSystem.calculateDamage(
+              this.player.toCombatEntity(eq), target.toCombatEntity(),
+            );
+            target.takeDamage(extraResult.damage, this.player.sprite.x, this.player.sprite.y);
+            this.applySteal(extraResult);
+            this.showDamageText(target.sprite.x, target.sprite.y - 20, extraResult.damage, extraResult.isCrit);
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '连击触发！', type: 'combat' });
+            if (this.vfx) this.vfx.hitSparks(target.sprite.x, target.sprite.y - 16, 8);
+          }
+        }
+
+        // doubleShot: X% chance to fire double projectile on ranged auto-attack
+        if (eq.doubleShot > 0 && target.isAlive()) {
+          if (this.combatSystem.checkDoubleShot(eq.doubleShot, this.player.attackRange)) {
+            const extraResult = this.combatSystem.calculateDamage(
+              this.player.toCombatEntity(eq), target.toCombatEntity(),
+            );
+            target.takeDamage(extraResult.damage, this.player.sprite.x, this.player.sprite.y);
+            this.applySteal(extraResult);
+            this.showDamageText(target.sprite.x + 15, target.sprite.y - 15, extraResult.damage, extraResult.isCrit);
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '双倍箭矢！', type: 'combat' });
+            this.skillEffects.playAttack(this.player.sprite.x, this.player.sprite.y, target.sprite.x, target.sprite.y, true);
+          }
+        }
+
         if (!target.isAlive()) { this.onMonsterKilled(target); this.player.attackTarget = null; }
       }
     }

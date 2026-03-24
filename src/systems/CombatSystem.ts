@@ -241,6 +241,7 @@ export class CombatSystem {
     skill?: SkillDefinition,
     skillLevel = 1,
     skillLevels?: Map<string, number>,
+    forceCrit = false,
   ): DamageResult {
     const atkEq = attacker.equipStats;
     const defEq = defender.equipStats;
@@ -259,7 +260,7 @@ export class CombatSystem {
       0,
       75,
     );
-    const isCrit = chance(critRate);
+    const isCrit = forceCrit || chance(critRate);
     const eqCritDmg = atkEq?.critDamage ?? 0;
     const critMultiplier = isCrit ? 1.5 + attacker.stats.lck * 0.01 + eqCritDmg / 100 : 1;
 
@@ -551,5 +552,72 @@ export class CombatSystem {
    */
   consumeStealthBuff(entity: CombatEntity): void {
     entity.buffs = entity.buffs.filter(b => b.stat !== 'stealthDamage');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set bonus / legendary proc helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Check critDoubleStrike proc: on crit, X% chance for immediate extra attack.
+   * @param critDoubleStrikePercent - chance percentage (e.g. 25 for 25%)
+   * @param isCrit - whether the triggering attack was a crit
+   * @param rng - random number [0,1) for deterministic testing (defaults to Math.random)
+   * @returns true if the extra attack should trigger
+   */
+  checkCritDoubleStrike(critDoubleStrikePercent: number, isCrit: boolean, rng = Math.random()): boolean {
+    if (!isCrit || critDoubleStrikePercent <= 0) return false;
+    return rng * 100 < critDoubleStrikePercent;
+  }
+
+  /**
+   * Check doubleShot proc: X% chance to fire double projectile on ranged auto-attack.
+   * @param doubleShotPercent - chance percentage (e.g. 30 for 30%)
+   * @param attackRange - the attacker's attack range (must be ranged, > 2)
+   * @param rng - random number [0,1) for deterministic testing (defaults to Math.random)
+   * @returns true if double shot should trigger
+   */
+  checkDoubleShot(doubleShotPercent: number, attackRange: number, rng = Math.random()): boolean {
+    if (doubleShotPercent <= 0 || attackRange <= 2) return false;
+    return rng * 100 < doubleShotPercent;
+  }
+
+  /**
+   * Check freeCast proc: X% chance to not consume mana when casting a skill.
+   * @param freeCastPercent - chance percentage (e.g. 15 for 15%)
+   * @param rng - random number [0,1) for deterministic testing (defaults to Math.random)
+   * @returns true if mana should not be consumed
+   */
+  checkFreeCast(freeCastPercent: number, rng = Math.random()): boolean {
+    if (freeCastPercent <= 0) return false;
+    return rng * 100 < freeCastPercent;
+  }
+
+  /**
+   * Check deathSave proc: prevent lethal damage once (60s CD).
+   * Returns true if death should be prevented.
+   * @param deathSaveValue - the deathSave stat value (> 0 means active)
+   * @param alreadyUsed - whether it was already used within cooldown
+   */
+  checkDeathSave(deathSaveValue: number, alreadyUsed: boolean): boolean {
+    return deathSaveValue > 0 && !alreadyUsed;
+  }
+
+  /**
+   * Calculate killHealPercent healing on kill.
+   * @returns heal amount
+   */
+  calcKillHeal(killHealPercent: number, maxHp: number): number {
+    if (killHealPercent <= 0) return 0;
+    return Math.floor(maxHp * killHealPercent / 100);
+  }
+
+  /**
+   * Calculate thornsHeal: heal % of maxHp when taking damage.
+   * @returns heal amount
+   */
+  calcThornsHeal(thornsHealPercent: number, maxHp: number): number {
+    if (thornsHealPercent <= 0) return 0;
+    return Math.floor(maxHp * thornsHealPercent / 100);
   }
 }
