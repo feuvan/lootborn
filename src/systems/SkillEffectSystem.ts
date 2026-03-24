@@ -277,6 +277,235 @@ export class SkillEffectSystem {
     g.fillTriangle(C, 20, C - 2, 10, C + 2, 18);
     g.generateTexture('skill_icon_vengeful_wrath', S, S);
 
+    // charge — rushing warrior with speed lines
+    fillBg(0x553311);
+    // Speed lines (horizontal)
+    g.lineStyle(2, 0xffcc44, 0.5);
+    g.beginPath(); g.moveTo(4, 18); g.lineTo(28, 18); g.strokePath();
+    g.lineStyle(2, 0xffcc44, 0.4);
+    g.beginPath(); g.moveTo(6, 30); g.lineTo(26, 30); g.strokePath();
+    g.lineStyle(1.5, 0xffcc44, 0.3);
+    g.beginPath(); g.moveTo(8, 42); g.lineTo(24, 42); g.strokePath();
+    // Warrior silhouette charging forward
+    g.fillStyle(0xccaa66, 0.8);
+    g.fillCircle(C + 6, 20, 8); // head
+    g.fillStyle(0xbb9955, 0.7);
+    g.fillTriangle(C - 4, 52, C + 6, 26, C + 16, 52); // body lunging
+    // Shoulder/weapon forward
+    g.fillStyle(0xddbb77, 0.9);
+    g.fillRect(C + 10, 22, 14, 4);
+    // Dust trail behind
+    g.fillStyle(0xccbb99, 0.3);
+    g.fillCircle(12, 44, 6);
+    g.fillCircle(8, 36, 5);
+    g.fillCircle(14, 50, 4);
+    g.generateTexture('skill_icon_charge', S, S);
+
+    // lethal_strike — heavy blade with X mark
+    fillBg(0x441111);
+    // Large blade pointing down
+    g.fillStyle(0xdddddd, 0.9);
+    g.fillPoints([new P(C, 6), new P(C + 7, 38), new P(C, 44), new P(C - 7, 38)], true);
+    g.fillStyle(0xeeeeee, 0.5);
+    g.fillPoints([new P(C, 8), new P(C + 3, 36), new P(C, 42), new P(C - 3, 36)], true);
+    // Guard and handle
+    g.fillStyle(0xddaa44, 0.9);
+    g.fillRect(C - 12, 42, 24, 4);
+    g.fillStyle(0x664422, 0.9);
+    g.fillRect(C - 3, 46, 6, 12);
+    // X critical mark
+    g.lineStyle(3, 0xff2222, 0.8);
+    g.beginPath(); g.moveTo(C - 16, 12); g.lineTo(C + 16, 32); g.strokePath();
+    g.beginPath(); g.moveTo(C + 16, 12); g.lineTo(C - 16, 32); g.strokePath();
+    g.generateTexture('skill_icon_lethal_strike', S, S);
+
+    // dual_wield_mastery — two crossed swords
+    fillBg(0x443322);
+    // Left sword
+    g.fillStyle(0xcccccc, 0.9);
+    g.fillPoints([new P(14, 8), new P(18, 10), new P(38, 42), new P(34, 44)], true);
+    g.fillStyle(0xddaa44, 0.8);
+    g.fillRect(32, 42, 10, 3);
+    g.fillStyle(0x664422, 0.8);
+    g.fillRect(35, 45, 4, 8);
+    // Right sword
+    g.fillStyle(0xcccccc, 0.9);
+    g.fillPoints([new P(50, 8), new P(46, 10), new P(26, 42), new P(30, 44)], true);
+    g.fillStyle(0xddaa44, 0.8);
+    g.fillRect(22, 42, 10, 3);
+    g.fillStyle(0x664422, 0.8);
+    g.fillRect(25, 45, 4, 8);
+    // Golden glow at cross point
+    g.fillStyle(0xddcc88, 0.4);
+    g.fillCircle(C, 28, 8);
+    g.fillStyle(0xffdd99, 0.2);
+    g.fillCircle(C, 28, 12);
+    g.generateTexture('skill_icon_dual_wield_mastery', S, S);
+
+    // iron_fortress — steel shield with rivets
+    fillBg(0x223344);
+    // Shield body (steel blue)
+    g.fillStyle(0x667788, 0.9);
+    g.fillPoints([
+      new P(C, 6), new P(C + 22, 16), new P(C + 20, 44), new P(C, 58),
+      new P(C - 20, 44), new P(C - 22, 16),
+    ], true);
+    g.fillStyle(0x778899, 0.7);
+    g.fillPoints([
+      new P(C, 10), new P(C + 18, 18), new P(C + 16, 41), new P(C, 53),
+      new P(C - 16, 41), new P(C - 18, 18),
+    ], true);
+    // Central vertical bar
+    g.fillStyle(0x88aacc, 0.6);
+    g.fillRect(C - 2, 14, 4, 38);
+    // Horizontal bar
+    g.fillRect(C - 14, 28, 28, 4);
+    // Rivets
+    g.fillStyle(0xaabbcc, 0.8);
+    g.fillCircle(C - 12, 20, 2);
+    g.fillCircle(C + 12, 20, 2);
+    g.fillCircle(C - 10, 42, 2);
+    g.fillCircle(C + 10, 42, 2);
+    // Border
+    g.lineStyle(2, 0x88aacc, 0.6);
+    g.strokePoints([
+      new P(C, 6), new P(C + 22, 16), new P(C + 20, 44), new P(C, 58),
+      new P(C - 20, 44), new P(C - 22, 16), new P(C, 6),
+    ], false);
+    g.generateTexture('skill_icon_iron_fortress', S, S);
+
+    // unyielding — cracked but standing pillar
+    fillBg(0x332211);
+    // Stone pillar
+    g.fillStyle(0xaa8866, 0.8);
+    g.fillRect(C - 10, 10, 20, 46);
+    g.fillStyle(0xccaa88, 0.6);
+    g.fillRect(C - 8, 12, 16, 42);
+    // Cracks in pillar
+    g.lineStyle(2, 0x664422, 0.7);
+    g.beginPath(); g.moveTo(C - 2, 14); g.lineTo(C + 4, 24); g.lineTo(C - 3, 32); g.strokePath();
+    g.beginPath(); g.moveTo(C + 3, 34); g.lineTo(C - 4, 42); g.strokePath();
+    // Base
+    g.fillStyle(0x886644, 0.9);
+    g.fillRect(C - 14, 52, 28, 6);
+    g.fillRect(C - 12, 8, 24, 4);
+    // Golden glow (resilience)
+    g.fillStyle(0xddaa44, 0.3);
+    g.fillCircle(C, C, 16);
+    g.fillStyle(0xffcc66, 0.15);
+    g.fillCircle(C, C, 22);
+    g.generateTexture('skill_icon_unyielding', S, S);
+
+    // life_regen — green heart with sparkles
+    fillBg(0x112211);
+    // Heart shape using two circles and a triangle
+    g.fillStyle(0x33aa33, 0.8);
+    g.fillCircle(C - 8, 22, 10);
+    g.fillCircle(C + 8, 22, 10);
+    g.fillTriangle(C - 18, 26, C, 50, C + 18, 26);
+    g.fillStyle(0x44cc44, 0.6);
+    g.fillCircle(C - 8, 22, 7);
+    g.fillCircle(C + 8, 22, 7);
+    g.fillTriangle(C - 14, 26, C, 46, C + 14, 26);
+    // Inner glow
+    g.fillStyle(0x66ff66, 0.3);
+    g.fillCircle(C - 4, 24, 4);
+    // Rising sparkles
+    g.fillStyle(0x88ffaa, 0.7);
+    g.fillCircle(C - 12, 12, 2);
+    g.fillCircle(C + 14, 14, 1.5);
+    g.fillCircle(C + 4, 8, 2);
+    g.fillCircle(C - 6, 6, 1.5);
+    // Plus sign (healing)
+    g.fillStyle(0xffffff, 0.5);
+    g.fillRect(C - 1.5, 18, 3, 14);
+    g.fillRect(C - 6, 23, 12, 3);
+    g.generateTexture('skill_icon_life_regen', S, S);
+
+    // frenzy — red rage face/energy
+    fillBg(0x331111);
+    // Red energy swirl
+    g.lineStyle(3, 0xcc2222, 0.7);
+    g.beginPath();
+    g.arc(C, C, 20, Phaser.Math.DegToRad(0), Phaser.Math.DegToRad(270), false);
+    g.strokePath();
+    g.lineStyle(2, 0xff4444, 0.5);
+    g.beginPath();
+    g.arc(C, C, 14, Phaser.Math.DegToRad(90), Phaser.Math.DegToRad(360), false);
+    g.strokePath();
+    // Angry eyes
+    g.fillStyle(0xff4444, 0.9);
+    g.fillPoints([new P(C - 12, C - 4), new P(C - 4, C - 8), new P(C - 4, C), new P(C - 12, C)], true);
+    g.fillPoints([new P(C + 12, C - 4), new P(C + 4, C - 8), new P(C + 4, C), new P(C + 12, C)], true);
+    // Clenched teeth
+    g.fillStyle(0xcc2222, 0.8);
+    g.fillRect(C - 8, C + 6, 16, 6);
+    g.lineStyle(1.5, 0xffcccc, 0.7);
+    g.beginPath(); g.moveTo(C - 4, C + 6); g.lineTo(C - 4, C + 12); g.strokePath();
+    g.beginPath(); g.moveTo(C, C + 6); g.lineTo(C, C + 12); g.strokePath();
+    g.beginPath(); g.moveTo(C + 4, C + 6); g.lineTo(C + 4, C + 12); g.strokePath();
+    // Red aura glow
+    g.fillStyle(0xff2222, 0.15);
+    g.fillCircle(C, C, 26);
+    g.generateTexture('skill_icon_frenzy', S, S);
+
+    // bleed_strike — slashing blade with blood drops
+    fillBg(0x331111);
+    // Blade (angled slash)
+    g.fillStyle(0xcccccc, 0.9);
+    g.fillPoints([new P(14, 8), new P(20, 10), new P(48, 44), new P(42, 48)], true);
+    g.fillStyle(0xeeeeee, 0.5);
+    g.fillPoints([new P(16, 10), new P(19, 12), new P(46, 44), new P(44, 46)], true);
+    // Guard + handle
+    g.fillStyle(0x886644, 0.9);
+    g.fillRect(42, 44, 12, 3);
+    g.fillStyle(0x664422, 0.8);
+    g.fillRoundedRect(48, 47, 6, 10, 2);
+    // Blood drops falling from blade
+    g.fillStyle(0xcc2222, 0.9);
+    g.fillCircle(24, 26, 3);
+    g.fillTriangle(24, 23, 22, 26, 26, 26);
+    g.fillStyle(0xaa1111, 0.8);
+    g.fillCircle(30, 36, 2.5);
+    g.fillTriangle(30, 33, 28, 36, 32, 36);
+    g.fillStyle(0x991111, 0.7);
+    g.fillCircle(20, 40, 2);
+    g.fillCircle(36, 48, 2);
+    g.generateTexture('skill_icon_bleed_strike', S, S);
+
+    // rampage — explosive berserker whirlwind with red energy
+    fillBg(0x441111);
+    // Central figure silhouette (berserker pose)
+    g.fillStyle(0xaa6633, 0.7);
+    g.fillCircle(C, 16, 7); // head
+    g.fillStyle(0x995522, 0.6);
+    g.fillTriangle(C - 12, 50, C, 20, C + 12, 50); // body
+    // Spinning blade arcs around figure
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const ax = C + Math.cos(angle) * 20;
+      const ay = C + Math.sin(angle) * 18;
+      g.lineStyle(3, 0xff4444, 0.8);
+      g.beginPath();
+      g.arc(ax, ay, 8, angle - 0.8, angle + 0.8, false);
+      g.strokePath();
+    }
+    // Red energy ring
+    g.lineStyle(2, 0xcc2222, 0.7);
+    g.strokeCircle(C, C, 24);
+    g.lineStyle(1.5, 0xff4444, 0.4);
+    g.strokeCircle(C, C, 20);
+    // Impact sparks
+    g.fillStyle(0xffaa00, 0.7);
+    g.fillCircle(C - 18, 14, 2);
+    g.fillCircle(C + 20, 22, 2.5);
+    g.fillCircle(C - 14, 48, 2);
+    g.fillCircle(C + 16, 46, 2);
+    // Red aura glow
+    g.fillStyle(0xff2222, 0.15);
+    g.fillCircle(C, C, 26);
+    g.generateTexture('skill_icon_rampage', S, S);
+
     // ═══ MAGE ═══
 
     // fireball — flaming orb
@@ -591,6 +820,15 @@ export class SkillEffectSystem {
       case 'war_stomp': this.effectWarStomp(casterX, casterY); break;
       case 'taunt_roar': this.effectTauntRoar(casterX, casterY); break;
       case 'vengeful_wrath': this.effectVengefulWrath(casterX, casterY); break;
+      case 'charge': this.effectCharge(casterX, casterY, targetX ?? casterX, targetY ?? casterY); break;
+      case 'lethal_strike': this.effectLethalStrike(targetX ?? casterX, targetY ?? casterY); break;
+      case 'iron_fortress': this.effectIronFortress(casterX, casterY); break;
+      case 'frenzy': this.effectFrenzy(casterX, casterY); break;
+      case 'bleed_strike': this.effectBleedStrike(targetX ?? casterX, targetY ?? casterY); break;
+      case 'dual_wield_mastery': this.effectDualWieldMastery(casterX, casterY); break;
+      case 'unyielding': this.effectUnyielding(casterX, casterY); break;
+      case 'life_regen': this.effectLifeRegen(casterX, casterY); break;
+      case 'rampage': this.effectRampage(casterX, casterY); break;
       // Mage
       case 'fireball': this.effectFireball(casterX, casterY, targetX ?? casterX, targetY ?? casterY); break;
       case 'blizzard': this.effectBlizzard(targetX ?? casterX, targetY ?? casterY); break;
@@ -888,6 +1126,289 @@ export class SkillEffectSystem {
     // Expanding fire ring
     this.ring(cx, y, 0xff4400, 10, 4, 400, 3);
     this.flash(cx, y, 0xff6600, 18, 300);
+  }
+
+  private effectCharge(cx: number, cy: number, tx: number, ty: number): void {
+    const sy = cy - 16;
+    const ey = ty - 16;
+    const dist = Phaser.Math.Distance.Between(cx, sy, tx, ey);
+    const dur = Math.max(200, Math.min(400, dist * 1.5));
+
+    // Dust trail along charge path
+    const trail = this.scene.add.particles(cx, sy, 'particle_smoke', {
+      tint: 0xccbb99,
+      speed: { min: 40, max: 100 }, angle: { min: 0, max: 360 },
+      lifespan: 400, scale: { start: 0.8, end: 1.5 }, alpha: { start: 0.5, end: 0 },
+      blendMode: 'NORMAL' as unknown as Phaser.BlendModes,
+      frequency: 20, stopAfter: 16,
+    }).setDepth(EFFECT_DEPTH);
+    trail.on('complete', () => { this.scene.time.delayedCall(500, () => trail.destroy()); });
+
+    // Speed lines along the charge direction
+    const angle = Math.atan2(ey - sy, tx - cx);
+    for (let i = 0; i < 6; i++) {
+      const lineG = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+      const offset = (Math.random() - 0.5) * 30;
+      const perpX = Math.cos(angle + Math.PI / 2) * offset;
+      const perpY = Math.sin(angle + Math.PI / 2) * offset;
+      const startX = cx + perpX;
+      const startY = sy + perpY;
+      lineG.lineStyle(3, 0xffcc44, 0.7);
+      lineG.beginPath();
+      lineG.moveTo(startX, startY);
+      lineG.lineTo(startX + Math.cos(angle) * 40, startY + Math.sin(angle) * 40);
+      lineG.strokePath();
+      this.scene.tweens.add({
+        targets: lineG, alpha: 0, duration: 300, delay: i * 30,
+        onComplete: () => lineG.destroy(),
+      });
+    }
+
+    // Impact burst at target
+    this.scene.time.delayedCall(dur, () => {
+      this.scene.cameras.main.shake(150, 0.008);
+      this.burst(tx, ey, 'particle_spark', 0xffcc44, 16, { speed: 160, lifespan: 400, scale: { start: 1.2, end: 0 } });
+      this.ring(tx, ey, 0xd4a017, 8, 4, 350, 3);
+      this.flash(tx, ey, 0xffffff, 14, 200);
+    });
+  }
+
+  private effectLethalStrike(tx: number, ty: number): void {
+    const y = ty - 16;
+
+    // Heavy downward slash — bright white arc
+    for (let i = 0; i < 2; i++) {
+      const arc = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+      const startAngle = Phaser.Math.DegToRad(-160 + i * 20);
+      const endAngle = Phaser.Math.DegToRad(0 + i * 20);
+      const radius = 30 + i * 12;
+      const colors = [0xffffff, 0xff4444];
+      arc.lineStyle(5 - i * 2, colors[i], 1);
+      arc.beginPath();
+      const steps = 16;
+      for (let s = 0; s <= steps; s++) {
+        const a = startAngle + (endAngle - startAngle) * (s / steps);
+        const px = tx + Math.cos(a) * radius;
+        const py = y + Math.sin(a) * radius;
+        if (s === 0) arc.moveTo(px, py); else arc.lineTo(px, py);
+      }
+      arc.strokePath();
+      this.scene.tweens.add({ targets: arc, scaleX: 1.6, scaleY: 1.6, alpha: 0, duration: 350, delay: i * 40, ease: 'Power2', onComplete: () => arc.destroy() });
+    }
+
+    // Critical hit cross mark
+    const cross = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+    cross.lineStyle(4, 0xff2222, 0.9);
+    cross.beginPath(); cross.moveTo(tx - 14, y - 14); cross.lineTo(tx + 14, y + 14); cross.strokePath();
+    cross.beginPath(); cross.moveTo(tx + 14, y - 14); cross.lineTo(tx - 14, y + 14); cross.strokePath();
+    this.scene.tweens.add({ targets: cross, alpha: 0, scaleX: 2, scaleY: 2, duration: 400, ease: 'Power2', onComplete: () => cross.destroy() });
+
+    // Red blood sparks
+    this.burst(tx, y, 'particle_spark', 0xff4444, 16, { speed: 180, lifespan: 400, scale: { start: 1.2, end: 0 } });
+    this.flash(tx, y, 0xffffff, 16, 150);
+    this.flash(tx, y, 0xff2222, 20, 300);
+    this.scene.cameras.main.shake(120, 0.006);
+  }
+
+  private effectIronFortress(cx: number, cy: number): void {
+    const y = cy - 16;
+
+    // Steel-blue hexagonal shield plates appearing around caster
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      const radius = 28;
+      const hx = cx + Math.cos(angle) * radius;
+      const hy = y + Math.sin(angle) * radius * 0.6;
+      const plate = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+      plate.fillStyle(0x6688aa, 0.5);
+      plate.lineStyle(2, 0x88aacc, 0.9);
+      const pts: Phaser.Geom.Point[] = [];
+      for (let h = 0; h < 6; h++) {
+        const ha = (h / 6) * Math.PI * 2;
+        pts.push(new Phaser.Geom.Point(hx + Math.cos(ha) * 10, hy + Math.sin(ha) * 10));
+      }
+      plate.fillPoints(pts, true);
+      plate.strokePoints(pts, true);
+      plate.setAlpha(0).setScale(0.2);
+      this.scene.tweens.add({
+        targets: plate, alpha: 1, scaleX: 1, scaleY: 1, duration: 200, delay: i * 35, ease: 'Back.easeOut',
+        onComplete: () => { this.scene.tweens.add({ targets: plate, alpha: 0, duration: 2500, ease: 'Power1', onComplete: () => plate.destroy() }); },
+      });
+    }
+
+    // Steel-blue particle burst
+    this.burst(cx, y, 'particle_star', 0x88aacc, 14, { speed: 70, lifespan: 600, scale: { start: 0.7, end: 0 } });
+    this.ring(cx, y, 0x6688aa, 8, 4, 500, 3);
+    this.flash(cx, y, 0x88aacc, 14, 250);
+  }
+
+  private effectFrenzy(cx: number, cy: number): void {
+    const y = cy - 16;
+
+    // Red rage aura — pulsing fire-like particles rising
+    const rage = this.scene.add.particles(cx, y + 10, 'particle_flame', {
+      tint: [0xcc2222, 0xff4444, 0xff6644],
+      speed: { min: 50, max: 120 }, angle: { min: 250, max: 290 },
+      lifespan: 500, scale: { start: 1.0, end: 0.2 }, alpha: { start: 0.9, end: 0 },
+      blendMode: 'ADD', frequency: 25, stopAfter: 20,
+      emitZone: { type: 'random' as const, source: new Phaser.Geom.Rectangle(-12, -6, 24, 12) as any },
+    }).setDepth(EFFECT_DEPTH);
+    rage.on('complete', () => { this.scene.time.delayedCall(600, () => rage.destroy()); });
+
+    // Red expanding rings
+    this.ring(cx, y, 0xcc2222, 8, 4, 400, 3);
+    this.ring(cx, y, 0xff4444, 6, 3, 350, 2);
+
+    // Red sparks burst
+    this.burst(cx, y, 'particle_spark', 0xff4444, 14, {
+      speed: 100, lifespan: 500, scale: { start: 1, end: 0 }, gravityY: -60,
+    });
+    this.flash(cx, y, 0xff2222, 16, 250);
+  }
+
+  private effectBleedStrike(tx: number, ty: number): void {
+    const y = ty - 16;
+
+    // Deep red slash arc
+    const arc = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+    const startAngle = Phaser.Math.DegToRad(-130);
+    const endAngle = Phaser.Math.DegToRad(-10);
+    arc.lineStyle(5, 0xcc2222, 1);
+    arc.beginPath();
+    const steps = 16;
+    for (let s = 0; s <= steps; s++) {
+      const a = startAngle + (endAngle - startAngle) * (s / steps);
+      const px = tx + Math.cos(a) * 28;
+      const py = y + Math.sin(a) * 28;
+      if (s === 0) arc.moveTo(px, py); else arc.lineTo(px, py);
+    }
+    arc.strokePath();
+    this.scene.tweens.add({ targets: arc, scaleX: 1.5, scaleY: 1.5, alpha: 0, duration: 350, ease: 'Power2', onComplete: () => arc.destroy() });
+
+    // Blood splatter — dark red droplets
+    this.burst(tx, y, 'particle_circle', 0x991111, 14, {
+      speed: 120, lifespan: 500, scale: { start: 0.8, end: 0.2 }, blend: 'NORMAL',
+      gravityY: 60,
+    });
+
+    // Continuous bleed drip particles (delayed to suggest ongoing bleed)
+    this.scene.time.delayedCall(200, () => {
+      const drip = this.scene.add.particles(tx, y, 'particle_circle', {
+        tint: [0xcc2222, 0x991111],
+        speed: { min: 20, max: 50 }, angle: { min: 60, max: 120 },
+        lifespan: 600, scale: { start: 0.5, end: 0 }, alpha: { start: 0.7, end: 0 },
+        gravityY: 80, blendMode: 'NORMAL' as unknown as Phaser.BlendModes,
+        frequency: 60, stopAfter: 8,
+      }).setDepth(EFFECT_DEPTH);
+      drip.on('complete', () => { this.scene.time.delayedCall(700, () => drip.destroy()); });
+    });
+
+    this.flash(tx, y, 0xcc2222, 12, 200);
+  }
+
+  private effectDualWieldMastery(cx: number, cy: number): void {
+    const y = cy - 16;
+
+    // Two crossed sword flashes — left and right diagonal
+    const swords = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+    swords.lineStyle(4, 0xddcc88, 0.9);
+    swords.beginPath(); swords.moveTo(cx - 20, y - 16); swords.lineTo(cx + 10, y + 20); swords.strokePath();
+    swords.lineStyle(4, 0xccbb77, 0.9);
+    swords.beginPath(); swords.moveTo(cx + 20, y - 16); swords.lineTo(cx - 10, y + 20); swords.strokePath();
+    this.scene.tweens.add({ targets: swords, alpha: 0, scaleX: 1.3, scaleY: 1.3, duration: 400, ease: 'Power2', onComplete: () => swords.destroy() });
+
+    // Golden sparkles
+    this.burst(cx, y, 'particle_spark', 0xddcc88, 12, { speed: 80, lifespan: 400, scale: { start: 0.8, end: 0 } });
+    this.flash(cx, y, 0xddcc88, 10, 200);
+  }
+
+  private effectUnyielding(cx: number, cy: number): void {
+    const y = cy - 16;
+
+    // Protective stone aura — grey/brown tones
+    const shield = this.scene.add.circle(cx, y, 6, 0xaa8866, 0.3).setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+    this.scene.tweens.add({
+      targets: shield, scaleX: 5, scaleY: 4, alpha: 0.5, duration: 300, ease: 'Back.easeOut',
+      onComplete: () => { this.scene.tweens.add({ targets: shield, alpha: 0, duration: 2000, ease: 'Power1', onComplete: () => shield.destroy() }); },
+    });
+
+    // Stone/earth particles orbiting
+    const stones = this.scene.add.particles(cx, y, 'particle_circle', {
+      emitZone: { type: 'edge' as const, source: new Phaser.Geom.Circle(0, 0, 24) as any, quantity: 10 },
+      tint: [0xaa8866, 0xccaa88, 0x886644],
+      lifespan: 800, scale: { start: 0.8, end: 0.3 }, alpha: { start: 0.9, end: 0 },
+      blendMode: 'ADD', speed: { min: 10, max: 30 },
+      frequency: 80, stopAfter: 10,
+    }).setDepth(EFFECT_DEPTH);
+    stones.on('complete', () => { this.scene.time.delayedCall(900, () => stones.destroy()); });
+
+    this.ring(cx, y, 0xaa8866, 6, 4, 400, 3);
+    this.flash(cx, y, 0xccaa88, 12, 250);
+  }
+
+  private effectLifeRegen(cx: number, cy: number): void {
+    const y = cy - 16;
+
+    // Green healing sparkles rising upward
+    const sparkles = this.scene.add.particles(cx, y, 'particle_star', {
+      tint: [0x44cc44, 0x66ff66, 0x88ffaa],
+      speed: { min: 30, max: 70 }, angle: { min: 250, max: 290 },
+      lifespan: 600, scale: { start: 0.6, end: 0 }, alpha: { start: 0.8, end: 0 },
+      blendMode: 'ADD', frequency: 50, stopAfter: 10,
+      emitZone: { type: 'random' as const, source: new Phaser.Geom.Rectangle(-10, -8, 20, 16) as any },
+    }).setDepth(EFFECT_DEPTH);
+    sparkles.on('complete', () => { this.scene.time.delayedCall(700, () => sparkles.destroy()); });
+
+    // Soft green glow
+    this.flash(cx, y, 0x44cc44, 12, 400);
+    // Green ring pulse
+    this.ring(cx, y, 0x44cc44, 6, 3, 400, 2);
+  }
+
+  private effectRampage(cx: number, cy: number): void {
+    const y = cy - 16;
+    this.scene.cameras.main.shake(250, 0.012);
+
+    // Multiple rapid expanding crimson shockwave rings
+    for (let r = 0; r < 5; r++) {
+      this.ring(cx, y, r < 3 ? 0xcc2222 : 0xff4444, 8 + r * 3, 5 + r * 1.5, 400 + r * 80, 3);
+    }
+
+    // Spinning slash arcs in multiple directions
+    for (let i = 0; i < 4; i++) {
+      const arc = this.scene.add.graphics().setDepth(EFFECT_DEPTH).setBlendMode('ADD' as unknown as Phaser.BlendModes);
+      const baseAngle = (i / 4) * Math.PI * 2;
+      const startAngle = baseAngle - 0.6;
+      const endAngle = baseAngle + 0.6;
+      arc.lineStyle(4, 0xff4444, 0.9);
+      arc.beginPath();
+      const steps = 12;
+      for (let s = 0; s <= steps; s++) {
+        const a = startAngle + (endAngle - startAngle) * (s / steps);
+        const radius = 30;
+        const px = cx + Math.cos(a) * radius;
+        const py = y + Math.sin(a) * radius;
+        if (s === 0) arc.moveTo(px, py); else arc.lineTo(px, py);
+      }
+      arc.strokePath();
+      this.scene.tweens.add({
+        targets: arc, scaleX: 1.8, scaleY: 1.8, alpha: 0, duration: 400, delay: i * 60,
+        ease: 'Power2', onComplete: () => arc.destroy(),
+      });
+    }
+
+    // Red-orange fire burst particles
+    this.burst(cx, y, 'particle_flame', 0xff4400, 22, { speed: 180, lifespan: 500, scale: { start: 1.2, end: 0 } });
+    this.burst(cx, y, 'particle_spark', 0xffaa00, 14, { speed: 200, lifespan: 400, scale: { start: 1, end: 0 } });
+
+    // Ground dust cloud
+    this.burst(cx, y, 'particle_smoke', 0x886655, 12, {
+      speed: 60, lifespan: 600, scale: { start: 0.6, end: 1.5 }, alpha: { start: 0.5, end: 0 }, blend: 'NORMAL',
+    });
+
+    // Central bright flash
+    this.flash(cx, y, 0xffffff, 16, 150);
+    this.flash(cx, y, 0xff2222, 22, 350);
   }
 
   // ══════════════════════════════════════════════════════════

@@ -786,12 +786,12 @@ export class UIScene extends Phaser.Scene {
     this.closeAllPanels();
 
     const TREE_NAMES: Record<string, string> = {
-      combat_master: '进攻大师', guardian: '守护者',
+      combat_master: '进攻大师', guardian: '守护者', berserker: '狂战士',
       fire: '烈焰', frost: '寒冰', arcane: '奥术',
       assassination: '暗杀', archery: '射术', traps: '陷阱',
     };
     const TREE_COLORS: Record<string, number> = {
-      combat_master: 0xd4a017, guardian: 0xf1c40f,
+      combat_master: 0xd4a017, guardian: 0xf1c40f, berserker: 0xcc3333,
       fire: 0xe74c3c, frost: 0x5dade2, arcane: 0x8e44ad,
       assassination: 0x27ae60, archery: 0xcc8844, traps: 0xff6600,
     };
