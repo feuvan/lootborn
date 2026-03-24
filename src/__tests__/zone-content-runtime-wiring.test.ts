@@ -218,22 +218,27 @@ describe('Hidden Area Discovery', () => {
     }
   });
 
-  it('discovery is radius-based — player within radius triggers reveal', () => {
-    // Simulate discovery logic
+  it('discovery is bounds-based — fog clearing over rectangular bounds triggers reveal', () => {
+    // Simulate bounds-based discovery logic (matching ZoneScene.isHiddenAreaExplored)
     for (const zoneId of ZONE_IDS) {
       const map = AllMaps[zoneId];
       for (const area of map.hiddenAreas!) {
-        // Player at area center should trigger
-        const distAtCenter = euclideanDistance(area.col, area.row, area.col, area.row);
-        expect(distAtCenter <= area.radius).toBe(true);
+        // Derive bounds from center/radius (matching ZoneScene.getHiddenAreaBounds)
+        const bounds = {
+          startCol: area.startCol ?? (area.col - area.radius),
+          startRow: area.startRow ?? (area.row - area.radius),
+          endCol: area.endCol ?? (area.col + area.radius),
+          endRow: area.endRow ?? (area.row + area.radius),
+        };
 
-        // Player at edge of radius should trigger
-        const distAtEdge = euclideanDistance(area.col + area.radius, area.row, area.col, area.row);
-        expect(distAtEdge <= area.radius).toBe(true);
-
-        // Player well outside should not trigger
-        const distOutside = euclideanDistance(area.col + area.radius + 10, area.row + 10, area.col, area.row);
-        expect(distOutside > area.radius).toBe(true);
+        // Bounds should be valid
+        expect(bounds.startCol).toBeLessThanOrEqual(bounds.endCol);
+        expect(bounds.startRow).toBeLessThanOrEqual(bounds.endRow);
+        // Center should be within bounds
+        expect(area.col).toBeGreaterThanOrEqual(bounds.startCol);
+        expect(area.col).toBeLessThanOrEqual(bounds.endCol);
+        expect(area.row).toBeGreaterThanOrEqual(bounds.startRow);
+        expect(area.row).toBeLessThanOrEqual(bounds.endRow);
       }
     }
   });

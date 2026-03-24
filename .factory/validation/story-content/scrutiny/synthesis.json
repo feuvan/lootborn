@@ -1,0 +1,170 @@
+{
+  "milestone": "story-content",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "npx vitest run",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "npx tsc --noEmit",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "npm run build",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 6,
+    "failedFeatures": [
+      "dialogue-trees",
+      "new-quest-types",
+      "random-events-system",
+      "zone-content-expansion",
+      "zone-content-runtime-wiring",
+      "zone-mini-bosses-lore"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "dialogue-trees",
+      "severity": "blocking",
+      "description": "None of the five authored dialogue trees include any choice with a `reward` payload, so the implementation never delivers the required alternate outcome of 'give reward'. The feature only triggers quests and dialogue branches; the reward path exists in UIScene but is unreachable from the shipped data."
+    },
+    {
+      "featureId": "new-quest-types",
+      "severity": "blocking",
+      "description": "Escort quests are completed purely by the player's proximity to the destination via `updateProgress('escort', obj.targetId)`, but there is no runtime use of `quest.escortNpc`, no escort NPC spawn/follow behavior, and no NPC death failure path. This does not satisfy the required escort quest behavior."
+    },
+    {
+      "featureId": "new-quest-types",
+      "severity": "blocking",
+      "description": "Defend quests have no gameplay implementation beyond UI/minimap display. The code never spawns or tracks a defend target, never starts enemy waves, and never calls `failQuest()` for target destruction; the only defend-specific runtime references are UI counters and static minimap markers."
+    },
+    {
+      "featureId": "new-quest-types",
+      "severity": "blocking",
+      "description": "`failQuest()` exists only in QuestSystem and tests; there are no production call sites that invoke it for escort NPC death or defend target destruction. Failed escort/defend quests therefore cannot occur through gameplay, so the re-acceptance feature is not actually wired end-to-end."
+    },
+    {
+      "featureId": "new-quest-types",
+      "severity": "blocking",
+      "description": "Craft quests add `craftPhases` metadata and QuestSystem phase ordering, but there is no runtime integration that updates `craft_craft` or `craft_deliver` from NPC interactions. The only scene-side quest progress updates for new quest types are `investigate_clue` and `escort`, so craft-and-deliver quests cannot be completed in gameplay."
+    },
+    {
+      "featureId": "random-events-system",
+      "severity": "blocking",
+      "description": "Ambush monsters are only spawned when `this.mapData.collisions[r]?.[c]` is truthy, but this codebase treats truthy collision cells as walkable tiles and false as blocked in movement/spawn logic elsewhere. Because the handler clamps positions but never searches for valid nearby tiles, ambushes can silently fail to produce the requested hostile spawn wave if the sampled tiles are invalid."
+    },
+    {
+      "featureId": "random-events-system",
+      "severity": "blocking",
+      "description": "The wandering merchant emits `SHOP_OPEN` with `{ npcName, items, isWanderingMerchant }`, but `UIScene.handleShopOpen/openShop` expects `{ npcId, shopItems, type }`. As a result, the merchant event cannot open a functioning shop UI with the unique inventory required by the feature."
+    },
+    {
+      "featureId": "random-events-system",
+      "severity": "blocking",
+      "description": "The rescue event grants rewards immediately after spawning monsters and resolves the event right away, without spawning a stranded NPC entity or waiting for nearby hostiles to be cleared. This does not meet the required 'stranded NPC + surrounding hostiles, reward on clear' behavior."
+    },
+    {
+      "featureId": "random-events-system",
+      "severity": "blocking",
+      "description": "Environmental puzzle events are auto-solved after a 2-second timer and resolved immediately, with no interaction-based challenge. The spec explicitly requires an interaction-based puzzle event with reward."
+    },
+    {
+      "featureId": "zone-content-expansion",
+      "severity": "blocking",
+      "description": "The reviewed commit does not wire `mapData.fieldNpcs` into runtime NPC spawning. The feature requires ≥2 new NPCs per zone placed in the world, but at commit `bca1b5b680f139fa0d49e306a81ca6ecb4182033` the handoff explicitly states runtime wiring was left undone, so players could not encounter the new field NPCs in-game. This was only added later in commit `9d91065` via `spawnFieldNPCs()`."
+    },
+    {
+      "featureId": "zone-content-expansion",
+      "severity": "blocking",
+      "description": "Hidden areas were only defined in map data in the reviewed feature commit and were not discoverable or reward-bearing at runtime. The spec requires hidden areas to stay off the minimap until discovered and contain rewards, but discovery logic (`checkHiddenAreaDiscovery` / `discoverHiddenArea`) did not exist until later commit `9d91065`."
+    },
+    {
+      "featureId": "zone-content-expansion",
+      "severity": "blocking",
+      "description": "Sub-dungeon entrances were not interactable in the reviewed commit. The feature requires entrances to be interactable objects leading to separate map areas with exits back to the parent zone, but click handling (`findSubDungeonEntranceAt` / `enterSubDungeon`) was only introduced later in commit `9d91065`, so the required dungeon flow was absent at the reviewed commit."
+    },
+    {
+      "featureId": "zone-content-expansion",
+      "severity": "blocking",
+      "description": "Companion transfer into sub-dungeons was not implemented in the reviewed commit. The handoff for `bca1b5b` explicitly lists this as undone, which means a named requirement in the feature description was unmet until the later runtime-wiring commit."
+    },
+    {
+      "featureId": "zone-content-runtime-wiring",
+      "severity": "blocking",
+      "description": "ZoneScene.create() always spawns the player at mapData.playerStart, and changeZone()/exitSubDungeon() never apply the requested targetCol/targetRow or parentZoneInfo.returnCol/returnRow. As a result, exiting a sub-dungeon returns the player to the zone's default spawn instead of the entrance position required by the feature spec."
+    },
+    {
+      "featureId": "zone-content-runtime-wiring",
+      "severity": "blocking",
+      "description": "Hidden area discovery checks euclidean distance to area.col/row using a radius, but the feature requires revealing hidden areas when fog-of-war is cleared over each area's rectangular bounds. The implementation does not use bounds-based discovery and the types/tests were changed to a different radius-based data model instead of the specified bounds/discovered structure."
+    },
+    {
+      "featureId": "zone-mini-bosses-lore",
+      "severity": "blocking",
+      "description": "Zone mini-bosses are spawned as ordinary elite monsters with no dedicated guaranteed-drop handling. This does not satisfy the requirement that mini-bosses drop guaranteed enhanced loot."
+    },
+    {
+      "featureId": "zone-mini-bosses-lore",
+      "severity": "blocking",
+      "description": "The loot pipeline still relies on probabilistic quality rolls (`rollQuality`) and optional drop chances. Even for elite monsters, `rollQuality` can return `normal`, so the implementation cannot guarantee a magic+/rare+ drop from mini-boss encounters as required."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skill",
+      "suggestion": "Update content-worker skill guidance to require checking for existing partial implementations and to explicitly escalate or implement runtime/UI wiring when feature requirements include in-game interaction, not just data changes.",
+      "evidence": "Skill file `.factory/skills/content-worker/SKILL.md` emphasizes content definitions and only briefly mentions dialogue; transcript skeleton shows major edits to `src/scenes/UIScene.ts` and `src/scenes/ZoneScene.ts`, and handoff.skillFeedback explicitly suggested updating the skill for this case.",
+      "isSystemic": true
+    },
+    {
+      "target": "library",
+      "suggestion": "Document the new cross-scene dialogue-state persistence pattern (ZoneScene proxying to UIScene) in .factory/library/architecture.md so future workers can extend save/load wiring consistently.",
+      "evidence": "Implementation saves `dialogueState` through `ZoneScene.getDialogueState()` / `setDialogueState()` proxying to `UIScene` (`src/scenes/ZoneScene.ts:2613-2625`, `src/scenes/UIScene.ts:1869-1875`), while `.factory/library/architecture.md` documents companion cross-scene methods but not this newer persistence pattern.",
+      "isSystemic": false
+    },
+    {
+      "target": "library",
+      "suggestion": "Add EventBus payload contract notes for UIScene panel-opening events such as SHOP_OPEN to .factory/library so runtime systems emit compatible payloads.",
+      "evidence": "ZoneScene random merchant emits `{ npcName, items, isWanderingMerchant }` at `src/scenes/ZoneScene.ts:1865`, while `UIScene.handleShopOpen` expects `{ npcId, shopItems, type }` at `src/scenes/UIScene.ts:367-580`. No shared-state doc mentions this contract.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance that content/map features with user-visible interaction requirements are not complete until ZoneScene/UI runtime hooks are implemented or explicitly split into a follow-up feature.",
+      "evidence": "`AGENTS.md` documents runtime-wiring expectations for combat features, but there is no equivalent note for map/content features. The reviewed feature's later follow-up commit `9d91065` added all missing runtime hooks in `src/scenes/ZoneScene.ts`, confirming the missing pattern was real rather than optional.",
+      "isSystemic": true
+    },
+    {
+      "target": "skill",
+      "suggestion": "Strengthen systems-worker skill guidance for scene-wiring features: verify actual ZoneScene callsites/state transitions and ensure tests cover runtime behavior instead of only static data contracts.",
+      "evidence": ".factory/skills/systems-worker/SKILL.md requires tests-first and runtime wiring verification; the transcript skeleton shows implementation edits before creating src/__tests__/zone-content-runtime-wiring.test.ts, and the test file primarily checks static data contracts rather than scene behavior.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "AGENTS.md says runtime wiring features must verify new methods are actually called from ZoneScene at runtime, but this feature adds dead-end quest runtime APIs/metadata (`failQuest`, `escortNpc`, `defendTarget`, `craftPhases`) without corresponding gameplay call sites. The convention exists, but this review shows it was not followed for story quest features.",
+      "reason": "ambiguous"
+    },
+    {
+      "observation": "The worker used the `systems-worker` flow for a feature whose `skillName` in features.json is `systems-worker`, but the transcript shows an initial attempt to read `.factory/library` with `Read` instead of individual files, causing unnecessary thrash before implementation.",
+      "reason": "ambiguous"
+    },
+    {
+      "observation": "Zone transitions currently restart ZoneScene at mapData.playerStart and ignore exit target coordinates, despite map exits carrying targetCol/targetRow. This architectural quirk is documented in .factory/library/architecture.md, but the feature still relied on return-to-entrance semantics without accounting for it.",
+      "reason": "ambiguous"
+    }
+  ],
+  "previousRound": null
+}

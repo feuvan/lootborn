@@ -1,0 +1,51 @@
+{
+  "featureId": "random-events-system",
+  "reviewedAt": "2026-03-24T15:11:45Z",
+  "commitId": "9c68eaee797eb5c83474ff338add7671a5589fa0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds a RandomEventSystem and wires it into ZoneScene, but several event handlers do not satisfy the requested gameplay behavior at runtime. Ambush and rescue spawns are gated behind collision checks that appear inverted for walkability, the wandering merchant bypasses the existing shop payload contract so its inventory will not render, and rescue/puzzle events resolve immediately instead of requiring the specified interactions.",
+    "issues": [
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 1806,
+        "severity": "blocking",
+        "description": "Ambush monsters are only spawned when `this.mapData.collisions[r]?.[c]` is truthy, but this codebase treats truthy collision cells as walkable tiles and false as blocked in movement/spawn logic elsewhere. Because the handler clamps positions but never searches for valid nearby tiles, ambushes can silently fail to produce the requested hostile spawn wave if the sampled tiles are invalid."
+      },
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 1865,
+        "severity": "blocking",
+        "description": "The wandering merchant emits `SHOP_OPEN` with `{ npcName, items, isWanderingMerchant }`, but `UIScene.handleShopOpen/openShop` expects `{ npcId, shopItems, type }`. As a result, the merchant event cannot open a functioning shop UI with the unique inventory required by the feature."
+      },
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 1876,
+        "severity": "blocking",
+        "description": "The rescue event grants rewards immediately after spawning monsters and resolves the event right away, without spawning a stranded NPC entity or waiting for nearby hostiles to be cleared. This does not meet the required 'stranded NPC + surrounding hostiles, reward on clear' behavior."
+      },
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 1921,
+        "severity": "blocking",
+        "description": "Environmental puzzle events are auto-solved after a 2-second timer and resolved immediately, with no interaction-based challenge. The spec explicitly requires an interaction-based puzzle event with reward."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker used the `systems-worker` flow for a feature whose `skillName` in features.json is `systems-worker`, but the transcript shows an initial attempt to read `.factory/library` with `Read` instead of individual files, causing unnecessary thrash before implementation.",
+      "evidence": "Transcript skeleton for worker session bdf1dab3-6c47-4512-bc27-9e02f1a255f3 starts with `Read` on `/Users/feuvan/src/abyssfire/.factory/library`, then later falls back to `LS` and specific reads."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The event-system implementation had to infer the SHOP_OPEN payload shape from UIScene. That event contract is not documented in AGENTS.md or the library, which makes it easy for workers to emit incompatible payloads when adding runtime systems that talk to UIScene over EventBus.",
+      "evidence": "ZoneScene random merchant emits `{ npcName, items, isWanderingMerchant }` at `src/scenes/ZoneScene.ts:1865`, while `UIScene.handleShopOpen` expects `{ npcId, shopItems, type }` at `src/scenes/UIScene.ts:367-580`. No shared-state doc mentions this contract."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Verdict: fail. I reviewed the feature metadata, handoff, transcript skeleton, diff, and runtime code. The RandomEventSystem core logic is present, but three of the five event types do not meet the required in-game behavior and the wandering merchant is wired to an incompatible UI event payload, so the feature is not fully functional."
+}

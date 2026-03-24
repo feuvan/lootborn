@@ -23,7 +23,7 @@ export const subDungeonDwarfMine: SubDungeonMapData = {
   ],
   miniBoss: { col: 20, row: 32, monsterId: 'sub_mine_guardian' },
   playerStart: { col: 5, row: 5 },
-  exit: { col: 5, row: 3, returnCol: 36, returnRow: 93 },
+  exit: { col: 5, row: 3, returnCol: 35, returnRow: 92 },
   levelRange: [20, 27],
   bgColor: '#0d0d0d',
 };
@@ -45,7 +45,7 @@ export const subDungeonDemonAltar: SubDungeonMapData = {
   ],
   miniBoss: { col: 20, row: 35, monsterId: 'sub_altar_keeper' },
   playerStart: { col: 5, row: 5 },
-  exit: { col: 5, row: 3, returnCol: 91, returnRow: 42 },
+  exit: { col: 5, row: 3, returnCol: 90, returnRow: 40 },
   levelRange: [40, 48],
   bgColor: '#0a0005',
 };
@@ -67,6 +67,8 @@ export const SubDungeonMiniBosses: Record<string, MonsterDefinition> = {
     goldReward: [45, 90],
     spriteKey: 'monster_sub_mine_guardian',
     elite: true,
+    isMiniBoss: true,
+    isSubDungeonMiniBoss: true,
     animCategory: 'large',
     lootTable: [
       { quality: 'magic', dropRate: 0.9 },
@@ -89,6 +91,8 @@ export const SubDungeonMiniBosses: Record<string, MonsterDefinition> = {
     goldReward: [120, 240],
     spriteKey: 'monster_sub_altar_keeper',
     elite: true,
+    isMiniBoss: true,
+    isSubDungeonMiniBoss: true,
     animCategory: 'demonic',
     lootTable: [
       { quality: 'rare', dropRate: 0.8 },

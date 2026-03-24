@@ -21,6 +21,7 @@ export const miniBossEmeraldPlains: MonsterDefinition = {
   goldReward: [15, 30],
   spriteKey: 'monster_goblin_shaman',
   elite: true,
+  isMiniBoss: true,
   animCategory: 'humanoid',
   lootTable: [
     { quality: 'magic', dropRate: 0.8 },
@@ -45,6 +46,7 @@ export const miniBossTwilightForest: MonsterDefinition = {
   goldReward: [22, 45],
   spriteKey: 'monster_shadow_weaver',
   elite: true,
+  isMiniBoss: true,
   animCategory: 'humanoid',
   lootTable: [
     { quality: 'magic', dropRate: 0.8 },
@@ -69,6 +71,7 @@ export const miniBossAnvilMountains: MonsterDefinition = {
   goldReward: [38, 75],
   spriteKey: 'monster_iron_guardian',
   elite: true,
+  isMiniBoss: true,
   animCategory: 'large',
   lootTable: [
     { quality: 'magic', dropRate: 0.8 },
@@ -93,6 +96,7 @@ export const miniBossScorchingDesert: MonsterDefinition = {
   goldReward: [60, 120],
   spriteKey: 'monster_sand_wraith',
   elite: true,
+  isMiniBoss: true,
   animCategory: 'demonic',
   lootTable: [
     { quality: 'magic', dropRate: 0.7 },
@@ -117,6 +121,7 @@ export const miniBossAbyssRift: MonsterDefinition = {
   goldReward: [100, 200],
   spriteKey: 'monster_void_herald',
   elite: true,
+  isMiniBoss: true,
   animCategory: 'demonic',
   lootTable: [
     { quality: 'rare', dropRate: 0.7 },

@@ -394,6 +394,20 @@ export class MapGenerator {
     }
     clearArea(tiles, map.playerStart.col, map.playerStart.row, 2, config.primaryTile, cols, rows, true);
 
+    // Clear areas around field NPC positions to ensure walkability
+    if (map.fieldNpcs) {
+      for (const npc of map.fieldNpcs) {
+        clearArea(tiles, npc.col, npc.row, 1, config.primaryTile, cols, rows, true);
+      }
+    }
+
+    // Clear areas around sub-dungeon entrance positions to ensure walkability
+    if (map.subDungeonEntrances) {
+      for (const entrance of map.subDungeonEntrances) {
+        clearArea(tiles, entrance.col, entrance.row, 1, config.primaryTile, cols, rows, true);
+      }
+    }
+
     // (d) Generate paths connecting key points using drunk walk
     const keyPoints = getKeyPoints(map);
     const pathTile = TILE_DIRT;

@@ -42,7 +42,7 @@ export const AbyssRiftMap: MapData = {
 
   // ─── New Content: Field NPCs ──────────────────────────────────────────
   fieldNpcs: [
-    { col: 50, row: 35, npcId: 'abyss_fallen_knight' },
+    { col: 50, row: 37, npcId: 'abyss_fallen_knight' },
     { col: 75, row: 50, npcId: 'abyss_void_researcher' },
   ],
 

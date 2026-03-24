@@ -8,6 +8,14 @@ let uidCounter = 0;
 function genUid(): string { return `item_${Date.now()}_${uidCounter++}`; }
 
 export class LootSystem {
+  /** Quality ordering for comparison. */
+  private static readonly QUALITY_ORDER: ItemQuality[] = ['normal', 'magic', 'rare', 'legendary', 'set'];
+
+  /** Check if quality meets minimum threshold. */
+  static qualityMeetsFloor(quality: ItemQuality, floor: ItemQuality): boolean {
+    return LootSystem.QUALITY_ORDER.indexOf(quality) >= LootSystem.QUALITY_ORDER.indexOf(floor);
+  }
+
   generateLoot(monster: MonsterDefinition, playerLuck: number, affixLootBonus = 0): ItemInstance[] {
     const items: ItemInstance[] = [];
     const level = monster.level;
@@ -36,6 +44,13 @@ export class LootSystem {
       if (item) items.push(item);
     }
 
+    // Mini-boss guaranteed loot quality floor:
+    // Sub-dungeon mini-bosses guarantee at least rare+, zone mini-bosses guarantee at least magic+
+    if (monster.isMiniBoss) {
+      const qualityFloor: ItemQuality = monster.isSubDungeonMiniBoss ? 'rare' : 'magic';
+      this.enforceMiniBossQualityFloor(items, level, qualityFloor);
+    }
+
     // Consumable drop
     if (chance(30)) {
       const potion = this.generateConsumable(level);
@@ -49,6 +64,48 @@ export class LootSystem {
     }
 
     return items;
+  }
+
+  /**
+   * Enforce minimum loot quality for mini-bosses.
+   * If no equipment item meets the quality floor, either upgrade the best existing
+   * equipment item or add a new guaranteed drop.
+   */
+  private enforceMiniBossQualityFloor(items: ItemInstance[], level: number, qualityFloor: ItemQuality): void {
+    const equipItems = items.filter(i => {
+      const base = getItemBase(i.baseId);
+      return base && (base.slot !== undefined);
+    });
+
+    const hasQualityItem = equipItems.some(i => LootSystem.qualityMeetsFloor(i.quality, qualityFloor));
+
+    if (!hasQualityItem) {
+      // Generate a guaranteed equipment drop at the quality floor
+      // Use broader level search to ensure we always find a base item
+      let item = this.generateEquipment(level, qualityFloor);
+      if (!item) {
+        // Retry with a wider level range (go lower) if no item found at the monster's level
+        item = this.generateEquipmentWide(level, qualityFloor);
+      }
+      if (item) {
+        items.push(item);
+      }
+    }
+  }
+
+  /** Generate equipment with a wider level search range (used as fallback for mini-boss drops). */
+  private generateEquipmentWide(level: number, quality: ItemQuality): ItemInstance | null {
+    const allEquip = [...Weapons, ...Armors, ...Accessories]
+      .filter(b => b.levelReq <= level + 5 && b.levelReq >= Math.max(1, level - 20));
+    if (allEquip.length === 0) {
+      // Last resort: pick any equipment item
+      const anyEquip = [...Weapons, ...Armors, ...Accessories];
+      if (anyEquip.length === 0) return null;
+      const base = anyEquip[randomInt(0, anyEquip.length - 1)];
+      return this.createItem(base.id, level, quality);
+    }
+    const base = allEquip[randomInt(0, allEquip.length - 1)];
+    return this.createItem(base.id, level, quality);
   }
 
   private rollQuality(level: number, luck: number, isElite: boolean, affixBonus = 0): ItemQuality {

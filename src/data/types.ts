@@ -84,6 +84,10 @@ export interface MonsterDefinition {
   goldReward: [number, number];
   spriteKey: string;
   elite?: boolean;
+  /** Indicates this monster is a mini-boss (guaranteed enhanced loot). */
+  isMiniBoss?: boolean;
+  /** For sub-dungeon mini-bosses, indicates they belong to a sub-dungeon (rare+ loot floor). */
+  isSubDungeonMiniBoss?: boolean;
   lootTable?: LootEntry[];
   bossSkills?: string[];
   animCategory?: MonsterAnimCategory;
@@ -241,8 +245,13 @@ export interface HiddenArea {
   /** Center tile position. */
   col: number;
   row: number;
-  /** Radius in tiles defining the hidden area region. */
+  /** Radius in tiles defining the hidden area region (legacy, used to derive bounds). */
   radius: number;
+  /** Rectangular bounds for fog-of-war discovery check (if not set, derived from col/row ± radius). */
+  startCol?: number;
+  startRow?: number;
+  endCol?: number;
+  endRow?: number;
   /** Reward spawns inside the hidden area. */
   rewards: HiddenAreaReward[];
   /** Flavour text shown when discovering the area (Chinese). */

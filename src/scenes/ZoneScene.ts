@@ -95,6 +95,10 @@ export class ZoneScene extends Phaser.Scene {
   private totalKills = 0;
   private exploredZones: Set<string> = new Set();
   private fogData: Record<string, boolean[][]> = {};
+  /** Set of tile coordinates (as "col,row") that the player has explored (within view radius). */
+  private exploredTiles: Set<string> = new Set();
+  /** View radius used for fog-of-war exploration tracking (matches FogOfWarSystem default). */
+  private static readonly EXPLORE_VIEW_RADIUS = 10;
   private lastTileUpdate = 0;
   private _pendingSaveData: SaveData | null = null;
   private mobileControls: MobileControlsSystem | null = null;
@@ -188,7 +192,7 @@ export class ZoneScene extends Phaser.Scene {
     super({ key: 'ZoneScene' });
   }
 
-  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[] }): void {
+  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number }): void {
     this.currentMapId = data.mapId || 'emerald_plains';
     this.isInSubDungeon = !!data.subDungeon;
     this.parentZoneInfo = data.parentZoneInfo ?? null;
@@ -206,7 +210,7 @@ export class ZoneScene extends Phaser.Scene {
     }
   }
 
-  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[]; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[] }): void {
+  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[]; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number }): void {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     // `scene.restart()` reuses the same scene instance, so transient guards must
     // be cleared explicitly when entering a new zone.
@@ -223,6 +227,7 @@ export class ZoneScene extends Phaser.Scene {
     this.subDungeonEntranceSprites = [];
     this.storyDecorationSprites = [];
     this.storyDecorationTooltip = null;
+    this.exploredTiles = new Set();
 
     this.combatSystem = new CombatSystem();
     this.lootSystem = new LootSystem();
@@ -259,7 +264,9 @@ export class ZoneScene extends Phaser.Scene {
 
     // Create player — restore stats from zone transition if available
     const classData = AllClasses[data.classId] || AllClasses['warrior'];
-    this.player = new Player(this, classData, this.mapData.playerStart.col, this.mapData.playerStart.row);
+    const spawnCol = data.targetCol ?? this.mapData.playerStart.col;
+    const spawnRow = data.targetRow ?? this.mapData.playerStart.row;
+    this.player = new Player(this, classData, spawnCol, spawnRow);
     if (data.playerStats) {
       const s = data.playerStats;
       this.player.level = s.level;
@@ -689,6 +696,7 @@ export class ZoneScene extends Phaser.Scene {
     this.checkExitProximity();
     this.checkRarePetPickup();
     this.checkLorePickup();
+    this.updateExploredTiles();
     this.checkHiddenAreaDiscovery();
     this.checkStoryDecorationProximity();
     this.checkSubDungeonEntranceProximity();
@@ -2627,6 +2635,8 @@ export class ZoneScene extends Phaser.Scene {
       this.scene.restart({
         classId: this.player.classData.id,
         mapId: targetMap,
+        targetCol,
+        targetRow,
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
         loreCollected: [...this.loreCollected],
         discoveredHiddenAreas: [...this.discoveredHiddenAreas],
@@ -3232,13 +3242,55 @@ export class ZoneScene extends Phaser.Scene {
 
   // ─── Zone Content Wiring: Hidden Areas ───────────────────────────────
 
-  /** Check if player has walked near any hidden area and reveal rewards. */
+  /** Update explored tiles based on player's current position and view radius. */
+  private updateExploredTiles(): void {
+    const pc = this.player.tileCol;
+    const pr = this.player.tileRow;
+    const vr = ZoneScene.EXPLORE_VIEW_RADIUS;
+    const minC = Math.max(0, Math.floor(pc - vr));
+    const maxC = Math.min(this.mapData.cols - 1, Math.ceil(pc + vr));
+    const minR = Math.max(0, Math.floor(pr - vr));
+    const maxR = Math.min(this.mapData.rows - 1, Math.ceil(pr + vr));
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const dist = Math.sqrt((c - pc) ** 2 + (r - pr) ** 2);
+        if (dist <= vr) {
+          this.exploredTiles.add(`${c},${r}`);
+        }
+      }
+    }
+  }
+
+  /** Get hidden area bounds — uses explicit bounds or derives from center/radius. */
+  private getHiddenAreaBounds(area: import('../data/types').HiddenArea): { startCol: number; startRow: number; endCol: number; endRow: number } {
+    return {
+      startCol: area.startCol ?? (area.col - area.radius),
+      startRow: area.startRow ?? (area.row - area.radius),
+      endCol: area.endCol ?? (area.col + area.radius),
+      endRow: area.endRow ?? (area.row + area.radius),
+    };
+  }
+
+  /** Check if the player has explored (cleared fog over) the rectangular bounds of a hidden area. */
+  private isHiddenAreaExplored(area: import('../data/types').HiddenArea): boolean {
+    const bounds = this.getHiddenAreaBounds(area);
+    // Check if all four corners + center of the bounds have been explored
+    const checkPoints = [
+      { c: bounds.startCol, r: bounds.startRow },  // top-left
+      { c: bounds.endCol, r: bounds.startRow },     // top-right
+      { c: bounds.startCol, r: bounds.endRow },     // bottom-left
+      { c: bounds.endCol, r: bounds.endRow },        // bottom-right
+      { c: area.col, r: area.row },                  // center
+    ];
+    return checkPoints.every(p => this.exploredTiles.has(`${p.c},${p.r}`));
+  }
+
+  /** Check if player has explored the fog over any hidden area bounds and reveal rewards. */
   private checkHiddenAreaDiscovery(): void {
     if (!this.mapData.hiddenAreas) return;
     for (const area of this.mapData.hiddenAreas) {
       if (this.discoveredHiddenAreas.has(area.id)) continue;
-      const dist = euclideanDistance(this.player.tileCol, this.player.tileRow, area.col, area.row);
-      if (dist <= area.radius) {
+      if (this.isHiddenAreaExplored(area)) {
         this.discoverHiddenArea(area);
       }
     }
@@ -3517,6 +3569,8 @@ export class ZoneScene extends Phaser.Scene {
       this.scene.restart({
         classId: this.player.classData.id,
         mapId: parentInfo.mapId,
+        targetCol: parentInfo.returnCol,
+        targetRow: parentInfo.returnRow,
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
         loreCollected: [...this.loreCollected],
         discoveredHiddenAreas: [...this.discoveredHiddenAreas],

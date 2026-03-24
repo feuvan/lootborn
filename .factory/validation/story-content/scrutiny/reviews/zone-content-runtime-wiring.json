@@ -1,0 +1,45 @@
+{
+  "featureId": "zone-content-runtime-wiring",
+  "reviewedAt": "2026-03-24T23:59:00Z",
+  "commitId": "9d91065",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature wires in field NPCs, hidden areas, sub-dungeons, and story decorations, but two blocking runtime gaps remain: normal zone transitions still ignore exit target coordinates, so returning from a sub-dungeon does not place the player at the entrance position, and hidden-area discovery is implemented as center-radius proximity rather than fog clearing over rectangular bounds as specified.",
+    "issues": [
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 232,
+        "severity": "blocking",
+        "description": "ZoneScene.create() always spawns the player at mapData.playerStart, and changeZone()/exitSubDungeon() never apply the requested targetCol/targetRow or parentZoneInfo.returnCol/returnRow. As a result, exiting a sub-dungeon returns the player to the zone's default spawn instead of the entrance position required by the feature spec."
+      },
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 3058,
+        "severity": "blocking",
+        "description": "Hidden area discovery checks euclidean distance to area.col/row using a radius, but the feature requires revealing hidden areas when fog-of-war is cleared over each area's rectangular bounds. The implementation does not use bounds-based discovery and the types/tests were changed to a different radius-based data model instead of the specified bounds/discovered structure."
+      },
+      {
+        "file": "src/__tests__/zone-content-runtime-wiring.test.ts",
+        "line": 40,
+        "severity": "non_blocking",
+        "description": "The added tests mostly validate map data shape and static consistency; they do not exercise ZoneScene runtime behavior such as actual NPC spawning in create(), hidden-area reveal from fog clearing, sub-dungeon return placement, or decoration tooltip rendering, so the most important runtime regressions were left undetected."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "Zone transitions currently restart ZoneScene at mapData.playerStart and ignore exit target coordinates, despite map exits carrying targetCol/targetRow. This architectural quirk is documented in .factory/library/architecture.md, but the feature still relied on return-to-entrance semantics without accounting for it.",
+      "evidence": ".factory/library/architecture.md notes 'changeZone() ignores target coordinates'; src/scenes/ZoneScene.ts:232 creates the player at mapData.playerStart, while src/scenes/ZoneScene.ts:2439-2463 and 3335-3344 restart without applying target coordinates."
+    },
+    {
+      "area": "skills",
+      "observation": "The systems-worker skill says to write tests first and cover expected runtime behavior, but the worker mostly produced data-validation tests after implementation, which missed the runtime regressions above. The skill may need stronger guidance to verify actual ZoneScene callsites and state transitions for scene-wiring features.",
+      "evidence": ".factory/skills/systems-worker/SKILL.md requires tests-first and runtime wiring verification; the transcript skeleton shows implementation edits before creating src/__tests__/zone-content-runtime-wiring.test.ts, and the test file primarily checks static data contracts rather than scene behavior."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Verdict: fail. The diff and transcript were reviewed. Field NPC, decoration, and sub-dungeon scaffolding were added, but sub-dungeon exit placement does not return to the entrance location, and hidden-area discovery diverges from the required fog-cleared bounds behavior. Report written for scrutiny follow-up."
+}

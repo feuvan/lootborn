@@ -1,0 +1,34 @@
+{
+  "featureId": "zone-mini-bosses-lore",
+  "reviewedAt": "2026-03-24T15:11:10Z",
+  "commitId": "6aa72b67537c515e019a1656375a3158524f0e0c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Feature wiring covers most requirements, but the mini-boss drop guarantee is not implemented. Mini-bosses are marked elite and given richer loot tables, yet they still use the generic loot flow where all equipment rolls remain probabilistic, so a kill can produce only normal loot or no enhanced equipment at all.",
+    "issues": [
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 2787,
+        "severity": "blocking",
+        "description": "Zone mini-bosses are spawned as ordinary elite monsters with no dedicated guaranteed-drop handling. This does not satisfy the requirement that mini-bosses drop guaranteed enhanced loot."
+      },
+      {
+        "file": "src/systems/LootSystem.ts",
+        "line": 20,
+        "severity": "blocking",
+        "description": "The loot pipeline still relies on probabilistic quality rolls (`rollQuality`) and optional drop chances. Even for elite monsters, `rollQuality` can return `normal`, so the implementation cannot guarantee a magic+/rare+ drop from mini-boss encounters as required."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The content-worker skill says to study existing content patterns before creating data, but it does not tell workers to inspect whether a prior worker already implemented part of the feature. In this transcript the worker had to discover that mini-boss and lore data files already existed before focusing on runtime gaps.",
+      "evidence": "Transcript skeleton for worker session e4a2bf6d-07e8-4bfe-b321-b412d6365ec0 shows early exploration of `src/data/miniBosses.ts` and `src/data/loreCollectibles.ts`, followed by handoff.skillFeedback suggesting the skill should mention checking what is already implemented."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Verdict: fail. The feature adds mini-boss dialogue, lore collectibles, and lore-log persistence, but it misses the blocking requirement for guaranteed enhanced mini-boss loot because drops still go through the normal probabilistic elite loot path."
+}
