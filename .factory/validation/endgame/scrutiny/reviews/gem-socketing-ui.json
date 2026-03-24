@@ -1,39 +1,44 @@
 {
   "featureId": "gem-socketing-ui",
-  "reviewedAt": "2026-03-24T17:43:28.302229Z",
+  "reviewedAt": "2026-03-24T18:02:42Z",
   "commitId": "12aaa81",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The feature delivers the socket panel, insert/remove flows, Chinese UI text, tooltip display, and save migration support, but it does not fully satisfy the promised stat-flow behavior because DEX/LCK gem bonuses never enter combat calculations for crit/dodge/magic-find semantics.",
+    "summary": "The feature mostly wires socketing UI and stat propagation correctly, but it does not fully satisfy the gem spec because higher-tier Diamond gems were not implemented and the shipped tests/handoff overstate gem stack sizes relative to the actual data.",
     "issues": [
       {
-        "file": "src/systems/CombatSystem.ts",
-        "line": 239,
+        "file": "src/data/items/bases.ts",
+        "line": 153,
         "severity": "blocking",
-        "description": "Combat still computes dodge and crit from defender.stats.dex / attacker.stats.dex / attacker.stats.lck only, ignoring equipStats.dex and equipStats.lck. As a result, Emerald and Diamond socket bonuses do not flow through to dodge/crit despite the feature spec requiring gem stats to flow through getEquipmentStats() → CombatSystem."
+        "description": "Only one Diamond gem (`g_diamond_1`) exists, so the implementation does not meet the requirement that higher tiers provide larger bonuses for all gem types. Ruby/Sapphire/Emerald/Topaz have T1-T3, but Diamond lacks T2/T3 definitions and corresponding stat mappings."
       },
       {
-        "file": "src/systems/CombatSystem.ts",
-        "line": 262,
+        "file": "src/__tests__/GemSocketing.test.ts",
+        "line": 121,
         "severity": "non_blocking",
-        "description": "Physical and spell skill stat scaling still uses attacker.stats.str / attacker.stats.int rather than effective stats including equipStats.str / equipStats.int at the point of calculation. ZoneScene currently works around this by pre-baking some bonuses into Player.baseDamage/max mana via recalcDerived(), but the CombatSystem pipeline itself does not directly honor equipped primary stats, which is inconsistent with the commit/handoff claim that gem stats fully flow through getTypedEquipStats() → CombatSystem."
+        "description": "The test asserts gem `maxStack` is 10, while the feature description/handoff claimed gems are stackable to 20. This mismatch means the review transcript and tests overstate the implemented behavior, and the skill's prescribed test coverage did not catch the discrepancy between spec and code."
       }
     ]
   },
   "sharedStateObservations": [
     {
+      "area": "conventions",
+      "observation": "`GameEvents.GEM_SOCKET_OPEN` was added but is never emitted or consumed; the socket panel is opened directly from `UIScene` inventory slot handlers instead. AGENTS.md documents checking EventBus payload contracts, but there is no shared guidance about avoiding dead event additions for UI features.",
+      "evidence": "src/utils/EventBus.ts:50 adds `GEM_SOCKET_OPEN`; repo search shows no other references beyond that declaration."
+    },
+    {
       "area": "skills",
-      "observation": "The worker used the ui-worker feature but also modified core combat/stat pipeline files and wrote pure-system tests; the feature transcript explicitly invoked systems-worker instead. The recorded feature metadata lists skillName as ui-worker, so the current skill split is blurry for UI features that also require stat/combat wiring.",
-      "evidence": "features.json lists gem-socketing-ui.skillName = ui-worker, but transcript skeleton for worker session deb5674f-bce1-45f2-a479-a2953212e930 shows Skill invocation of systems-worker and code changes in src/systems/CombatSystem.ts, src/entities/Player.ts, and src/systems/InventorySystem.ts."
+      "observation": "The systems-worker skill says to write tests first and cover expected behavior, but the transcript shows implementation landed before the gem tests, and the resulting tests/handoff still contain a spec mismatch around gem stack size and supported gem tiers.",
+      "evidence": "Transcript skeleton for worker session deb5674f-bce1-45f2-a479-a2953212e930 describes code edits before `src/__tests__/GemSocketing.test.ts` creation; compare handoff claim of higher-tier support to src/data/items/bases.ts where only `g_diamond_1` exists and src/__tests__/GemSocketing.test.ts:121-125 asserting maxStack 10."
     },
     {
       "area": "knowledge",
-      "observation": "Equipment primary-stat bonuses are partially applied in Player.recalcDerived() but CombatSystem still reads raw attacker.stats / defender.stats for crit and dodge. This split stat model is subtle and should be documented as an architectural caution because it is easy for workers to assume getTypedEquipStats() fully drives combat-derived primary stat behavior when it does not.",
-      "evidence": "src/entities/Player.ts recalculates baseDamage/max resources with equipStats primary stats, while src/systems/CombatSystem.ts lines 239-248 still read raw stats.dex/lck and line 262 reads raw stats.str/int."
+      "observation": "The architecture library notes a combat/stats pipeline caveat, but it does not yet capture the specific gem/allStats behavior: `InventorySystem.getEquipmentStats()` expands `allStats` into six primaries before `ZoneScene` caches typed equip stats and `Player.recalcDerived()` consumes them. This was central to the worker's reasoning and would be useful shared knowledge for future stat features.",
+      "evidence": "src/systems/InventorySystem.ts:147-153 expands `allStats`; src/scenes/ZoneScene.ts:1791-1809 caches typed equip stats; src/entities/Player.ts:106-131 applies primary stat bonuses in `recalcDerived()`."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed handoff, commit diff, transcript skeleton, and relevant source/tests for gem-socketing-ui. The feature is close, but I marked it failed because Emerald/Diamond-derived DEX/LCK bonuses do not reach CombatSystem crit/dodge calculations, so the implemented stat flow is incomplete relative to the feature requirements. Report written to the requested scrutiny review path."
+  "summary": "Reviewed handoff, transcript skeleton, commit diff, skill instructions, and shared-state docs. The feature correctly adds socket UI, insert/remove flows, tooltip/character-panel updates, and stat propagation, but it fails the written spec because Diamond gems do not have higher tiers with larger bonuses like the other gem families. Also noted a dead `GEM_SOCKET_OPEN` event and a test/spec mismatch around gem stack size."
 }

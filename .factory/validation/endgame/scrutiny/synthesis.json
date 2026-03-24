@@ -35,77 +35,80 @@
     {
       "featureId": "achievement-panel",
       "severity": "blocking",
-      "description": "Level achievements are checked only in the monster-death flow via `this.achievementSystem.checkLevel(this.player.level)`. The feature spec requires real-time progress tracking from all sources, but level-based achievements will not unlock when the player levels from quest turn-ins or other non-kill XP sources until a later kill occurs."
+      "description": "Level achievements are still tied to the monster-kill flow via `handleMonsterDeath()` and an explicit `checkLevel(this.player.level)` call there, rather than being modeled as a single generic progression path for all sources. The feature spec requires real-time level progress tracking from all sources, and the milestone scrutiny synthesis flagged this exact gap; the implementation therefore does not fully satisfy the level-tracking requirement."
+    },
+    {
+      "featureId": "achievement-panel",
+      "severity": "blocking",
+      "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler whenever the panel has more than one page, but unlike the dialogue panel pattern there is no matching `off`/cleanup on panel destroy. Opening and closing the achievement panel repeatedly stacks wheel listeners, causing duplicate scrolling and stale handlers to keep firing after the panel closes."
     },
     {
       "featureId": "difficulty-system",
       "severity": "blocking",
-      "description": "The difficulty selector is only shown when `save.completedDifficulties.length > 0`. After beating demon_lord, `completedDifficulties` is updated in memory in `ZoneScene.onMonsterKilled()`, but there is no auto-save after that mutation. If the player presses ESC to return to menu, `returnToMenu()` saves first, but if the game is closed/crashes or the player expects the unlock toast to mean the new difficulty is immediately available on the next menu visit, the Continue flow can still skip the selector because the save file was last written before the boss kill. The feature requires Nightmare/Hell to become selectable after clear; gating selector visibility on persisted `completedDifficulties` makes unlock availability depend on an additional later save rather than the clear event itself."
+      "description": "The Continue button only opens the difficulty selector when `save.completedDifficulties.length > 0`; otherwise it immediately loads the save. That means any save lacking this new field—such as pre-feature saves or a stale save loaded before the unlock is persisted—can never reach the selector, even though `save.difficulty` still defaults to normal and Nightmare/Hell should be selectable once prerequisites are met."
     },
     {
       "featureId": "gem-socketing-ui",
       "severity": "blocking",
-      "description": "Combat still computes dodge and crit from defender.stats.dex / attacker.stats.dex / attacker.stats.lck only, ignoring equipStats.dex and equipStats.lck. As a result, Emerald and Diamond socket bonuses do not flow through to dodge/crit despite the feature spec requiring gem stats to flow through getEquipmentStats() → CombatSystem."
+      "description": "Only one Diamond gem (`g_diamond_1`) exists, so the implementation does not meet the requirement that higher tiers provide larger bonuses for all gem types. Ruby/Sapphire/Emerald/Topaz have T1-T3, but Diamond lacks T2/T3 definitions and corresponding stat mappings."
     },
     {
       "featureId": "random-dungeons",
       "severity": "blocking",
-      "description": "Runtime loot generation only enforces guaranteed quality floors for monsters marked `isMiniBoss`. The dungeon final boss (`dungeon_abyss_lord`) is not marked `isMiniBoss`, and `generateLoot()` never reads `monster.lootTable`, so the promised 'final boss guarantees ≥1 rare+' and 'mid-bosses ≥1 magic+' behavior is not actually implemented in gameplay; it only exists in data/tests."
+      "description": "The spec requires at least 2 dungeon-exclusive legendary/set items, but the implementation only defines two exclusive legendaries in `DUNGEON_EXCLUSIVE_LEGENDARIES` and no dungeon-exclusive set item at all. This does not satisfy the required 'legendary/set' content mix."
     },
     {
       "featureId": "random-dungeons",
       "severity": "blocking",
-      "description": "Autosaving inside the dungeon stores the player on `abyss_rift` at the dungeon portal coordinates (`60,58`), and `exitDungeon()` also returns there. The feature spec requires save/load inside the dungeon to return the player to the Abyss Rift entrance, but this implementation respawns them at the portal instead."
+      "description": "`exitDungeon()` restarts Abyss Rift at `DUNGEON_PORTAL_COL` / `DUNGEON_PORTAL_ROW - 2`, which returns the player to the portal area instead of the Abyss Rift entrance required by the feature ('exiting returns to Abyss Rift'). The same file already defines `ABYSS_ENTRANCE_COL/ROW` for the required entrance location but does not use them here."
     },
     {
       "featureId": "save-migration",
       "severity": "blocking",
-      "description": "`migrateV1toV2()` does not initialize the required `companions` field for v1 saves. The feature spec explicitly requires missing fields to default to an empty companions collection, but the migration only fills inventory/equipment/stash/quests/exploration/achievements/homestead/settings/difficulty/dialogue/lore-related fields. Loading a true v1 save will still leave `save.companions` absent."
+      "description": "`load()` migrates in-memory data with `migrateV1toV2(data)` but never writes the upgraded record back to Dexie. The spec requires a loaded v1 save to be upgraded to v2 on next save path, and the common load flow here returns a mutated object without persisting it; if the player loads and quits without triggering ZoneScene autosave/quicksave, the database still contains version 1. This misses the required automatic upgrade behavior for the load path itself and leaves repeated migrations on every subsequent load."
     }
   ],
   "nonBlockingIssues": [
     {
-      "featureId": "achievement-panel",
-      "severity": "non_blocking",
-      "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler every time the panel opens, but never removes it when the panel closes or the scene shuts down. Reopening the panel stacks duplicate wheel listeners, causing repeated scroll steps and avoidable input-handler leaks."
-    },
-    {
-      "featureId": "achievement-panel",
-      "severity": "non_blocking",
-      "description": "`update()` increments shared progress once per matching achievement, so generic kill progress is advanced multiple times per call when several generic kill achievements are still locked. This makes progress values and UI bars drift from actual player actions (for example one kill can add multiple points toward `kill` progress), even though thresholds are eventually reached."
-    },
-    {
       "featureId": "gem-socketing-ui",
       "severity": "non_blocking",
-      "description": "Physical and spell skill stat scaling still uses attacker.stats.str / attacker.stats.int rather than effective stats including equipStats.str / equipStats.int at the point of calculation. ZoneScene currently works around this by pre-baking some bonuses into Player.baseDamage/max mana via recalcDerived(), but the CombatSystem pipeline itself does not directly honor equipped primary stats, which is inconsistent with the commit/handoff claim that gem stats fully flow through getTypedEquipStats() → CombatSystem."
-    },
-    {
-      "featureId": "save-migration",
-      "severity": "non_blocking",
-      "description": "The `save() sets version to CURRENT_SAVE_VERSION (2)` test is only a placeholder: it constructs `new SaveSystem()` and asserts the constant equals 2, but never calls `save()` or verifies the object written to Dexie. This leaves the advertised save-stamping behavior untested despite the feature claiming coverage for it."
+      "description": "The test asserts gem `maxStack` is 10, while the feature description/handoff claimed gems are stackable to 20. This mismatch means the review transcript and tests overstate the implemented behavior, and the skill's prescribed test coverage did not catch the discrepancy between spec and code."
     }
   ],
   "appliedUpdates": [
     {
       "target": "library",
-      "description": "Documented save-position recovery, delayed persistence of runtime unlocks, achievement runtime patterns, and combat/stat pipeline caveats surfaced during endgame scrutiny.",
-      "sourceFeature": "scrutiny-validator-endgame"
+      "description": "Documented UIScene wheel-handler cleanup pattern for scrollable panels to avoid stacked listeners on reopen.",
+      "sourceFeature": "achievement-panel"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "skills/ui-worker",
-      "suggestion": "Explicitly require browser/manual verification evidence in the handoff for UI-heavy features, not just tests/build output.",
-      "evidence": "The achievement-panel review found the worker transcript only recorded test/build/typecheck commands despite the UI skill requiring visual browser verification.",
+      "suggestion": "Require explicit cleanup of scene-level input listeners when scrollable panels register wheel or keyboard handlers, and ask reviewers to verify handler teardown in runtime UI code.",
+      "evidence": "achievement-panel added a global wheel handler without cleanup, while UIScene already had a safe dialogue-panel pattern that was not followed.",
       "isSystemic": false
     },
     {
-      "target": "features/skill assignment guidance",
-      "suggestion": "Clarify when UI-facing features that also change combat/stat pipelines should be assigned to systems-worker or split into coordinated UI + systems features.",
-      "evidence": "gem-socketing-ui was labeled ui-worker in features.json, but the implementation and transcript relied on systems-worker-style changes to CombatSystem, Player, and InventorySystem.",
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance that unlock/selection UI for migrated saves must remain reachable even when newly introduced save fields are absent or stale.",
+      "evidence": "difficulty-system gated the selector on completedDifficulties presence, which blocks the required unlock flow for saves that have not yet persisted the new field.",
       "isSystemic": false
     }
   ],
-  "rejectedObservations": [],
+  "rejectedObservations": [
+    {
+      "observation": "Add a rule forbidding new EventBus enums unless immediately used.",
+      "reason": "ambiguous"
+    },
+    {
+      "observation": "Change gem stack-size guidance based on transcript/spec mismatch.",
+      "reason": "ambiguous"
+    },
+    {
+      "observation": "Mandate tests-first ordering from worker transcripts.",
+      "reason": "ambiguous"
+    }
+  ],
   "previousRound": null
 }

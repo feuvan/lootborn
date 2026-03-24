@@ -1,28 +1,28 @@
 {
   "featureId": "difficulty-system",
-  "reviewedAt": "2026-03-24T17:41:10Z",
-  "commitId": "597085748a3cbe571d65ec7e3c4bf1fc5b0430c0",
+  "reviewedAt": "2026-03-24T18:03:01.602979Z",
+  "commitId": "5970857",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The feature adds a dedicated DifficultySystem, save persistence, and applies scaling in overworld and dungeon flows, but the MenuScene gating hides the selector until a save already has completed difficulties. That leaves Nightmare inaccessible immediately after clearing Normal because the auto-save performed at boss kill does not persist the newly completed difficulty before returning to the menu.",
+    "summary": "Implementation covers save persistence and most difficulty scaling paths, but it fails a core unlock-flow requirement: saves that have only the current difficulty selected and no completed difficulties never show the difficulty selector, so a player who beat the game on Normal cannot choose unlocked Nightmare after returning to the menu until another save occurs with completedDifficulties already populated. This blocks the advertised Normal→Nightmare→Hell selection flow for existing/end-of-run saves.",
     "issues": [
       {
         "file": "src/scenes/MenuScene.ts",
         "line": 315,
         "severity": "blocking",
-        "description": "The difficulty selector is only shown when `save.completedDifficulties.length > 0`. After beating demon_lord, `completedDifficulties` is updated in memory in `ZoneScene.onMonsterKilled()`, but there is no auto-save after that mutation. If the player presses ESC to return to menu, `returnToMenu()` saves first, but if the game is closed/crashes or the player expects the unlock toast to mean the new difficulty is immediately available on the next menu visit, the Continue flow can still skip the selector because the save file was last written before the boss kill. The feature requires Nightmare/Hell to become selectable after clear; gating selector visibility on persisted `completedDifficulties` makes unlock availability depend on an additional later save rather than the clear event itself."
+        "description": "The Continue button only opens the difficulty selector when `save.completedDifficulties.length > 0`; otherwise it immediately loads the save. That means any save lacking this new field—such as pre-feature saves or a stale save loaded before the unlock is persisted—can never reach the selector, even though `save.difficulty` still defaults to normal and Nightmare/Hell should be selectable once prerequisites are met."
       }
     ]
   },
   "sharedStateObservations": [
     {
-      "area": "knowledge",
-      "observation": "The repository library documents ZoneScene restart/transition behavior but does not record that progress-critical state changes made during runtime (such as newly unlocked difficulties) are not persisted until a later explicit auto-save or menu return save. That persistence nuance affected this feature review because the unlock is applied in memory during `onMonsterKilled()` and saved only if another save path runs afterward.",
-      "evidence": "src/scenes/ZoneScene.ts:2396-2402 mutates `completedDifficulties`; src/scenes/ZoneScene.ts:466 triggers autoSave only on scene create, while return-to-menu save occurs later at 2784-2791. .factory/library/architecture.md documents zone restarts but not this delayed persistence behavior."
+      "area": "conventions",
+      "observation": "The feature relies on a MenuScene gate (`completedDifficulties.length > 0`) to decide whether a runtime selector should appear, but neither AGENTS.md nor library notes document that new progress-unlock UI should remain reachable for migrated saves that may not yet have the new save fields populated.",
+      "evidence": "src/scenes/MenuScene.ts:315-320 gates selector access on presence of saved completions; mission AGENTS.md Save Data Compatibility only mentions adding optional fields/defaults, not UI reachability expectations for migrated saves."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed handoff, transcript skeleton, skill, and commit 597085748a3cbe571d65ec7e3c4bf1fc5b0430c0. Found one blocking issue: difficulty unlock availability depends on a later save because the menu only shows the selector when persisted `completedDifficulties` already exists, so the Normal→Nightmare/Hell progression is not reliably available immediately after clearing the prerequisite difficulty."
+  "summary": "Reviewed handoff, transcript skeleton, skill file, and commit 5970857. Found one blocking issue: MenuScene only exposes the new difficulty selector for saves that already contain non-empty `completedDifficulties`, which breaks the required unlock-selection flow for saves missing that field and prevents reliable access to Nightmare/Hell after progression unless the save has already been rewritten with the new data. Report written to the requested review path."
 }

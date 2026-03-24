@@ -1,34 +1,22 @@
 {
   "featureId": "save-migration",
-  "reviewedAt": "2026-03-24T17:41:03Z",
+  "reviewedAt": "2026-03-24T18:02:09.674101+00:00",
   "commitId": "c3cb86b",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The feature mostly implements the requested v1→v2 migration and runtime position reset, but it misses one required safe default and includes a placeholder test that does not verify version stamping behavior.",
+    "summary": "The v1→v2 migration defaults and runtime position reset are mostly implemented, but the feature does not actually persist upgraded v1 saves as v2 on load, so migrated saves are not upgraded until some later manual save occurs.",
     "issues": [
       {
         "file": "src/systems/SaveSystem.ts",
-        "line": 42,
+        "line": 157,
         "severity": "blocking",
-        "description": "`migrateV1toV2()` does not initialize the required `companions` field for v1 saves. The feature spec explicitly requires missing fields to default to an empty companions collection, but the migration only fills inventory/equipment/stash/quests/exploration/achievements/homestead/settings/difficulty/dialogue/lore-related fields. Loading a true v1 save will still leave `save.companions` absent."
-      },
-      {
-        "file": "src/__tests__/SaveMigration.test.ts",
-        "line": 416,
-        "severity": "non_blocking",
-        "description": "The `save() sets version to CURRENT_SAVE_VERSION (2)` test is only a placeholder: it constructs `new SaveSystem()` and asserts the constant equals 2, but never calls `save()` or verifies the object written to Dexie. This leaves the advertised save-stamping behavior untested despite the feature claiming coverage for it."
+        "description": "`load()` migrates in-memory data with `migrateV1toV2(data)` but never writes the upgraded record back to Dexie. The spec requires a loaded v1 save to be upgraded to v2 on next save path, and the common load flow here returns a mutated object without persisting it; if the player loads and quits without triggering ZoneScene autosave/quicksave, the database still contains version 1. This misses the required automatic upgrade behavior for the load path itself and leaves repeated migrations on every subsequent load."
       }
     ]
   },
-  "sharedStateObservations": [
-    {
-      "area": "knowledge",
-      "observation": "The worker discovered that save-position recovery is enforced at runtime in `ZoneScene.restoreFromSave()` using `campPositions` after map generation, which is an important save/load integration pattern not currently captured in `.factory/library/`.",
-      "evidence": "src/scenes/ZoneScene.ts:2847-2863 performs the unwalkable-position guard using `findNearestWalkablePosition(...)` and resets the player before continuing restore logic; `.factory/library/architecture.md` does not document this save-position safety pattern."
-    }
-  ],
+  "sharedStateObservations": [],
   "addressesFailureFrom": null,
-  "summary": "Reviewed commit `c3cb86b` and the worker transcript/handoff for `save-migration`. The implementation correctly adds versioning, migration, and runtime camp reset logic, but it fails the feature because `companions` is not initialized for migrated v1 saves as required. I also found one non-blocking test-quality gap: the version-stamping test is only a placeholder and does not exercise `SaveSystem.save()`."
+  "summary": "Reviewed handoff, transcript skeleton, skill file, commit diff, and affected source/tests. Found one blocking issue: the migration is applied only in memory during `SaveSystem.load()` and is not persisted back to storage, so loaded v1 saves are not actually upgraded in Dexie by the feature's load flow."
 }

@@ -112,6 +112,10 @@ export const Gems: ItemBase[] = [
   { id: 'g_topaz_3', name: '完美黄玉', nameEn: 'Perfect Topaz', description: '+18% 掉宝率', type: 'gem', icon: 'g_topaz', levelReq: 30, sellPrice: 60, stackable: true, maxStack: 10 },
   // Diamond — +all stats
   { id: 'g_diamond_1', name: '碎裂钻石', nameEn: 'Chipped Diamond', description: '+3 全属性', type: 'gem', icon: 'g_diamond', levelReq: 10, sellPrice: 20, stackable: true, maxStack: 10 },
+  { id: 'g_diamond_2', name: '钻石', nameEn: 'Diamond', description: '+5 全属性', type: 'gem', icon: 'g_diamond', levelReq: 18, sellPrice: 50, stackable: true, maxStack: 10 },
+  { id: 'g_diamond_3', name: '完美钻石', nameEn: 'Perfect Diamond', description: '+8 全属性', type: 'gem', icon: 'g_diamond', levelReq: 26, sellPrice: 80, stackable: true, maxStack: 10 },
+  { id: 'g_diamond_4', name: '璀璨钻石', nameEn: 'Radiant Diamond', description: '+12 全属性', type: 'gem', icon: 'g_diamond', levelReq: 34, sellPrice: 120, stackable: true, maxStack: 10 },
+  { id: 'g_diamond_5', name: '至尊钻石', nameEn: 'Supreme Diamond', description: '+18 全属性', type: 'gem', icon: 'g_diamond', levelReq: 40, sellPrice: 180, stackable: true, maxStack: 10 },
 ];
 
 /**
@@ -132,6 +136,10 @@ export const GEM_STAT_MAP: Record<string, { stat: string; value: number; tier: n
   g_topaz_2:   { stat: 'magicFind', value: 10, tier: 2 },
   g_topaz_3:   { stat: 'magicFind', value: 18, tier: 3 },
   g_diamond_1: { stat: 'allStats', value: 3, tier: 1 },
+  g_diamond_2: { stat: 'allStats', value: 5, tier: 2 },
+  g_diamond_3: { stat: 'allStats', value: 8, tier: 3 },
+  g_diamond_4: { stat: 'allStats', value: 12, tier: 4 },
+  g_diamond_5: { stat: 'allStats', value: 18, tier: 5 },
 };
 
 export const AllItemBases: (ItemBase | WeaponBase | ArmorBase | AccessoryBase)[] = [

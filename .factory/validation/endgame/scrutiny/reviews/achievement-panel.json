@@ -1,45 +1,34 @@
 {
   "featureId": "achievement-panel",
-  "reviewedAt": "2026-03-24T17:41:49Z",
-  "commitId": "7373165",
+  "reviewedAt": "2026-03-25T00:00:00Z",
+  "commitId": "7373165c289d44cbf6b961d992b564fecb105b17",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The feature adds the achievement panel UI, unlock toast, V-key toggle, and getBonuses() stat merge, but it misses a blocking runtime requirement: level achievements only update after monster kills, so reaching a level threshold through any non-kill XP source leaves the panel and rewards stale until another kill happens.",
+    "summary": "The feature adds the V-key achievement panel, unlock toast, reward display, and stat bonus aggregation, but it misses required real-time level tracking from all level-up sources and leaks achievement-panel wheel handlers each time the panel is opened.",
     "issues": [
       {
         "file": "src/scenes/ZoneScene.ts",
-        "line": 2391,
+        "line": 2399,
         "severity": "blocking",
-        "description": "Level achievements are checked only in the monster-death flow via `this.achievementSystem.checkLevel(this.player.level)`. The feature spec requires real-time progress tracking from all sources, but level-based achievements will not unlock when the player levels from quest turn-ins or other non-kill XP sources until a later kill occurs."
+        "description": "Level achievements are still tied to the monster-kill flow via `handleMonsterDeath()` and an explicit `checkLevel(this.player.level)` call there, rather than being modeled as a single generic progression path for all sources. The feature spec requires real-time level progress tracking from all sources, and the milestone scrutiny synthesis flagged this exact gap; the implementation therefore does not fully satisfy the level-tracking requirement."
       },
       {
         "file": "src/scenes/UIScene.ts",
         "line": 3361,
-        "severity": "non_blocking",
-        "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler every time the panel opens, but never removes it when the panel closes or the scene shuts down. Reopening the panel stacks duplicate wheel listeners, causing repeated scroll steps and avoidable input-handler leaks."
-      },
-      {
-        "file": "src/systems/AchievementSystem.ts",
-        "line": 30,
-        "severity": "non_blocking",
-        "description": "`update()` increments shared progress once per matching achievement, so generic kill progress is advanced multiple times per call when several generic kill achievements are still locked. This makes progress values and UI bars drift from actual player actions (for example one kill can add multiple points toward `kill` progress), even though thresholds are eventually reached."
+        "severity": "blocking",
+        "description": "`toggleAchievement()` registers a new global `this.input.on('wheel', ...)` handler whenever the panel has more than one page, but unlike the dialogue panel pattern there is no matching `off`/cleanup on panel destroy. Opening and closing the achievement panel repeatedly stacks wheel listeners, causing duplicate scrolling and stale handlers to keep firing after the panel closes."
       }
     ]
   },
   "sharedStateObservations": [
     {
-      "area": "skills",
-      "observation": "The `ui-worker` skill requires visual verification in browser for UI work, but this worker transcript only shows file edits plus build/typecheck/tests and no browser/manual verification evidence for the new achievement panel or toast behavior.",
-      "evidence": "Skill: /Users/feuvan/src/abyssfire/.factory/skills/ui-worker/SKILL.md says 'Visual verification in browser. This is critical for UI work'. Transcript skeleton and handoff for worker session 32c756c0-f2b1-4264-a185-f50be0a51fac list only `npx vitest run`, `npm run build`, and `npx tsc --noEmit`."
-    },
-    {
       "area": "knowledge",
-      "observation": "Achievement-specific runtime patterns are not documented in shared library/architecture notes even though this feature establishes them: V-key panel toggle via `UI_TOGGLE_PANEL`, unlock toast through `ACHIEVEMENT_UNLOCKED`, and stat reward merge through `ZoneScene.getEquipStats()` calling `achievementSystem.getBonuses()`.",
-      "evidence": "Implementation references: `src/scenes/ZoneScene.ts:1262`, `src/scenes/UIScene.ts:3216`, `src/scenes/ZoneScene.ts:1791`. No achievement-related notes exist in `.factory/library/architecture.md` or `.factory/library/environment.md`."
+      "observation": "UIScene already has a safe pattern for wheel-scroll cleanup by overriding panel destroy and unregistering the handler, but that pattern is not documented in shared state and was missed when implementing achievement panel scrolling.",
+      "evidence": "src/scenes/UIScene.ts:1772-1784 unregisters the dialogue wheel handler on destroy, while src/scenes/UIScene.ts:3361 adds an achievement wheel handler with no corresponding cleanup."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed commit 7373165, the handoff, transcript skeleton, and relevant UI/system code for achievement-panel. The panel UI and tests are substantial, but the feature does not fully meet the runtime requirement for real-time level achievement tracking from all progression sources, so the review fails."
+  "summary": "Reviewed the transcript skeleton, handoff, ui-worker skill, commit 7373165 diff, and relevant runtime code. Most UI requirements are implemented, but the feature fails scrutiny because level progress tracking is not fully modeled for all sources and the achievement panel leaks wheel event handlers."
 }

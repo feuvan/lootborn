@@ -335,41 +335,59 @@ describe('Mana Cost and Cooldown Enforcement', () => {
 
 describe('Elemental Damage through Resistance', () => {
   it('Fire skill damage is reduced by fireResist', () => {
-    const skill = getSkill(MageClass, 'fire_wall');
-    const attacker = makeEntity();
-    const eq = { ...emptyEquipStats(), fireResist: 50 };
-    const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
-    const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
+    // Mock Math.random to eliminate dodge/crit RNG flakiness
+    const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const skill = getSkill(MageClass, 'fire_wall');
+      const attacker = makeEntity();
+      const eq = { ...emptyEquipStats(), fireResist: 50 };
+      const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
+      const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
 
-    const dmgNoResist = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
-    const dmgWithResist = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
+      const dmgNoResist = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
+      const dmgWithResist = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
 
-    expect(dmgWithResist.damage).toBeLessThan(dmgNoResist.damage);
-    expect(dmgWithResist.damageType).toBe('fire');
+      expect(dmgWithResist.damage).toBeLessThan(dmgNoResist.damage);
+      expect(dmgWithResist.damageType).toBe('fire');
+    } finally {
+      mockRandom.mockRestore();
+    }
   });
 
   it('Ice skill damage is reduced by iceResist', () => {
-    const skill = getSkill(MageClass, 'ice_arrow');
-    const attacker = makeEntity();
-    const eq = { ...emptyEquipStats(), iceResist: 40 };
-    const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
-    const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
+    // Mock Math.random to eliminate dodge/crit RNG flakiness
+    const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const skill = getSkill(MageClass, 'ice_arrow');
+      const attacker = makeEntity();
+      const eq = { ...emptyEquipStats(), iceResist: 40 };
+      const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
+      const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
 
-    const dmg1 = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
-    const dmg2 = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
-    expect(dmg2.damage).toBeLessThan(dmg1.damage);
+      const dmg1 = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
+      const dmg2 = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
+      expect(dmg2.damage).toBeLessThan(dmg1.damage);
+    } finally {
+      mockRandom.mockRestore();
+    }
   });
 
   it('Poison skill damage is reduced by poisonResist', () => {
-    const skill = getSkill(RogueClass, 'poison_arrow');
-    const attacker = makeEntity();
-    const eq = { ...emptyEquipStats(), poisonResist: 30 };
-    const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
-    const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
+    // Mock Math.random to eliminate dodge/crit RNG flakiness
+    const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const skill = getSkill(RogueClass, 'poison_arrow');
+      const attacker = makeEntity();
+      const eq = { ...emptyEquipStats(), poisonResist: 30 };
+      const defenderWithResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 }, equipStats: eq });
+      const defenderNoResist = makeDefender({ stats: { str: 10, dex: 0, vit: 10, int: 5, spi: 5, lck: 0 } });
 
-    const dmg1 = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
-    const dmg2 = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
-    expect(dmg2.damage).toBeLessThan(dmg1.damage);
+      const dmg1 = combat.calculateDamage(attacker, defenderNoResist, skill, 5);
+      const dmg2 = combat.calculateDamage(attacker, defenderWithResist, skill, 5);
+      expect(dmg2.damage).toBeLessThan(dmg1.damage);
+    } finally {
+      mockRandom.mockRestore();
+    }
   });
 
   it('Arcane skill damage is not reduced by physical defense alone', () => {

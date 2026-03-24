@@ -1,34 +1,34 @@
 {
   "featureId": "random-dungeons",
-  "reviewedAt": "2026-03-24T17:42:31.171054+00:00",
-  "commitId": "f7f3278",
+  "reviewedAt": "2026-03-25T00:00:00Z",
+  "commitId": "f7f32789cfc37b49c05ac0121273914990429466",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The feature adds a substantial procedural dungeon system with coverage for generation/scaling data, but two blocking gaps remain: boss/mid-boss loot guarantees are not enforced at runtime, and save/load from inside the dungeon respawns at the portal instead of the Abyss Rift entrance.",
+    "summary": "The feature adds a procedural dungeon framework, portal wiring, minimap support, and focused tests, but it still misses a required dungeon-exclusive set item and returns players to the dungeon portal area instead of the Abyss Rift entrance when exiting a run.",
     "issues": [
       {
-        "file": "src/systems/LootSystem.ts",
-        "line": 48,
+        "file": "src/data/dungeonData.ts",
+        "line": 124,
         "severity": "blocking",
-        "description": "Runtime loot generation only enforces guaranteed quality floors for monsters marked `isMiniBoss`. The dungeon final boss (`dungeon_abyss_lord`) is not marked `isMiniBoss`, and `generateLoot()` never reads `monster.lootTable`, so the promised 'final boss guarantees ≥1 rare+' and 'mid-bosses ≥1 magic+' behavior is not actually implemented in gameplay; it only exists in data/tests."
+        "description": "The spec requires at least 2 dungeon-exclusive legendary/set items, but the implementation only defines two exclusive legendaries in `DUNGEON_EXCLUSIVE_LEGENDARIES` and no dungeon-exclusive set item at all. This does not satisfy the required 'legendary/set' content mix."
       },
       {
         "file": "src/scenes/ZoneScene.ts",
-        "line": 2794,
+        "line": 3777,
         "severity": "blocking",
-        "description": "Autosaving inside the dungeon stores the player on `abyss_rift` at the dungeon portal coordinates (`60,58`), and `exitDungeon()` also returns there. The feature spec requires save/load inside the dungeon to return the player to the Abyss Rift entrance, but this implementation respawns them at the portal instead."
+        "description": "`exitDungeon()` restarts Abyss Rift at `DUNGEON_PORTAL_COL` / `DUNGEON_PORTAL_ROW - 2`, which returns the player to the portal area instead of the Abyss Rift entrance required by the feature ('exiting returns to Abyss Rift'). The same file already defines `ABYSS_ENTRANCE_COL/ROW` for the required entrance location but does not use them here."
       }
     ]
   },
   "sharedStateObservations": [
     {
-      "area": "knowledge",
-      "observation": "Monster `lootTable` entries are currently descriptive data only for most monsters; runtime drops come from `LootSystem.generateLoot()` and quality-floor helpers, not by interpreting `MonsterDefinition.lootTable` directly.",
-      "evidence": "src/scenes/ZoneScene.ts:2452-2467 calls `lootSystem.generateLoot(monster.definition, ...)`; src/systems/LootSystem.ts:20-64 never consumes `monster.lootTable`, except indirect mini-boss handling via flags. The random-dungeons worker and tests treated lootTable as if it drove guaranteed drops."
+      "area": "conventions",
+      "observation": "The worker treated loot-table data assertions as sufficient proof of guaranteed boss drops, but this codebase's runtime guarantees are enforced in `LootSystem` / `ZoneScene`, not by `MonsterDefinition.lootTable` alone.",
+      "evidence": ".factory/library/architecture.md notes that `MonsterDefinition.lootTable` is mostly descriptive; the new tests in `src/__tests__/DungeonSystem.test.ts:432-459` only assert loot-table contents / helper return values rather than exercising the runtime drop path."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed commit f7f3278 and the worker transcript/handoff. The procedural floor generation, portal wiring, scaling, and tests are substantial, but the feature does not fully meet the spec because guaranteed boss loot is not enforced at runtime and dungeon save/load returns to the portal area rather than the Abyss Rift entrance. Review status: fail."
+  "summary": "Reviewed the random-dungeons implementation via handoff, transcript skeleton, commit diff, and relevant runtime files. The feature is close, but it fails the spec because it lacks any dungeon-exclusive set item and still exits dungeon runs to the portal area rather than the Abyss Rift entrance."
 }

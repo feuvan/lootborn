@@ -3357,12 +3357,22 @@ export class UIScene extends Phaser.Scene {
           }).setOrigin(1, 1));
         }
       };
-      // Mouse wheel scroll
-      this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gx: number[], _gy: number[], _gz: number[], _gw: number, _gh: number, dy: number) => {
+      // Mouse wheel scroll — store handler ref for cleanup
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const achWheelHandler = (_pointer: Phaser.Input.Pointer, _gx: number[], _gy: number[], _gz: number[], _gw: number, _gh: number, dy: number) => {
         if (!this.achievementPanel) return;
         if (dy > 0 && scrollOffset < achievements.length - maxVisible) { scrollOffset++; rebuildList(); }
         if (dy < 0 && scrollOffset > 0) { scrollOffset--; rebuildList(); }
-      });
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.input.on('wheel', achWheelHandler as any);
+      // Cleanup on panel destroy
+      const originalDestroy = this.achievementPanel.destroy.bind(this.achievementPanel);
+      this.achievementPanel.destroy = (...args: Parameters<typeof originalDestroy>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.input.off('wheel', achWheelHandler as any);
+        return originalDestroy(...args);
+      };
     }
 
     // Footer

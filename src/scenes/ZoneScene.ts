@@ -3775,8 +3775,8 @@ export class ZoneScene extends Phaser.Scene {
       this.scene.restart({
         classId: this.player.classData.id,
         mapId: 'abyss_rift',
-        targetCol: ZoneScene.DUNGEON_PORTAL_COL,
-        targetRow: ZoneScene.DUNGEON_PORTAL_ROW - 2,
+        targetCol: ZoneScene.ABYSS_ENTRANCE_COL,
+        targetRow: ZoneScene.ABYSS_ENTRANCE_ROW,
         miniBossDialogueSeen: [...this.miniBossDialogueSeen],
         loreCollected: [...this.loreCollected],
         discoveredHiddenAreas: [...this.discoveredHiddenAreas],

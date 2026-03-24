@@ -158,6 +158,8 @@ export class SaveSystem {
     const data = await db.saves.get(id);
     if (data && data.version < CURRENT_SAVE_VERSION) {
       migrateV1toV2(data);
+      // Persist the migrated record so migration only runs once
+      await db.saves.put(data);
     }
     return data;
   }

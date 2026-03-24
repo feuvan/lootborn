@@ -1,8 +1,8 @@
 import { randomInt, randomFloat, chance } from '../utils/MathUtils';
 import { Weapons, Armors, Accessories, Consumables, Gems, getItemBase } from '../data/items/bases';
 import { Prefixes, Suffixes } from '../data/items/affixes';
-import { LegendaryItems } from '../data/items/sets';
-import { DUNGEON_EXCLUSIVE_LEGENDARIES } from '../data/dungeonData';
+import { LegendaryItems, SetDefinitions } from '../data/items/sets';
+import { DUNGEON_EXCLUSIVE_LEGENDARIES, DUNGEON_EXCLUSIVE_SETS } from '../data/dungeonData';
 import type { ItemInstance, ItemQuality, ItemAffix, AffixDefinition, MonsterDefinition, WeaponBase, ArmorBase } from '../data/types';
 
 let uidCounter = 0;
@@ -161,8 +161,7 @@ export class LootSystem {
         this.makeLegendary(item, baseId);
         break;
       case 'set':
-        // Sets have fixed stats - simplified for now
-        this.addRandomAffixes(item, level, 2, 3);
+        this.makeSetItem(item, baseId);
         break;
     }
 
@@ -236,6 +235,22 @@ export class LootSystem {
       this.addRandomAffixes(item, item.level, 3, 5);
       item.legendaryEffect = '蕴含未知的力量';
     }
+  }
+
+  private makeSetItem(item: ItemInstance, baseId: string): void {
+    const allSets = [...SetDefinitions, ...DUNGEON_EXCLUSIVE_SETS];
+    // Find the set this piece belongs to
+    for (const setDef of allSets) {
+      if (setDef.pieces.includes(baseId) && setDef.pieceAffixes?.[baseId]) {
+        item.setId = setDef.id;
+        item.name = setDef.name;
+        item.affixes = [...setDef.pieceAffixes[baseId]];
+        item.identified = true;
+        return;
+      }
+    }
+    // Fallback: generic set item with random affixes
+    this.addRandomAffixes(item, item.level, 2, 3);
   }
 
   private buildItemName(item: ItemInstance): void {

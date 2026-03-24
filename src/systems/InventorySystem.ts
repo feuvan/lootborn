@@ -1,6 +1,7 @@
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { getItemBase, GEM_STAT_MAP } from '../data/items/bases';
 import { SetDefinitions } from '../data/items/sets';
+import { DUNGEON_EXCLUSIVE_SETS } from '../data/dungeonData';
 import type { ItemInstance, EquipSlot, WeaponBase, ArmorBase, GemInstance } from '../data/types';
 import { emptyEquipStats, type EquipStats } from './CombatSystem';
 
@@ -175,7 +176,7 @@ export class InventorySystem {
     for (const item of Object.values(this.equipment)) {
       if (item && item.setId) equippedIds.add(item.baseId);
     }
-    for (const setDef of SetDefinitions) {
+    for (const setDef of [...SetDefinitions, ...DUNGEON_EXCLUSIVE_SETS]) {
       const count = setDef.pieces.filter(p => equippedIds.has(p)).length;
       for (const bonus of setDef.bonuses) {
         if (count >= bonus.count) {

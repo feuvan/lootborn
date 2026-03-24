@@ -100,6 +100,7 @@ Architectural decisions, patterns, and conventions discovered during the mission
 - Achievement UI is toggled through `UI_TOGGLE_PANEL`, with the achievement panel bound to the `V` key in gameplay.
 - Achievement unlock presentation flows through the `ACHIEVEMENT_UNLOCKED` event and UIScene toast/banner handling.
 - Achievement stat rewards are merged into combat/player calculations through `achievementSystem.getBonuses()` during equipment/stat aggregation.
+- UIScene panel wheel scrolling needs explicit cleanup on panel destroy/shutdown. The dialogue panel already shows the safe pattern (`input.on('wheel', handler)` paired with `input.off` during destroy); new scrollable panels should follow that pattern to avoid stacked listeners across reopen cycles.
 
 ## Performance Patterns
 

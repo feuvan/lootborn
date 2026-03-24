@@ -3,7 +3,7 @@
  * for the Zone 6 random dungeon system.
  */
 
-import type { MonsterDefinition, LegendaryDefinition } from './types';
+import type { MonsterDefinition, LegendaryDefinition, SetDefinition } from './types';
 
 /**
  * Monster IDs available in dungeon floors, ordered roughly by difficulty.
@@ -93,6 +93,9 @@ export const DungeonBossDef: MonsterDefinition = {
     // Dungeon-exclusive legendaries have boosted drop rate from boss
     { itemId: 'leg_abyss_crown', quality: 'legendary', dropRate: 0.08 },
     { itemId: 'leg_void_edge', quality: 'legendary', dropRate: 0.08 },
+    // Dungeon-exclusive set pieces
+    { itemId: 'set_aw_crown', quality: 'set', dropRate: 0.10 },
+    { itemId: 'set_aw_blade', quality: 'set', dropRate: 0.10 },
   ],
   animCategory: 'large',
 };
@@ -170,4 +173,39 @@ export const AllDungeonMonsters: Record<string, MonsterDefinition> = {
   ...DungeonExclusiveMonsters,
   [DungeonBossDef.id]: DungeonBossDef,
   [DungeonMidBossDef.id]: DungeonMidBossDef,
+};
+
+/**
+ * Dungeon-exclusive set — a small 2-piece set that only drops from dungeon bosses.
+ * Gives powerful bonuses for dungeon runs.
+ */
+export const DUNGEON_EXCLUSIVE_SETS: SetDefinition[] = [
+  {
+    id: 'set_abyss_walker',
+    name: '深渊行者',
+    nameEn: 'Abyss Walker',
+    pieces: ['set_aw_crown', 'set_aw_blade'],
+    pieceAffixes: {
+      set_aw_crown: [
+        { affixId: 'set_aw_1', name: '深渊凝视', stat: 'allResist', value: 15 },
+        { affixId: 'set_aw_2', name: '虚空感知', stat: 'critRate', value: 10 },
+      ],
+      set_aw_blade: [
+        { affixId: 'set_aw_3', name: '深渊之刃', stat: 'damage', value: 40 },
+        { affixId: 'set_aw_4', name: '虚空切裂', stat: 'critDamage', value: 25 },
+      ],
+    },
+    bonuses: [
+      { count: 2, description: '深渊迷宫中伤害+20%，全抗+15，击杀回复5%生命', stats: { damagePercent: 20, allResist: 15, killHealPercent: 5 } },
+    ],
+  },
+];
+
+/**
+ * Mapping from dungeon-exclusive set piece IDs to the real item base they inherit stats from.
+ * `set_aw_crown` is a variant of `a_dragon_helm`, `set_aw_blade` is a variant of `w_demon_blade`.
+ */
+export const DUNGEON_SET_PIECE_BASES: Record<string, string> = {
+  set_aw_crown: 'a_dragon_helm',
+  set_aw_blade: 'w_demon_blade',
 };
