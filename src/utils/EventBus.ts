@@ -36,4 +36,6 @@ export const GameEvents = {
   COMBAT_STATE_CHANGED: 'combat:state_changed',
   MINIBOSS_DIALOGUE: 'miniboss:dialogue',
   LORE_COLLECTED: 'lore:collected',
+  RANDOM_EVENT_TRIGGERED: 'random_event:triggered',
+  RANDOM_EVENT_RESOLVED: 'random_event:resolved',
 } as const;

@@ -25,6 +25,8 @@ import type { StatusEffectType } from '../systems/StatusEffectSystem';
 import { EliteAffixSystem } from '../systems/EliteAffixSystem';
 import { MercenarySystem, MERCENARY_DEFS } from '../systems/MercenarySystem';
 import type { MercenaryAIAction } from '../systems/MercenarySystem';
+import { RandomEventSystem, RANDOM_EVENT_DEFS, ZONE_EVENT_DATA } from '../systems/RandomEventSystem';
+import type { ActiveEvent, RandomEventType } from '../systems/RandomEventSystem';
 import { audioManager } from '../systems/audio/AudioManager';
 import { applyColorGrading } from '../graphics/ColorGradePipeline';
 import { SpriteGenerator } from '../graphics/SpriteGenerator';
@@ -113,6 +115,7 @@ export class ZoneScene extends Phaser.Scene {
   private petTileRow = 0;
   private petSpawnSprites: { sprite: Phaser.GameObjects.Container; col: number; row: number; petId: string }[] = [];
   private inCombat = false;
+  private randomEventSystem!: RandomEventSystem;
   private isTransitioning = false;
   private isPortaling = false;
   /** Mini-boss monster reference per zone (spawned at a fixed position). */
@@ -165,6 +168,10 @@ export class ZoneScene extends Phaser.Scene {
     this.skillEffects = new SkillEffectSystem(this);
     this.statusEffects = new StatusEffectSystem();
     this.eliteAffixSystem = new EliteAffixSystem();
+    this.randomEventSystem = new RandomEventSystem(
+      { zoneId: this.currentMapId, levelRange: this.mapData.levelRange as [number, number] },
+      { safeZoneRadius: this.mapData.safeZoneRadius ?? 9 },
+    );
 
     const isFirstLoad = !this.inventorySystem;
     if (isFirstLoad) {
@@ -560,6 +567,7 @@ export class ZoneScene extends Phaser.Scene {
     this.updateEliteAffixBehaviors(time);
     this.updateStatusEffects(time);
     this.updateCombatState();
+    this.checkRandomEvents(time, delta);
     this.updateTargetIndicator();
     if (this.vfx) this.vfx.updateDangerVignette(this.player.hp / this.player.maxHp);
     if (this.mobileControls) this.mobileControls.update(time, delta);
@@ -1674,6 +1682,242 @@ export class ZoneScene extends Phaser.Scene {
         }, 1500);
       }
     }
+  }
+
+  // ── Random Event System ─────────────────────────────────────────────
+  private checkRandomEvents(time: number, delta: number): void {
+    if (this.player.hp <= 0) return;
+
+    // Determine tile type at player position
+    let tileType: number | undefined;
+    if (this.mapData.tiles.length > 0 && this.player.tileRow >= 0 && this.player.tileRow < this.mapData.rows
+        && this.player.tileCol >= 0 && this.player.tileCol < this.mapData.cols) {
+      tileType = this.mapData.tiles[this.player.tileRow]?.[this.player.tileCol];
+    }
+
+    const event = this.randomEventSystem.update(
+      time, delta,
+      this.player.tileCol, this.player.tileRow,
+      this.inCombat,
+      this.campPositions,
+      tileType,
+    );
+
+    if (!event) return;
+
+    // Get event definition for the log message
+    const eventDef = RandomEventSystem.getEventDef(event.type);
+    if (eventDef) {
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: eventDef.message, type: 'info' });
+    }
+    EventBus.emit(GameEvents.RANDOM_EVENT_TRIGGERED, { event });
+
+    // Handle the event based on type
+    this.handleRandomEvent(event, time);
+  }
+
+  private handleRandomEvent(event: ActiveEvent, time: number): void {
+    switch (event.type) {
+      case 'ambush':
+        this.handleAmbushEvent(event);
+        break;
+      case 'treasure_cache':
+        this.handleTreasureCacheEvent(event);
+        break;
+      case 'wandering_merchant':
+        this.handleWanderingMerchantEvent(event);
+        break;
+      case 'rescue':
+        this.handleRescueEvent(event);
+        break;
+      case 'environmental_puzzle':
+        this.handlePuzzleEvent(event);
+        break;
+    }
+  }
+
+  private handleAmbushEvent(event: ActiveEvent): void {
+    const monsterIds = event.context.monsterIds as string[] | undefined;
+    const count = (event.context.monsterCount as number) ?? 3;
+    const monsterDefs = MonstersByZone[this.currentMapId] || [];
+
+    for (let i = 0; i < count; i++) {
+      // Pick a random monster type from the zone's ambush list
+      const mId = monsterIds && monsterIds.length > 0
+        ? monsterIds[Math.floor(Math.random() * monsterIds.length)]
+        : (monsterDefs.length > 0 ? monsterDefs[0].id : null);
+
+      if (!mId) continue;
+      const def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
+      if (!def) continue;
+
+      // Spawn near the player (within 3-5 tiles)
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 3 + Math.random() * 2;
+      const sc = Math.round(event.col + Math.cos(angle) * dist);
+      const sr = Math.round(event.row + Math.sin(angle) * dist);
+      const c = Math.max(1, Math.min(this.mapData.cols - 2, sc));
+      const r = Math.max(1, Math.min(this.mapData.rows - 2, sr));
+
+      if (this.mapData.collisions[r]?.[c]) {
+        const monster = new Monster(this, def, c, r);
+        // Immediately aggro to player
+        monster.state = 'chase';
+        this.monsters.push(monster);
+      }
+    }
+
+    // Ambush auto-resolves (monsters are spawned)
+    this.randomEventSystem.resolveActiveEvent();
+    EventBus.emit(GameEvents.RANDOM_EVENT_RESOLVED, { type: 'ambush' });
+  }
+
+  private handleTreasureCacheEvent(event: ActiveEvent): void {
+    // Generate zone-scaled loot and drop it at the event location
+    const lootLevel = (event.context.lootLevel as number) ?? 1;
+    const qualityBoost = (event.context.qualityBoost as number) ?? 0;
+
+    // Create a fake elite monster definition for loot generation (guarantees better quality)
+    const fakeDef = {
+      id: 'treasure_cache',
+      name: '宝箱',
+      level: lootLevel,
+      hp: 1, damage: 0, defense: 0, speed: 0,
+      aggroRange: 0, attackRange: 0, attackSpeed: 1000,
+      expReward: 0, goldReward: [10 + lootLevel * 5, 20 + lootLevel * 10] as [number, number],
+      spriteKey: 'chest',
+      elite: true,
+    };
+
+    const items = this.lootSystem.generateLoot(fakeDef, this.player.stats.lck, qualityBoost);
+
+    // Drop gold
+    const goldMin = fakeDef.goldReward[0];
+    const goldMax = fakeDef.goldReward[1];
+    const gold = randomInt(goldMin, goldMax);
+    this.player.gold += gold;
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: `从宝箱中获得 ${gold} 金币`, type: 'info' });
+
+    // Drop items near the event position
+    for (const item of items) {
+      this.dropLootAtPosition(item, event.col, event.row);
+    }
+
+    this.randomEventSystem.resolveActiveEvent();
+    EventBus.emit(GameEvents.RANDOM_EVENT_RESOLVED, { type: 'treasure_cache' });
+  }
+
+  private handleWanderingMerchantEvent(event: ActiveEvent): void {
+    // Emit a shop event so UIScene can show the shop panel
+    // The wandering merchant uses a special NPC definition
+    const merchantItems = (event.context.merchantItems as string[]) ?? [];
+    EventBus.emit(GameEvents.SHOP_OPEN, {
+      npcName: '流浪商人',
+      items: merchantItems,
+      isWanderingMerchant: true,
+    });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '流浪商人出现了! 看看他的商品吧。', type: 'info' });
+
+    this.randomEventSystem.resolveActiveEvent();
+    EventBus.emit(GameEvents.RANDOM_EVENT_RESOLVED, { type: 'wandering_merchant' });
+  }
+
+  private handleRescueEvent(event: ActiveEvent): void {
+    const monsterIds = event.context.monsterIds as string[] | undefined;
+    const count = (event.context.monsterCount as number) ?? 2;
+    const monsterDefs = MonstersByZone[this.currentMapId] || [];
+    const rescueNpcName = (event.context.rescueNpcName as string) ?? '被困的旅人';
+    const reward = event.context.reward as { gold: number; exp: number } | undefined;
+
+    // Spawn hostile monsters around the event location
+    let spawnedCount = 0;
+    for (let i = 0; i < count; i++) {
+      const mId = monsterIds && monsterIds.length > 0
+        ? monsterIds[Math.floor(Math.random() * monsterIds.length)]
+        : (monsterDefs.length > 0 ? monsterDefs[0].id : null);
+
+      if (!mId) continue;
+      const def = monsterDefs.find(m => m.id === mId) || getMonsterDef(mId);
+      if (!def) continue;
+
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 2 + Math.random() * 3;
+      const c = Math.max(1, Math.min(this.mapData.cols - 2, Math.round(event.col + Math.cos(angle) * dist)));
+      const r = Math.max(1, Math.min(this.mapData.rows - 2, Math.round(event.row + Math.sin(angle) * dist)));
+
+      if (this.mapData.collisions[r]?.[c]) {
+        const monster = new Monster(this, def, c, r);
+        monster.state = 'chase';
+        this.monsters.push(monster);
+        spawnedCount++;
+      }
+    }
+
+    // Grant reward immediately and log (simplified: no NPC entity for now)
+    if (reward) {
+      this.player.gold += reward.gold;
+      this.player.exp += reward.exp;
+      EventBus.emit(GameEvents.LOG_MESSAGE, {
+        text: `你救出了${rescueNpcName}! 获得 ${reward.gold} 金币和 ${reward.exp} 经验`,
+        type: 'info',
+      });
+    }
+
+    this.randomEventSystem.resolveActiveEvent();
+    EventBus.emit(GameEvents.RANDOM_EVENT_RESOLVED, { type: 'rescue' });
+  }
+
+  private handlePuzzleEvent(event: ActiveEvent): void {
+    const puzzle = event.context.puzzle as { prompt: string; solution: string; reward: string; rewardGold: number; rewardExp: number } | undefined;
+    if (!puzzle) {
+      this.randomEventSystem.resolveActiveEvent();
+      return;
+    }
+
+    // Show puzzle prompt in combat log
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: `谜题: ${puzzle.prompt}`, type: 'info' });
+
+    // Auto-solve the puzzle (simplified interaction — future UI could present choices)
+    this.time.delayedCall(2000, () => {
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${puzzle.solution} — ${puzzle.reward}`, type: 'info' });
+      this.player.gold += puzzle.rewardGold;
+      this.player.exp += puzzle.rewardExp;
+      EventBus.emit(GameEvents.LOG_MESSAGE, {
+        text: `获得 ${puzzle.rewardGold} 金币和 ${puzzle.rewardExp} 经验`,
+        type: 'info',
+      });
+    });
+
+    this.randomEventSystem.resolveActiveEvent();
+    EventBus.emit(GameEvents.RANDOM_EVENT_RESOLVED, { type: 'environmental_puzzle' });
+  }
+
+  /** Helper: drop a loot item at a specific tile position (used by treasure cache events). */
+  private dropLootAtPosition(item: ItemInstance, col: number, row: number): void {
+    const { x: wx, y: wy } = cartToIso(col, row);
+    const offsetX = (Math.random() - 0.5) * 20 * DPR;
+    const offsetY = (Math.random() - 0.5) * 10 * DPR;
+    const finalX = wx + offsetX;
+    const finalY = wy + offsetY;
+
+    const container = this.add.container(finalX, finalY - 30 * DPR);
+    container.setDepth(wy + 50);
+
+    const colors: Record<string, number> = { normal: 0xffffff, magic: 0x4488ff, rare: 0xffff00, legendary: 0xff8800, set: 0x44ff44 };
+    const color = colors[item.quality] ?? 0xffffff;
+
+    const bag = this.add.rectangle(0, 0, 12 * DPR, 12 * DPR, color);
+    container.add(bag);
+
+    // Drop animation
+    this.tweens.add({
+      targets: container,
+      y: finalY,
+      duration: 400,
+      ease: 'Bounce.easeOut',
+    });
+
+    this.lootDrops.push({ sprite: container, item, col, row });
   }
 
   private handleAutoLoot(): void {
@@ -3815,6 +4059,7 @@ export class ZoneScene extends Phaser.Scene {
     if (this.weather) this.weather.destroy();
     if (this.trails) this.trails.destroy();
     if (this.statusEffects) this.statusEffects.clearAll();
+    if (this.randomEventSystem) this.randomEventSystem.reset();
     this.statusTintApplied.clear();
     for (const key of this.textures.getTextureKeys()) {
       if (key.startsWith('tile_t_')) this.textures.remove(key);
