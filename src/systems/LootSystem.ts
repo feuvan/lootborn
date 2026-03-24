@@ -113,6 +113,12 @@ export class LootSystem {
     const base = getItemBase(item.baseId);
     const itemSlot = base?.slot;
 
+    // Determine preferred affix tier based on item level
+    // Zone 1 (lv 1-7): tiers 1-2, Zone 2 (lv 8-17): tiers 1-3,
+    // Zone 3 (lv 18-27): tiers 2-4, Zone 4 (lv 28-37): tiers 3-5, Zone 5 (lv 38+): tiers 4-5
+    const minTier = level < 8 ? 1 : level < 18 ? 1 : level < 28 ? 2 : level < 38 ? 3 : 4;
+    const maxTier = level < 8 ? 2 : level < 18 ? 3 : level < 28 ? 4 : 5;
+
     for (let i = 0; i < count; i++) {
       const wantPrefix = prefixCount <= suffixCount;
       const pool = (wantPrefix ? Prefixes : Suffixes)
@@ -120,12 +126,22 @@ export class LootSystem {
           if (a.levelReq > level + 5) return false;
           if (usedIds.has(a.id)) return false;
           if (a.allowedSlots && itemSlot && !a.allowedSlots.includes(itemSlot)) return false;
+          // Prefer zone-appropriate tiers: allow ±1 around the ideal range
+          if (a.tier < Math.max(1, minTier - 1) || a.tier > Math.min(5, maxTier + 1)) return false;
           return true;
         });
 
       if (pool.length === 0) continue;
 
-      const affix = pool[randomInt(0, pool.length - 1)];
+      // Weight towards ideal tier range
+      const weighted: AffixDefinition[] = [];
+      for (const a of pool) {
+        const inRange = a.tier >= minTier && a.tier <= maxTier;
+        const weight = inRange ? 3 : 1;
+        for (let w = 0; w < weight; w++) weighted.push(a);
+      }
+
+      const affix = weighted[randomInt(0, weighted.length - 1)];
       const value = randomInt(affix.minValue, affix.maxValue);
 
       item.affixes.push({

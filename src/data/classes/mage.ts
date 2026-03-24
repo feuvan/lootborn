@@ -24,7 +24,7 @@ export const MageClass: ClassDefinition = {
       damageType: 'fire',
       icon: 'skill_fireball',
       scaling: {
-        damagePerLevel: 0.10,
+        damagePerLevel: 0.20,
         manaCostPerLevel: 0.8,
       },
       synergies: [
@@ -48,7 +48,7 @@ export const MageClass: ClassDefinition = {
       aoeRadius: 2.5,
       icon: 'skill_meteor',
       scaling: {
-        damagePerLevel: 0.15,
+        damagePerLevel: 0.28,
         manaCostPerLevel: 2.0,
         aoeRadiusPerLevel: 0.06,
         cooldownReductionPerLevel: 100,
@@ -76,7 +76,7 @@ export const MageClass: ClassDefinition = {
       aoeRadius: 3,
       icon: 'skill_blizzard',
       scaling: {
-        damagePerLevel: 0.08,
+        damagePerLevel: 0.16,
         manaCostPerLevel: 1.2,
         aoeRadiusPerLevel: 0.08,
         cooldownReductionPerLevel: 60,
@@ -127,7 +127,7 @@ export const MageClass: ClassDefinition = {
       aoeRadius: 4,
       icon: 'skill_chainlightning',
       scaling: {
-        damagePerLevel: 0.09,
+        damagePerLevel: 0.16,
         manaCostPerLevel: 1.0,
         aoeRadiusPerLevel: 0.10,
         cooldownReductionPerLevel: 40,

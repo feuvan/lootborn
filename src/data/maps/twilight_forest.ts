@@ -36,5 +36,5 @@ export const TwilightForestMap: MapData = {
     { col: 1, row: 38, targetMap: 'emerald_plains', targetCol: 77, targetRow: 40 },
     { col: 78, row: 74, targetMap: 'anvil_mountains', targetCol: 1, targetRow: 38 },
   ],
-  levelRange: [10, 20] as [number, number],
+  levelRange: [8, 17] as [number, number],
 };

@@ -25,7 +25,7 @@ export const RogueClass: ClassDefinition = {
       critBonus: 20,
       icon: 'skill_backstab',
       scaling: {
-        damagePerLevel: 0.12,
+        damagePerLevel: 0.22,
         manaCostPerLevel: 0.5,
       },
       synergies: [
@@ -49,7 +49,7 @@ export const RogueClass: ClassDefinition = {
       buff: { stat: 'poisonDamage', value: 0.5, duration: 6000 },
       icon: 'skill_poisonblade',
       scaling: {
-        damagePerLevel: 0.04,
+        damagePerLevel: 0.08,
         manaCostPerLevel: 0.5,
         buffValuePerLevel: 0.03,
         buffDurationPerLevel: 200,
@@ -101,7 +101,7 @@ export const RogueClass: ClassDefinition = {
       aoeRadius: 3,
       icon: 'skill_multishot',
       scaling: {
-        damagePerLevel: 0.06,
+        damagePerLevel: 0.12,
         manaCostPerLevel: 1.0,
         aoeRadiusPerLevel: 0.08,
         cooldownReductionPerLevel: 30,
@@ -127,7 +127,7 @@ export const RogueClass: ClassDefinition = {
       aoeRadius: 3.5,
       icon: 'skill_arrowrain',
       scaling: {
-        damagePerLevel: 0.05,
+        damagePerLevel: 0.10,
         manaCostPerLevel: 1.5,
         aoeRadiusPerLevel: 0.10,
         cooldownReductionPerLevel: 80,
@@ -156,7 +156,7 @@ export const RogueClass: ClassDefinition = {
       aoeRadius: 2,
       icon: 'skill_explosivetrap',
       scaling: {
-        damagePerLevel: 0.08,
+        damagePerLevel: 0.16,
         manaCostPerLevel: 0.8,
         aoeRadiusPerLevel: 0.06,
         cooldownReductionPerLevel: 50,

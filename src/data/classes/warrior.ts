@@ -24,7 +24,7 @@ export const WarriorClass: ClassDefinition = {
       damageType: 'physical',
       icon: 'skill_slash',
       scaling: {
-        damagePerLevel: 0.08,
+        damagePerLevel: 0.18,
         manaCostPerLevel: 0.5,
       },
       synergies: [
@@ -48,7 +48,7 @@ export const WarriorClass: ClassDefinition = {
       aoeRadius: 2.5,
       icon: 'skill_whirlwind',
       scaling: {
-        damagePerLevel: 0.06,
+        damagePerLevel: 0.14,
         manaCostPerLevel: 1.0,
         aoeRadiusPerLevel: 0.08,
         cooldownReductionPerLevel: 50,
@@ -76,7 +76,7 @@ export const WarriorClass: ClassDefinition = {
       stunDuration: 2000,
       icon: 'skill_warstomp',
       scaling: {
-        damagePerLevel: 0.10,
+        damagePerLevel: 0.20,
         manaCostPerLevel: 1.5,
         aoeRadiusPerLevel: 0.05,
         cooldownReductionPerLevel: 80,

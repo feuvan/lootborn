@@ -33,5 +33,5 @@ export const EmeraldPlainsMap: MapData = {
   exits: [
     { col: 78, row: 40, targetMap: 'twilight_forest', targetCol: 1, targetRow: 38 },
   ],
-  levelRange: [1, 10] as [number, number],
+  levelRange: [1, 7] as [number, number],
 };

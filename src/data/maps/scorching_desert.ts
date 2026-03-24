@@ -35,5 +35,5 @@ export const ScorchingDesertMap: MapData = {
     { col: 1, row: 38, targetMap: 'anvil_mountains', targetCol: 77, targetRow: 70 },
     { col: 78, row: 74, targetMap: 'abyss_rift', targetCol: 1, targetRow: 38 },
   ],
-  levelRange: [30, 40] as [number, number],
+  levelRange: [28, 37] as [number, number],
 };

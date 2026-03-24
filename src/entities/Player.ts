@@ -163,7 +163,8 @@ export class Player {
   }
 
   expToNextLevel(): number {
-    return Math.floor(100 * Math.pow(1.15, this.level - 1));
+    // Polynomial curve: ~15-25 kills per level in the current zone
+    return Math.floor(this.level * this.level * 3 + this.level * 25);
   }
 
   moveTo(col: number, row: number): void {

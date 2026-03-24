@@ -35,5 +35,5 @@ export const AnvilMountainsMap: MapData = {
     { col: 1, row: 38, targetMap: 'twilight_forest', targetCol: 77, targetRow: 70 },
     { col: 78, row: 74, targetMap: 'scorching_desert', targetCol: 1, targetRow: 38 },
   ],
-  levelRange: [20, 30] as [number, number],
+  levelRange: [18, 27] as [number, number],
 };
