@@ -1,0 +1,117 @@
+{
+  "milestone": "companions",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "npx vitest run", "exitCode": 0, "details": "14 test files, 1579 tests passed in 558ms" },
+    "typecheck": { "passed": true, "command": "npx tsc --noEmit", "exitCode": 0 },
+    "build": { "passed": true, "command": "npm run build", "exitCode": 0, "details": "tsc + vite build, dist/assets/index-CqQWjEjJ.js 1932KB" }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "mercenary-system",
+      "severity": "non_blocking",
+      "description": "canEquipWeapon/canEquipArmor use `(item as any)` to access weaponType/type properties not on ItemInstance interface — type-unsafe but works at runtime",
+      "file": "src/systems/MercenarySystem.ts"
+    },
+    {
+      "featureId": "mercenary-system",
+      "severity": "non_blocking",
+      "description": "Mercenary movement is frame-rate dependent (0.06 tiles/frame) rather than delta-time based. Matches existing player movement pattern.",
+      "file": "src/scenes/ZoneScene.ts"
+    },
+    {
+      "featureId": "mercenary-system",
+      "severity": "non_blocking",
+      "description": "Only tank mercenaries can be targeted by monsters — other roles are effectively invulnerable in combat",
+      "file": "src/scenes/ZoneScene.ts"
+    },
+    {
+      "featureId": "mercenary-system",
+      "severity": "non_blocking",
+      "description": "Camp proximity check logic is duplicated between renderHirePanel and renderMercenaryInfo in UIScene",
+      "file": "src/scenes/UIScene.ts"
+    },
+    {
+      "featureId": "pet-system-overhaul",
+      "severity": "non_blocking",
+      "description": "pet_void_butterfly (rare spawn pet) has no actual acquisition mechanism — defined as '稀有刷新' but no spawn points implemented. Pet is unreachable in normal gameplay.",
+      "file": "src/systems/HomesteadSystem.ts"
+    },
+    {
+      "featureId": "pet-system-overhaul",
+      "severity": "non_blocking",
+      "description": "English stat names displayed in pet UI (bonusStat shown raw: 'attackSpeed', 'defense', etc.) instead of Chinese labels. Violates Chinese UI text convention.",
+      "file": "src/scenes/UIScene.ts"
+    },
+    {
+      "featureId": "pet-system-overhaul",
+      "severity": "non_blocking",
+      "description": "Feed error message shows raw item IDs (e.g., 'c_hp_potion_s') instead of Chinese item names",
+      "file": "src/scenes/UIScene.ts"
+    },
+    {
+      "featureId": "pet-system-overhaul",
+      "severity": "non_blocking",
+      "description": "Boss pet drop table hardcoded inline in ZoneScene instead of being data-driven",
+      "file": "src/scenes/ZoneScene.ts"
+    },
+    {
+      "featureId": "pet-system-overhaul",
+      "severity": "non_blocking",
+      "description": "Training ground building semantics silently changed from expBonus to mercExpBonus — existing saves get different behavior without notification",
+      "file": "src/systems/HomesteadSystem.ts"
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added MercenarySystem and companion panel documentation to architecture.md (persistent system, P key panel, companion lifecycle)",
+      "sourceFeature": "mercenary-system"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the UIScene ↔ ZoneScene cross-scene method pattern. Workers add public methods to ZoneScene that UIScene calls via `(this.zone as any)`. List known cross-scene methods to help workers understand the boundary.",
+      "evidence": "mercenary-system added spawnMercenarySprite() and destroyMercenarySprite() as public methods on ZoneScene, called from UIScene via `as any` cast. This matches existing patterns but is undocumented.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: Do not change the semantics of existing building/stat bonuses without explicit migration or player notification. New behaviors should use new stat keys rather than repurposing existing ones.",
+      "evidence": "pet-system-overhaul changed training_ground from 'expBonus' (offline exp) to 'mercExpBonus' (mercenary exp). Players who upgraded training_ground for exp now silently get a different bonus.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add note: The P key companion panel is the unified panel for all companion types (mercenaries, pets, and future companion features). New companion features should integrate into this panel rather than creating separate UI.",
+      "evidence": "pet-system-overhaul refactored the mercenary-only panel to a combined companions panel showing both mercenary and pets.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document that ItemInstance lacks weaponType/itemType discriminator fields. Workers should use `as any` or base lookup via baseId to access these. Consider adding optional fields to ItemInstance in a future cleanup pass.",
+      "evidence": "mercenary-system uses `(item as any).weaponType` and `(item as any).type` in equipment validation. This is a known type-safety gap affecting multiple systems.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Worker's skill feedback says procedure was followed correctly — no skill changes needed",
+      "reason": "No action needed; positive feedback, not a change request"
+    },
+    {
+      "observation": "Skill suggestion to check for pre-existing partial implementations from prior worker sessions",
+      "reason": "This is a valid suggestion but is more of a general orchestration concern than a skill change. Workers already read handoffs which should cover this. The issue was specific to a multi-session feature, not a systemic pattern."
+    }
+  ],
+  "previousRound": null
+}

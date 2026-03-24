@@ -18,7 +18,7 @@ Architectural decisions, patterns, and conventions discovered during the mission
 - CombatSystem, SkillEffectSystem, LightingSystem, VFXManager, WeatherSystem, TrailRenderer, PathfindingSystem, StatusEffectSystem
 
 **Persistent (survive zone transitions):**
-- InventorySystem, QuestSystem, HomesteadSystem, AchievementSystem, SaveSystem
+- InventorySystem, QuestSystem, HomesteadSystem, AchievementSystem, SaveSystem, MercenarySystem
 
 **Singletons:**
 - audioManager (module-level instance)
@@ -66,6 +66,18 @@ Architectural decisions, patterns, and conventions discovered during the mission
 - Exits sit on map borders (col=0/119 or row=0/119)
 - Target coordinates (`targetCol`/`targetRow`) should point to walkable interior tiles in the destination map — **not** border walls (row/col 0 or 119)
 - Currently `changeZone()` ignores target coordinates (player spawns at `playerStart`), but this may change
+
+## Companion Systems
+
+**MercenarySystem** — persistent system (survives zone transitions). Instantiated once in `ZoneScene.create()` `isFirstLoad` block. Holds mercenary state (type, stats, equipment, alive/dead). ZoneScene calls `updateMercenaryAI()` each frame for movement and combat behavior.
+
+**Pet system** — managed by `HomesteadSystem` (persistent). Active pet visual is a sprite in ZoneScene, updated each frame. Pet combat (periodic attacks) handled in ZoneScene update loop. Pet House building level determines capacity (`1 + level`).
+
+**Companion Panel** — unified panel for all companion types (mercenary + pets), toggled with P key. Hire/dismiss mercenary, manage equipment, view/activate/feed pets. Camp proximity required for hiring and reviving mercenaries.
+
+**Cross-scene methods for companions:**
+- `ZoneScene.spawnMercenarySprite()` / `destroyMercenarySprite()` — called from UIScene via `(this.zone as any)` cast
+- `ZoneScene.spawnPetSprite()` / `destroyPetSprite()` — same pattern
 
 ## Performance Patterns
 
