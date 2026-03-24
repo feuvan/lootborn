@@ -273,6 +273,39 @@ export interface QuestProgress {
   objectives: { current: number }[];
 }
 
+/** A single choice in a dialogue tree node. */
+export interface DialogueChoice {
+  text: string;
+  nextNodeId: string;
+  /** Quest ID to trigger (accept) when this choice is selected. */
+  questTrigger?: string;
+  /** Quest IDs that must be turned_in before this choice appears. */
+  prereqQuests?: string[];
+  /** Reward given immediately on choosing (e.g., gold, item). */
+  reward?: { gold?: number; items?: string[]; exp?: number };
+}
+
+/** A single node in a dialogue tree. */
+export interface DialogueNode {
+  id: string;
+  /** NPC text shown to the player. */
+  text: string;
+  /** Player-selectable choices. If empty/missing, a default "继续" or "离开" is shown. */
+  choices?: DialogueChoice[];
+  /** If set, auto-advance to this node after displaying text. */
+  nextNodeId?: string;
+  /** Flag this node as an ending node (closes dialogue). */
+  isEnd?: boolean;
+}
+
+/** Complete dialogue tree for an NPC. */
+export interface DialogueTree {
+  /** Root node ID to start the dialogue. */
+  startNodeId: string;
+  /** All nodes indexed by id. */
+  nodes: Record<string, DialogueNode>;
+}
+
 export interface NPCDefinition {
   id: string;
   name: string;
@@ -280,6 +313,8 @@ export interface NPCDefinition {
   dialogue: string[];
   shopItems?: string[];
   quests?: string[];
+  /** Branching dialogue tree (replaces linear dialogue[] when present). */
+  dialogueTree?: DialogueTree;
 }
 
 export interface AchievementDefinition {
@@ -389,4 +424,6 @@ export interface SaveData {
   difficulty: 'normal' | 'nightmare' | 'hell';
   completedDifficulties: string[];
   mercenary?: MercenarySaveData;
+  /** Tracks visited dialogue nodes and choices made per NPC. */
+  dialogueState?: Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }>;
 }

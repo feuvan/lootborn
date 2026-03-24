@@ -34,6 +34,7 @@ import { MonstersByZone, getMonsterDef } from '../data/monsters/index';
 import { NPCDefinitions } from '../data/npcs';
 import { AllQuests } from '../data/quests/all_quests';
 import type { MapData, ClassDefinition, ItemInstance, SaveData } from '../data/types';
+import type { UIScene } from './UIScene';
 
 const TILE_KEYS = ['tile_grass', 'tile_dirt', 'tile_stone', 'tile_water', 'tile_wall', 'tile_camp', 'tile_camp_wall'];
 const CAMPFIRE_RECOVERY_RADIUS = 5;
@@ -2011,6 +2012,31 @@ export class ZoneScene extends Phaser.Scene {
           }
         }
 
+        // If NPC has a dialogue tree, use the branching dialogue system
+        if (def.dialogueTree) {
+          // Collect turned-in quest IDs for the dialogue state
+          const completedQuests: string[] = [];
+          for (const [qid, prog] of this.questSystem.progress.entries()) {
+            if (prog.status === 'turned_in') completedQuests.push(qid);
+          }
+
+          EventBus.emit(GameEvents.NPC_INTERACT, {
+            npcId: def.id,
+            npcName: def.name,
+            dialogue: turnedIn.length > 0 ? '感谢你完成了任务！' : '',
+            actions: [],
+            dialogueTree: def.dialogueTree,
+            completedQuests,
+            questSystem: this.questSystem,
+            player: this.player,
+            homesteadSystem: this.homesteadSystem,
+            achievementSystem: this.achievementSystem,
+            turnedIn,
+          });
+          break;
+        }
+
+        // Fallback: linear dialogue (no dialogue tree defined)
         // Build dialogue actions for available quests
         const actions: { label: string; callback: () => void }[] = [];
         if (def.quests) {
@@ -2128,6 +2154,7 @@ export class ZoneScene extends Phaser.Scene {
         difficulty: this.difficulty,
         completedDifficulties: [],
         mercenary: this.mercenarySystem?.toSaveData(),
+        dialogueState: this.getDialogueState(),
       });
     } catch (_e) { /* silent fail */ }
   }
@@ -2187,6 +2214,28 @@ export class ZoneScene extends Phaser.Scene {
     // 8. Mercenary
     if (save.mercenary) {
       this.mercenarySystem.loadFromSave(save.mercenary);
+    }
+
+    // 9. Dialogue tree state
+    if (save.dialogueState) {
+      this.setDialogueState(save.dialogueState);
+    }
+  }
+
+  /** Get dialogue state from UIScene for saving. */
+  private getDialogueState(): Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }> | undefined {
+    const uiScene = this.scene.get('UIScene') as UIScene | undefined;
+    if (uiScene && typeof uiScene.getDialogueState === 'function') {
+      return uiScene.getDialogueState();
+    }
+    return undefined;
+  }
+
+  /** Set dialogue state on UIScene from loaded save. */
+  private setDialogueState(state: Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }>): void {
+    const uiScene = this.scene.get('UIScene') as UIScene | undefined;
+    if (uiScene && typeof uiScene.setDialogueState === 'function') {
+      uiScene.setDialogueState(state);
     }
   }
 

@@ -9,7 +9,7 @@ import { NPCDefinitions } from '../data/npcs';
 import { audioManager } from '../systems/audio/AudioManager';
 import type { Player } from '../entities/Player';
 import type { ZoneScene } from './ZoneScene';
-import type { ItemInstance, WeaponBase, ArmorBase } from '../data/types';
+import type { ItemInstance, WeaponBase, ArmorBase, DialogueTree, DialogueNode, DialogueChoice } from '../data/types';
 import { MercenarySystem, MERCENARY_DEFS, MERCENARY_TYPES } from '../systems/MercenarySystem';
 import type { MercenaryState } from '../systems/MercenarySystem';
 
@@ -84,6 +84,10 @@ export class UIScene extends Phaser.Scene {
   private nextMinimapRefreshAt = 0;
   private nextQuestTrackerRefreshAt = 0;
   private lastQuestTrackerSignature = '';
+  /** Dialogue tree state: visited nodes and choices per NPC. */
+  private dialogueTreeState: Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }> = {};
+  /** Current dialogue tree scroll offset for long text. */
+  private dialogueScrollY = 0;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -351,8 +355,13 @@ export class UIScene extends Phaser.Scene {
     this.openShop(data);
   }
 
-  private handleNpcInteract(data: { npcName: string; dialogue: string; actions: { label: string; callback: () => void }[] }): void {
-    this.openDialogue(data);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleNpcInteract(data: any): void {
+    if (data.dialogueTree) {
+      this.openDialogueTree(data);
+    } else {
+      this.openDialogue(data);
+    }
   }
 
   private handlePanelToggle(data: { panel: string }): void {
@@ -1515,6 +1524,305 @@ export class UIScene extends Phaser.Scene {
     EventBus.emit(GameEvents.DIALOGUE_CLOSE);
     if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
     if (this.dialoguePanel) { this.dialoguePanel.destroy(); this.dialoguePanel = null; }
+  }
+
+  // --- Branching Dialogue Tree Panel ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private openDialogueTree(data: any): void {
+    const tree: DialogueTree = data.dialogueTree;
+    const npcId: string = data.npcId;
+    const npcName: string = data.npcName;
+    const completedQuests: string[] = data.completedQuests ?? [];
+    const questSystem = data.questSystem;
+    const player = data.player;
+    const homesteadSystem = data.homesteadSystem;
+    const achievementSystem = data.achievementSystem;
+    const turnedIn: string[] = data.turnedIn ?? [];
+
+    // Initialize dialogue state for this NPC if not exists
+    if (!this.dialogueTreeState[npcId]) {
+      this.dialogueTreeState[npcId] = { visitedNodes: [], choicesMade: {} };
+    }
+    const state = this.dialogueTreeState[npcId];
+
+    // Show turn-in text first if any quests were turned in
+    if (turnedIn.length > 0) {
+      this.renderDialogueTreeNode(tree, tree.nodes[tree.startNodeId], npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state, '感谢你完成了任务！接下来还有事情要做...');
+    } else {
+      this.renderDialogueTreeNode(tree, tree.nodes[tree.startNodeId], npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private renderDialogueTreeNode(
+    tree: DialogueTree,
+    node: DialogueNode,
+    npcId: string,
+    npcName: string,
+    completedQuests: string[],
+    questSystem: any,
+    player: any,
+    homesteadSystem: any,
+    achievementSystem: any,
+    state: { visitedNodes: string[]; choicesMade: Record<string, string> },
+    prefixText?: string,
+  ): void {
+    this.closeDialogue();
+    this.closeAllPanels();
+    audioManager.playSFX('click');
+    this.dialogueScrollY = 0;
+
+    // Mark node as visited
+    if (!state.visitedNodes.includes(node.id)) {
+      state.visitedNodes.push(node.id);
+    }
+
+    // Full-screen transparent backdrop
+    this.dialogueBackdrop = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.35)
+      .setInteractive().setDepth(3999);
+
+    const pw = px(460), maxPh = px(500);
+    const headerH = px(50);
+    const footerH = px(24);
+
+    // Determine display text
+    const displayText = prefixText ? `${prefixText}\n\n${node.text}` : node.text;
+
+    // Filter choices by prerequisites
+    const visibleChoices: DialogueChoice[] = [];
+    if (node.choices && node.choices.length > 0) {
+      for (const choice of node.choices) {
+        if (choice.prereqQuests && choice.prereqQuests.length > 0) {
+          const meetsPrereqs = choice.prereqQuests.every(qid => completedQuests.includes(qid));
+          if (!meetsPrereqs) continue;
+        }
+        // Don't show choices that trigger already-accepted or turned-in quests
+        if (choice.questTrigger && questSystem) {
+          const prog = questSystem.progress.get(choice.questTrigger);
+          if (prog && (prog.status === 'active' || prog.status === 'turned_in')) continue;
+        }
+        visibleChoices.push(choice);
+      }
+    }
+
+    // Measure text height
+    const textMeasure = this.add.text(0, 0, displayText, {
+      fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT,
+      wordWrap: { width: pw - px(36) },
+      lineSpacing: px(3),
+    });
+    const textHeight = textMeasure.height;
+    textMeasure.destroy();
+
+    // Calculate button area height
+    const btnH = px(30);
+    const btnGap = px(6);
+    const choicesToShow = visibleChoices.length > 0 ? visibleChoices : [];
+    const hasEndBtn = node.isEnd || (choicesToShow.length === 0 && !node.nextNodeId);
+    const numBtns = choicesToShow.length + (hasEndBtn ? 1 : 0) + (node.nextNodeId && !node.isEnd && choicesToShow.length === 0 ? 1 : 0);
+    const btnAreaH = numBtns * (btnH + btnGap) + px(10);
+
+    // Calculate panel height
+    const contentH = textHeight + px(20);
+    const maxScrollArea = maxPh - headerH - btnAreaH - footerH;
+    const needsScroll = contentH > maxScrollArea;
+    const scrollAreaH = needsScroll ? maxScrollArea : contentH;
+    const ph = headerH + scrollAreaH + btnAreaH + footerH;
+    const panelX = (W - pw) / 2, panelY = Math.max(px(20), (H - ph) / 2);
+
+    this.dialoguePanel = this.add.container(panelX, panelY).setDepth(4000);
+    this.animatePanelOpen(this.dialoguePanel);
+
+    // Background
+    const bg = this.add.rectangle(0, 0, pw, ph, 0x0f0f1e, 0.96).setOrigin(0, 0).setStrokeStyle(Math.round(2 * DPR), 0xc0934a);
+    this.dialoguePanel.add(bg);
+
+    // Header accent line
+    const headerLine = this.add.rectangle(pw / 2, headerH, pw - px(20), Math.round(1 * DPR), 0x333344);
+    this.dialoguePanel.add(headerLine);
+
+    // NPC name
+    this.dialoguePanel.add(this.add.text(pw / 2, px(12), npcName, {
+      fontSize: fs(17), color: '#c0934a', fontFamily: TITLE_FONT, fontStyle: 'bold',
+    }).setOrigin(0.5, 0));
+
+    // NPC type subtitle
+    this.dialoguePanel.add(this.add.text(pw / 2, px(32), '─ 对话 ─', {
+      fontSize: fs(11), color: '#555566', fontFamily: FONT,
+    }).setOrigin(0.5, 0));
+
+    // Scrollable text area with mask
+    const textAreaY = headerH + px(4);
+    const textAreaH = scrollAreaH;
+
+    // Create a mask for scrolling text
+    const maskGraphics = this.make.graphics({});
+    maskGraphics.fillStyle(0xffffff);
+    maskGraphics.fillRect(panelX + px(14), panelY + textAreaY, pw - px(28), textAreaH);
+    const textMask = maskGraphics.createGeometryMask();
+
+    const textContainer = this.add.container(px(18), textAreaY + px(4));
+    textContainer.setMask(textMask);
+    this.dialoguePanel.add(textContainer);
+
+    const npcText = this.add.text(0, -this.dialogueScrollY, displayText, {
+      fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT,
+      wordWrap: { width: pw - px(36) },
+      lineSpacing: px(3),
+    });
+    textContainer.add(npcText);
+
+    // Scroll indicators
+    if (needsScroll) {
+      const scrollHint = this.add.text(pw - px(20), textAreaY + textAreaH - px(14), '▼', {
+        fontSize: fs(12), color: '#c0934a', fontFamily: FONT,
+      }).setOrigin(0.5);
+      this.dialoguePanel.add(scrollHint);
+      this.tweens.add({
+        targets: scrollHint, alpha: 0.3, duration: 600,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      });
+
+      // Mouse wheel scrolling
+      const maxScroll = Math.max(0, contentH - textAreaH + px(8));
+      const scrollHandler = (_pointer: Phaser.Input.Pointer, _gx: unknown[], _gy: unknown, _gz: unknown, event: WheelEvent) => {
+        this.dialogueScrollY = Math.max(0, Math.min(maxScroll, this.dialogueScrollY + (event.deltaY > 0 ? px(30) : -px(30))));
+        npcText.y = -this.dialogueScrollY;
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.input.on('wheel', scrollHandler as any);
+      // Cleanup on panel destroy
+      const originalDestroy = this.dialoguePanel.destroy.bind(this.dialoguePanel);
+      this.dialoguePanel.destroy = (...args: Parameters<typeof originalDestroy>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.input.off('wheel', scrollHandler as any);
+        maskGraphics.destroy();
+        return originalDestroy(...args);
+      };
+    } else {
+      maskGraphics.destroy();
+    }
+
+    // Choice buttons area
+    const btnStartY = textAreaY + textAreaH + px(6);
+    let btnIdx = 0;
+
+    // Render visible choices
+    for (const choice of choicesToShow) {
+      const by = btnStartY + btnIdx * (btnH + btnGap);
+      const btnBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a2a1a)
+        .setStrokeStyle(Math.round(1 * DPR), 0x27ae60).setInteractive({ useHandCursor: true });
+
+      const btnText = this.add.text(pw / 2, by + btnH / 2, choice.text, {
+        fontSize: fs(13), color: '#27ae60', fontFamily: FONT,
+      }).setOrigin(0.5);
+
+      // Truncate long choice text
+      if (btnText.width > pw - px(56)) {
+        btnText.setStyle({ wordWrap: { width: pw - px(56) } });
+      }
+
+      btnBg.on('pointerover', () => {
+        btnBg.setFillStyle(0x224422);
+        btnText.setColor('#44dd44');
+      });
+      btnBg.on('pointerout', () => {
+        btnBg.setFillStyle(0x1a2a1a);
+        btnText.setColor('#27ae60');
+      });
+      btnBg.on('pointerdown', () => {
+        // Record choice
+        state.choicesMade[node.id] = choice.nextNodeId;
+
+        // Apply quest trigger
+        if (choice.questTrigger && questSystem) {
+          const prog = questSystem.progress.get(choice.questTrigger);
+          if (!prog) {
+            questSystem.acceptQuest(choice.questTrigger);
+          }
+        }
+
+        // Apply reward
+        if (choice.reward) {
+          if (choice.reward.gold && player) {
+            player.gold += choice.reward.gold;
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得 ${choice.reward.gold} 金币`, type: 'loot' });
+          }
+          if (choice.reward.exp && player) {
+            player.addExp(choice.reward.exp);
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得 ${choice.reward.exp} 经验`, type: 'loot' });
+          }
+        }
+
+        // Navigate to next node
+        const nextNode = tree.nodes[choice.nextNodeId];
+        if (nextNode) {
+          this.renderDialogueTreeNode(tree, nextNode, npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state);
+        } else {
+          this.closeDialogue();
+        }
+      });
+
+      this.dialoguePanel!.add(btnBg);
+      this.dialoguePanel!.add(btnText);
+      btnIdx++;
+    }
+
+    // Auto-continue button (for nodes with nextNodeId but no choices)
+    if (node.nextNodeId && !node.isEnd && choicesToShow.length === 0) {
+      const by = btnStartY + btnIdx * (btnH + btnGap);
+      const continueBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a2e)
+        .setStrokeStyle(Math.round(1 * DPR), 0x5dade2).setInteractive({ useHandCursor: true });
+      const continueText = this.add.text(pw / 2, by + btnH / 2, '继续', {
+        fontSize: fs(13), color: '#5dade2', fontFamily: FONT,
+      }).setOrigin(0.5);
+      continueBg.on('pointerover', () => { continueBg.setFillStyle(0x1a2a3a); continueText.setColor('#88ccff'); });
+      continueBg.on('pointerout', () => { continueBg.setFillStyle(0x1a1a2e); continueText.setColor('#5dade2'); });
+      continueBg.on('pointerdown', () => {
+        const nextNode = tree.nodes[node.nextNodeId!];
+        if (nextNode) {
+          this.renderDialogueTreeNode(tree, nextNode, npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state);
+        } else {
+          this.closeDialogue();
+        }
+      });
+      this.dialoguePanel!.add(continueBg);
+      this.dialoguePanel!.add(continueText);
+      btnIdx++;
+    }
+
+    // End/leave button
+    if (hasEndBtn) {
+      const by = btnStartY + btnIdx * (btnH + btnGap);
+      const leaveBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a1a)
+        .setStrokeStyle(Math.round(1 * DPR), 0x666680).setInteractive({ useHandCursor: true });
+      const leaveText = this.add.text(pw / 2, by + btnH / 2, '离开', {
+        fontSize: fs(13), color: '#888', fontFamily: FONT,
+      }).setOrigin(0.5);
+      leaveBg.on('pointerover', () => { leaveBg.setFillStyle(0x222222); leaveText.setColor('#aaa'); });
+      leaveBg.on('pointerout', () => { leaveBg.setFillStyle(0x1a1a1a); leaveText.setColor('#888'); });
+      leaveBg.on('pointerdown', () => this.closeDialogue());
+      this.dialoguePanel!.add(leaveBg);
+      this.dialoguePanel!.add(leaveText);
+    }
+
+    // Footer hint
+    this.dialoguePanel.add(this.add.text(pw / 2, ph - px(14), needsScroll ? '滚轮滚动查看更多' : '', {
+      fontSize: fs(10), color: '#444455', fontFamily: FONT,
+    }).setOrigin(0.5));
+
+    // Backdrop click closes dialogue
+    this.dialogueBackdrop!.on('pointerdown', () => this.closeDialogue());
+  }
+
+  /** Get dialogue tree state for saving. */
+  getDialogueState(): Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }> {
+    return this.dialogueTreeState;
+  }
+
+  /** Restore dialogue tree state from save data. */
+  setDialogueState(state: Record<string, { visitedNodes: string[]; choicesMade: Record<string, string> }>): void {
+    this.dialogueTreeState = state ?? {};
   }
 
   // --- Quest Log Panel ---

@@ -1,4 +1,5 @@
 import type { NPCDefinition } from './types';
+import { DialogueTrees } from './dialogueTrees';
 
 export const NPCDefinitions: Record<string, NPCDefinition> = {
   blacksmith: {
@@ -27,6 +28,7 @@ export const NPCDefinitions: Record<string, NPCDefinition> = {
     type: 'quest',
     dialogue: ['勇士，翡翠平原上的怪物越来越多了...', '请帮助我们清除这些威胁!'],
     quests: ['q_kill_slimes', 'q_collect_slime_gel', 'q_herb_gathering', 'q_kill_goblins', 'q_explore_goblin_camp', 'q_lost_pendant', 'q_find_goblin_chief', 'q_bandit_trouble', 'q_rare_mushroom', 'q_secure_plains'],
+    dialogueTree: DialogueTrees['quest_elder'],
   },
   quest_scout: {
     id: 'quest_scout',
@@ -34,6 +36,7 @@ export const NPCDefinitions: Record<string, NPCDefinition> = {
     type: 'quest',
     dialogue: ['暮色森林中有不祥的动静...', '你愿意去调查一下吗？'],
     quests: ['q_explore_forest', 'q_collect_wolf_pelts', 'q_kill_undead', 'q_spider_nest', 'q_talk_hermit', 'q_lost_scout', 'q_ancient_relic', 'q_moonlight_herb', 'q_kill_werewolf_alpha', 'q_seal_dark_source'],
+    dialogueTree: DialogueTrees['quest_scout'],
   },
   forest_hermit: {
     id: 'forest_hermit',
@@ -55,6 +58,7 @@ export const NPCDefinitions: Record<string, NPCDefinition> = {
     type: 'quest',
     dialogue: ['这些山脉曾是我族的家园...', '帮助我们夺回先祖的遗迹吧。'],
     quests: ['q_explore_dwarf_ruins', 'q_crystal_mining', 'q_kill_gargoyles', 'q_mountain_bandits', 'q_trapped_miners', 'q_collect_dwarf_relics', 'q_dragon_egg', 'q_reforge_artifact', 'q_kill_stone_guardian'],
+    dialogueTree: DialogueTrees['quest_dwarf'],
   },
   quest_nomad: {
     id: 'quest_nomad',
@@ -62,6 +66,7 @@ export const NPCDefinitions: Record<string, NPCDefinition> = {
     type: 'quest',
     dialogue: ['灼热的沙漠中危机四伏...', '只有最勇敢的人才能在这里生存。'],
     quests: ['q_explore_desert', 'q_water_supply', 'q_kill_fire_elementals', 'q_scorpion_venom', 'q_buried_treasure', 'q_explore_oasis', 'q_kill_sandworms', 'q_mirage_beasts', 'q_seal_fire_rift'],
+    dialogueTree: DialogueTrees['quest_nomad'],
   },
   quest_warden: {
     id: 'quest_warden',
@@ -69,6 +74,7 @@ export const NPCDefinitions: Record<string, NPCDefinition> = {
     type: 'quest',
     dialogue: ['深渊裂隙正在扩大，恶魔即将涌入...', '我们需要你的力量来封印它。'],
     quests: ['q_explore_abyss', 'q_corrupted_souls', 'q_void_crystals', 'q_kill_demons', 'q_fallen_hero', 'q_collect_demon_essence', 'q_demon_weaponry', 'q_forge_seal', 'q_kill_abyss_lord'],
+    dialogueTree: DialogueTrees['quest_warden'],
   },
   merchant_desert: {
     id: 'merchant_desert',
