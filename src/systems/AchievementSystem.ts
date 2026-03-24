@@ -21,14 +21,28 @@ export class AchievementSystem {
   unlocked: Set<string> = new Set();
 
   update(type: string, targetId?: string, amount = 1): void {
+    // Collect unique progress keys to increment (avoid double-counting when
+    // multiple achievements share the same key, e.g. kill-100 and kill-500).
+    const keysToIncrement = new Set<string>();
     for (const ach of ACHIEVEMENTS) {
       if (this.unlocked.has(ach.id)) continue;
       if (ach.type !== type) continue;
       if (ach.targetId && ach.targetId !== targetId) continue;
-
       const key = ach.targetId ? `${ach.type}:${ach.targetId}` : ach.type;
-      this.progress[key] = (this.progress[key] ?? 0) + amount;
+      keysToIncrement.add(key);
+    }
 
+    // Increment each unique key exactly once
+    for (const key of keysToIncrement) {
+      this.progress[key] = (this.progress[key] ?? 0) + amount;
+    }
+
+    // Check all matching achievements against updated progress
+    for (const ach of ACHIEVEMENTS) {
+      if (this.unlocked.has(ach.id)) continue;
+      if (ach.type !== type) continue;
+      if (ach.targetId && ach.targetId !== targetId) continue;
+      const key = ach.targetId ? `${ach.type}:${ach.targetId}` : ach.type;
       if (this.progress[key] >= ach.required) {
         this.unlock(ach);
       }
