@@ -1,0 +1,39 @@
+{
+  "featureId": "foundation-scrutiny-fixes",
+  "reviewedAt": "2026-03-24T04:10:00.000Z",
+  "commitId": "4fb4890",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "All 6 non-blocking issues from the foundation scrutiny are properly addressed. Dead code removed from CombatSystem (applyStun, applyTaunt, consumeStealthBuff and related helpers/constants). Taunt aggro-forcing wired in ZoneScene.tryUseSkill() with proper monster state switching. Stealth buff consumption wired after player auto-attack. VFXManager.applyStatusTint() integrated into updateStatusEffects(). Slow speed multiplier correctly threaded through Monster.update()/moveToward(). Poison heal reduction halves hpRegenMultiplier. Duplicate item ID fixed (a_heavy_plate_armor). Three map exit targetRow values corrected 119→118. PLAYER_HEALTH_CHANGED emitted after thornsHeal. Coverage config updated to glob. Tests properly migrated from CombatSystem to StatusEffectSystem API. All 329 tests pass, build succeeds.",
+    "issues": [
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 2569,
+        "severity": "non_blocking",
+        "description": "applyStatusTint() is called every frame for every active status effect in updateStatusEffects(). This applies visual tints repeatedly each tick rather than only when a status effect is first applied or changes. While functionally correct, this is unnecessary per-frame work. A flag or check (e.g., tracking whether tint was already applied) would avoid redundant VFX calls."
+      },
+      {
+        "file": "src/scenes/ZoneScene.ts",
+        "line": 2635,
+        "severity": "non_blocking",
+        "description": "On status effect expiry, preFX.clear() is called which clears ALL pre-FX on the sprite, not just the expired status effect's tint. If multiple status effects are active simultaneously (e.g., burn + poison), expiring one will clear the other's visual tint as well. Should selectively remove only the expired effect's tint, or re-apply remaining effects after clear."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md already documents the CC/StatusEffect convention ('Do NOT use CombatSystem.applyStun() — it is dead code. Workers adding CC effects must use StatusEffectSystem.apply()'). This fix properly removed the dead code that AGENTS.md warned about. The convention documentation is now consistent with the codebase.",
+      "evidence": "AGENTS.md System Integration Conventions section matches the code changes in CombatSystem.ts (151 lines removed)."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker noted in skillFeedback.suggestedChanges that the systems-worker skill says to 'write tests FIRST (red)' but for a bug-fix/refactoring feature like this, it was more appropriate to understand the code first, then make targeted changes and update existing tests. This is a reasonable deviation — the skill's TDD-first procedure doesn't fit refactoring/fix tasks well. The skill could add a note that for refactoring/fix features, understanding existing code and tests first is the appropriate approach.",
+      "evidence": "handoff.skillFeedback.suggestedChanges: 'The systems-worker skill says to write tests FIRST (red), but for a bug-fix/refactoring feature like this, it was more appropriate to understand the code first, then make targeted changes and update existing tests accordingly.'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "All 6 foundation scrutiny fixes are correctly implemented. Dead CombatSystem CC methods removed and functionality properly moved to StatusEffectSystem/ZoneScene. Taunt aggro-forcing, stealth buff consumption, status tints, slow speed multiplier, poison heal reduction all wired correctly. Data fixes (duplicate item ID, map exit coordinates) are clean single-line changes. Coverage config updated to glob. Two non-blocking issues noted: (1) per-frame redundant applyStatusTint calls, (2) preFX.clear() on expiry may inadvertently clear tints from other concurrent status effects."
+}

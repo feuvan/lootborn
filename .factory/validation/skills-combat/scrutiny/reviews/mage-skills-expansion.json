@@ -1,0 +1,45 @@
+{
+  "featureId": "mage-skills-expansion",
+  "reviewedAt": "2026-03-24T06:15:00.000Z",
+  "commitId": "d078c69b2bf65eab0414cbed6ca5b8eedefdc14f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The mage-skills-expansion feature correctly adds 6 new Mage skills (Fire Wall, Combustion, Ice Arrow, Freeze, Teleport, Arcane Torrent) to mage.ts with complete fields, VFX effect methods and case entries in SkillEffectSystem.ts, procedural skill icons, and 272 validation tests. All 6 skills have correct tree placement (fire: Fire Wall + Combustion, frost: Ice Arrow + Freeze, arcane: Teleport + Arcane Torrent), proper damage types, synergies referencing valid mage skills, and Chinese player-facing text. Freeze has stunDuration: 2000 and ice damageType enabling ZoneScene's status effect logic. Teleport has damageMultiplier: 0 as required. Combustion description mentions 50% bonus on burning targets (runtime wiring handled by skill-combat-integration feature). The commit scope is appropriately limited to data definitions, VFX, icons, and tests — runtime integration in ZoneScene.ts was handled by a separate skill-combat-integration feature (16a325d). No bugs or blocking issues found.",
+    "issues": [
+      {
+        "file": "src/data/classes/mage.ts",
+        "line": 197,
+        "severity": "non_blocking",
+        "description": "Fire Wall icon uses 'skill_icon_fire_wall' naming convention while original skills use 'skill_fireball' / 'skill_meteor' pattern. This inconsistency (skill_icon_X vs skill_X) exists across all new skills added by the expansion features (warrior, mage, rogue). Not a bug since both are valid texture keys, but creates a split naming convention."
+      },
+      {
+        "file": "src/data/classes/mage.ts",
+        "line": 222,
+        "severity": "non_blocking",
+        "description": "Combustion (tier 3, damageMultiplier: 2.0) has no 'aoe' flag, so it's treated as single-target. The description says '引爆目标内部的火焰能量' (detonate the fire energy inside the target) which is consistent with single-target, but 'combustion' semantically could imply area damage. Current implementation is fine and matches the single-target path in ZoneScene."
+      },
+      {
+        "file": "src/__tests__/mage-skills.test.ts",
+        "line": 290,
+        "severity": "non_blocking",
+        "description": "Freeze status effect tests validate stunDuration and skill ID pattern matching, but don't test actual StatusEffectSystem.apply() integration. This is appropriate scope since runtime integration is handled by skill-combat-integration, but could be noted for completeness."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "New skill icons use 'skill_icon_{id}' naming while original skills use 'skill_{shortname}' (e.g., 'skill_fireball', 'skill_meteor'). This split naming convention exists across all three class expansion features (warrior, mage, rogue). AGENTS.md doesn't document an icon naming convention for skills.",
+      "evidence": "src/data/classes/mage.ts: original skills use 'skill_fireball', 'skill_meteor', 'skill_blizzard' etc. New skills use 'skill_icon_fire_wall', 'skill_icon_combustion', etc. Same pattern in warrior.ts and rogue.ts expansions."
+    },
+    {
+      "area": "conventions",
+      "observation": "Worker followed the content-worker skill procedure correctly: studied existing patterns (warrior.ts, SkillEffectSystem), created content matching the data structure, wrote validation tests, ran vitest + build + tsc. The transcript shows methodical execution matching the skill's work procedure steps 1-6.",
+      "evidence": "Transcript skeleton shows sequential reads of warrior.ts, SkillEffectSystem.ts, types.ts, existing tests, then content creation, then verification commands."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS. The mage-skills-expansion feature correctly implements all 6 required skills with complete fields, VFX, icons, and 272 validation tests. All skills are in the correct trees with proper damage types and synergies. Freeze has stunDuration for status effect application, Teleport has damageMultiplier: 0, and Combustion describes the burning bonus. Runtime wiring (teleport walkable-tile clamping, CC blocking, combustion burn bonus) was correctly delegated to the skill-combat-integration feature. The only non-blocking observation is an icon naming convention inconsistency between original and new skills, which is cosmetic and consistent across all class expansions."
+}

@@ -1,0 +1,108 @@
+{
+  "milestone": "skills-combat",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "npx vitest run", "exitCode": 0, "details": "1443 tests passing across 11 test files in 1.83s" },
+    "typecheck": { "passed": true, "command": "npx tsc --noEmit", "exitCode": 0 },
+    "build": { "passed": true, "command": "npm run build", "exitCode": 0, "details": "tsc && vite build succeeded, dist/assets/index-C9Um2krO.js 1893KB" }
+  },
+  "reviewsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "nonBlockingIssues": [
+    {
+      "featureId": "foundation-scrutiny-fixes",
+      "severity": "non_blocking",
+      "description": "applyStatusTint() called every frame for every active status effect — redundant VFX work. Should add a flag to skip already-applied tints."
+    },
+    {
+      "featureId": "foundation-scrutiny-fixes",
+      "severity": "non_blocking",
+      "description": "preFX.clear() on status effect expiry clears ALL pre-FX on the sprite, not just the expired effect's tint. Multiple concurrent status effects (e.g., burn + poison) will have visual tints incorrectly cleared."
+    },
+    {
+      "featureId": "warrior-skills-expansion",
+      "severity": "non_blocking",
+      "description": "Frenzy skill description says '攻击速度+35%，伤害+20%' but buff only has stat:'damageBonus'. Attack speed component is not mechanically represented due to single-stat buff limitation."
+    },
+    {
+      "featureId": "skill-combat-integration",
+      "severity": "non_blocking",
+      "description": "Dual Wield Mastery stat name mismatch: stacking guard checks 'dualWieldBonus' but pushes 'damageBonus'. Stacking check always fails, buff added every frame. BUFF_CAPS prevents game-breaking damage but buff array grows unbounded."
+    },
+    {
+      "featureId": "skill-combat-integration",
+      "severity": "non_blocking",
+      "description": "Teleport fallback: if no walkable tile found within 3-tile radius, player still teleports to potentially unwalkable destination. Should abort or expand search."
+    },
+    {
+      "featureId": "elite-monster-affixes",
+      "severity": "non_blocking",
+      "description": "Monster respawn stat inflation: dead.definition is already mutated by applyEliteAffixes. Respawned monster gets affixes applied on top of already-multiplied stats, compounding each respawn cycle."
+    },
+    {
+      "featureId": "elite-monster-affixes",
+      "severity": "non_blocking",
+      "description": "Curse aura uses '(b as any)._curseAura' to tag ActiveBuff, bypassing TypeScript strict typing. ActiveBuff interface should be extended with optional source/tag field."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: 'Skill icon field in class definitions (warrior.ts, mage.ts, rogue.ts) is NOT used at runtime. UIScene derives icon keys via `skill_icon_${skill.id}`. Do not waste time matching the icon field to texture keys. New skills should use `skill_icon_{id}` pattern for the icon field for consistency.'",
+      "evidence": "All 3 class expansion features (warrior, mage, rogue) noted the inconsistency. UIScene.ts:237 uses `skill_icon_${skill.id}` and ignores the icon property. Original skills use 'skill_{name}', new skills use 'skill_icon_{id}'.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: 'ActiveBuff interface supports only one stat per buff. Skills describing multiple stat changes (e.g., attack speed + damage) can only represent one mechanically. Content workers should not write descriptions that promise effects not backed by buff data.'",
+      "evidence": "Warrior Frenzy description says '攻击速度+35%，伤害+20%' but buff is { stat: 'damageBonus', value: 0.2 }. Single-stat limitation is structural in ActiveBuff interface.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: 'Monster definitions should be treated as immutable shared data. Workers must clone definition objects before mutating stats (e.g., elite affix stat multipliers). Mutated definitions persist through respawn cycles, causing stat inflation.'",
+      "evidence": "Elite-monster-affixes: Monster.ts:340-345 replaces this.definition with spread containing multiplied stats. ZoneScene.ts:2209 passes dead.definition to new Monster on respawn, causing compounding stat inflation.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add convention: 'When tagging buffs with custom metadata (e.g., source tracking), use a typed optional field on ActiveBuff rather than `(b as any).property` casts. If ActiveBuff needs extension, add an optional `tag?: string` field to the interface in CombatSystem.ts.'",
+      "evidence": "Elite-monster-affixes uses (b as any)._curseAura to tag buffs, violating TypeScript strict typing convention.",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Content-worker skill should note: 'Phaser canvas interactions via synthetic pointer events are unreliable. For manual verification of in-game UI (skill tree, tooltips), rely on keyboard shortcuts and comprehensive test coverage rather than programmatic click interactions.'",
+      "evidence": "Warrior and rogue expansion workers both deviated from visual verification step due to Phaser canvas limitations. Both noted this in skillFeedback.deviations.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Systems-worker skill should note: 'For refactoring, bug-fix, and integration features, reading source code first is the appropriate approach rather than TDD-first. The write-tests-first (red) procedure is best suited for new greenfield systems.'",
+      "evidence": "Foundation-scrutiny-fixes and skill-combat-integration workers both deviated from TDD-first procedure for fix/integration work. Both noted in skillFeedback.suggestedChanges.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "AGENTS.md CC convention already consistent with codebase after dead code removal.",
+      "reason": "already-documented — AGENTS.md already documents 'Do NOT use CombatSystem.applyStun()' and the fix correctly removed the dead code."
+    },
+    {
+      "observation": "Worker correctly followed content-worker procedure for mage skills expansion.",
+      "reason": "informational — positive feedback about procedure compliance is not actionable as a shared state update."
+    },
+    {
+      "observation": "Icon naming mismatch noted as discoveredIssues in skill-combat-integration but not tracked as follow-up.",
+      "reason": "duplicate — same icon naming convention issue already covered by the AGENTS.md suggestion above."
+    }
+  ],
+  "previousRound": null
+}

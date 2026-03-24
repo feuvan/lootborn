@@ -1,0 +1,57 @@
+{
+  "featureId": "rogue-skills-expansion",
+  "reviewedAt": "2026-03-24T05:15:00.000Z",
+  "commitId": "d6de3b9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Solid implementation of 7 new Rogue skills (6 specified + Shadow Step to reach the 13-total target from expectedBehavior). All skills have complete data definitions with Chinese text, correct tree assignments, synergies referencing valid skills, VFX effect methods with detailed particle/tween animations, and procedural icon generators. The code follows existing patterns from warrior/mage expansions closely. 314 validation tests are comprehensive, covering structural validation, synergy integrity, damage caps, scaling, and skill-specific characteristics. Build, typecheck, and tests all pass. Minor non-blocking observations noted below.",
+    "issues": [
+      {
+        "file": "src/data/classes/rogue.ts",
+        "line": 161,
+        "severity": "non_blocking",
+        "description": "Icon naming inconsistency: original rogue skills use 'skill_{name}' (e.g., 'skill_backstab') while new skills use 'skill_icon_{id}' (e.g., 'skill_icon_shadow_step'). This is a pre-existing inconsistency also present in warrior.ts and mage.ts. In practice, UIScene.ts always constructs 'skill_icon_${skill.id}' programmatically, so the 'icon' field on skill definitions is effectively unused for rendering. The new skills actually match the generated texture keys better than the originals."
+      },
+      {
+        "file": "src/data/classes/rogue.ts",
+        "line": 153,
+        "severity": "non_blocking",
+        "description": "Shadow Step was not in the feature description (which listed 6 skills) but was needed to reach the 13-total target specified in expectedBehavior. The worker correctly resolved this ambiguity. Shadow Step is well-designed as a utility/mobility skill with crit buff, fitting the assassination tree thematically."
+      },
+      {
+        "file": "src/data/classes/rogue.ts",
+        "line": 181,
+        "severity": "non_blocking",
+        "description": "Death Mark's buff uses stat 'damageAmplify' and Slow Trap's buff uses stat 'slowEffect'. These custom buff stat names need to be handled by CombatSystem at runtime to actually function. The skill-combat-integration feature (separate) should wire these into the combat loop. As pure data definitions, these are correctly structured."
+      },
+      {
+        "file": "src/__tests__/rogue-skills.test.ts",
+        "line": 42,
+        "severity": "non_blocking",
+        "description": "VALID_DAMAGE_TYPES includes 'fire' but not 'shadow', 'cold', or 'lightning'. This works for rogue skills (which only use physical/poison/fire), but the test's constant name is slightly misleading — it's rogue-specific valid types, not global valid types. The test correctly validates rogue damage types."
+      },
+      {
+        "file": "src/systems/SkillEffectSystem.ts",
+        "line": 2452,
+        "severity": "non_blocking",
+        "description": "VFX methods use Phaser.BlendModes cast workaround ('ADD' as unknown as Phaser.BlendModes) consistently. This is a known Phaser typing quirk and matches the pattern used throughout the existing codebase."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Icon field naming is inconsistent across all three class files: original skills use 'skill_{name}' while expansion skills use 'skill_icon_{id}'. UIScene.ts ignores the icon field entirely and always constructs 'skill_icon_${skill.id}'. The icon field appears to be vestigial/unused. AGENTS.md does not document which naming convention to follow or that UIScene ignores the field.",
+      "evidence": "rogue.ts:26 'skill_backstab' vs rogue.ts:161 'skill_icon_shadow_step'. UIScene.ts:237 and UIScene.ts:1049 both use `skill_icon_${skill.id}` directly. Same pattern in warrior.ts and mage.ts."
+    },
+    {
+      "area": "conventions",
+      "observation": "Worker did not complete full browser verification of the skill tree panel (K key). The handoff notes context compaction prevented full interactive check. The skill procedure (content-worker SKILL.md step 7) says 'Manual verification. Check in-browser that new content appears'. Worker relied on 314 programmatic tests as substitute.",
+      "evidence": "Handoff skillFeedback.deviations[0]: 'Verified game loads with Rogue class selected but did not complete full K-key skill tree panel screenshot due to session context compaction'"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The rogue-skills-expansion feature passes review. 7 new Rogue skills were added (6 from spec + Shadow Step to match the 13-total expectedBehavior target), each with complete data fields, Chinese text, VFX, procedural icons, and synergies. 314 validation tests provide thorough coverage. Build, typecheck, and all tests pass. The only non-blocking issues are pre-existing icon naming inconsistency (shared across all classes, no runtime impact), and incomplete browser verification due to context compaction (mitigated by comprehensive test coverage)."
+}

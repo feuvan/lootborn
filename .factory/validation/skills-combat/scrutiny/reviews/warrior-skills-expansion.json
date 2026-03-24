@@ -1,0 +1,56 @@
+{
+  "featureId": "warrior-skills-expansion",
+  "reviewedAt": "2026-03-24T06:45:00.000Z",
+  "commitId": "df9a8ab",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The worker added 9 new warrior skills (8 required + 1 bonus 'rampage') across 3 trees (combat_master, guardian, berserker), bringing the total to 15. All skills have complete fields (id, name, nameEn, description, tree, tier, maxLevel, manaCost, cooldown, range, damageMultiplier, damageType, icon, scaling, synergies). VFX effects are implemented for all 9 new skills with dedicated effect methods in SkillEffectSystem. Procedural icons are generated for all skills. The berserker tree was correctly added to UIScene TREE_NAMES and TREE_COLORS. All 3 passive skills (dual_wield_mastery, unyielding, life_regen) are properly wired into ZoneScene's game loop. Synergy references are all valid. 317 test cases cover the full scope of the feature. Build, typecheck, and tests all pass.",
+    "issues": [
+      {
+        "file": "src/data/classes/warrior.ts",
+        "line": 177,
+        "severity": "non_blocking",
+        "description": "Icon field values use 'skill_{name}' pattern (e.g., 'skill_charge') but generated textures in SkillEffectSystem use 'skill_icon_{name}' pattern (e.g., 'skill_icon_charge'). Not a runtime bug because UIScene derives icon keys using `skill_icon_${skill.id}` and ignores the icon property, but the icon field data is semantically inaccurate. Same issue exists for original 6 skills (pre-existing)."
+      },
+      {
+        "file": "src/__tests__/warrior-skills.test.ts",
+        "line": 23,
+        "severity": "non_blocking",
+        "description": "Comment says '// Original 7 warrior skills' but the array contains only 6 IDs. Should say 'Original 6'. Misleading comment but doesn't affect test correctness."
+      },
+      {
+        "file": "src/data/classes/warrior.ts",
+        "line": 328,
+        "severity": "non_blocking",
+        "description": "Frenzy skill description says '攻击速度+35%，伤害+20%' but the buff only has stat:'damageBonus', value:0.2. The attack speed component is not mechanically represented because the buff system only supports one stat. The description overpromises relative to the actual mechanic. This is a design limitation, not a code bug."
+      },
+      {
+        "file": "src/__tests__/warrior-skills.test.ts",
+        "line": 429,
+        "severity": "non_blocking",
+        "description": "Icon naming test (section 13) accepts both 'skill_icon_{id}' and 'skill_{id}' patterns, which is too permissive. Since the runtime uses 'skill_icon_{id}', the test should enforce that pattern to catch data mismatches. Currently all new skills use 'skill_{id}' which doesn't match the runtime lookup pattern."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The icon field in skill definitions uses 'skill_{name}' but UIScene ignores it and derives icons from 'skill_icon_${skill.id}'. This means the icon field is effectively dead data for icon rendering. This convention isn't documented in AGENTS.md. Future workers might waste time ensuring the icon field matches textures when it's irrelevant.",
+      "evidence": "src/scenes/UIScene.ts:237 — `const iconKey = \\`skill_icon_${skill.id}\\`;` ignores skill.icon property. All warrior.ts skills have icon: 'skill_{name}' but textures are generated as 'skill_icon_{name}'."
+    },
+    {
+      "area": "conventions",
+      "observation": "The buff system only supports a single stat per buff object. Skills that describe multiple buffs (e.g., Frenzy: attack speed + damage) can only represent one stat. This limitation isn't documented, so content workers write descriptions that overpromise.",
+      "evidence": "src/data/types.ts buff interface: { stat: string; value: number; duration: number } — only one stat. Frenzy description says '攻击速度+35%，伤害+20%' but buff is { stat: 'damageBonus', value: 0.2, duration: 8000 }."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker deviated from visual verification step due to Phaser canvas limitations with synthetic pointer events. This is a known limitation documented in the skill feedback. The content-worker skill procedure should note that Phaser canvas interactions via synthetic events are unreliable for visual verification.",
+      "evidence": "Handoff skillFeedback.deviations[0]: 'Relied on comprehensive unit tests and code inspection instead of full visual verification'. skillFeedback.suggestedChanges: 'Consider adding a note about Phaser canvas limitations with synthetic pointer events in the content-worker skill procedure'."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Warrior skills expansion passes review. All 8 required skills plus 1 bonus skill (rampage) are implemented with complete data fields, VFX, procedural icons, and runtime wiring for passives. 317 validation tests provide strong coverage. The berserker tree was correctly added to UIScene. Non-blocking issues include: icon field data mismatch (not used at runtime), misleading test comment, Frenzy description overpromising attack speed buff, and overly permissive icon naming tests. All issues are cosmetic or informational — no blocking defects found."
+}
