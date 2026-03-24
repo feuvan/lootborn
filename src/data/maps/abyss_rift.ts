@@ -39,4 +39,62 @@ export const AbyssRiftMap: MapData = {
     { col: 0, row: 58, targetMap: 'scorching_desert', targetCol: 118, targetRow: 118 },
   ],
   levelRange: [38, 48] as [number, number],
+
+  // ─── New Content: Field NPCs ──────────────────────────────────────────
+  fieldNpcs: [
+    { col: 50, row: 35, npcId: 'abyss_fallen_knight' },
+    { col: 75, row: 50, npcId: 'abyss_void_researcher' },
+  ],
+
+  // ─── New Content: Hidden Area ─────────────────────────────────────────
+  hiddenAreas: [
+    {
+      id: 'hidden_ar_sealed_chamber',
+      name: '封印密室',
+      col: 105,
+      row: 105,
+      radius: 5,
+      discoveryText: '你在扭曲的空间裂缝中发现了一间被封印的密室！这里似乎是远古贤者留下的紧急避难所，其中藏有他们的遗物。',
+      rewards: [
+        { type: 'chest', value: 'legendary', col: 105, row: 105 },
+        { type: 'gold_pile', value: '800', col: 107, row: 104 },
+      ],
+    },
+  ],
+
+  // ─── New Content: Sub-Dungeon Entrance ────────────────────────────────
+  subDungeonEntrances: [
+    {
+      id: 'entrance_demon_altar',
+      name: '恶魔祭坛入口',
+      col: 90,
+      row: 40,
+      targetSubDungeon: 'sub_demon_altar',
+    },
+  ],
+
+  // ─── New Content: Environmental Storytelling Decorations ──────────────
+  storyDecorations: [
+    {
+      id: 'story_ar_corrupted_seal',
+      name: '破碎的封印法阵',
+      description: '一个巨大的魔法阵刻在地面上，但已被暗紫色的能量侵蚀得面目全非。法阵边缘仍残留着微弱的金色光芒——那是远古贤者封印力量的余韵。每当虚空能量脉动时，法阵就会发出痛苦的颤鸣。',
+      col: 55, row: 45,
+      spriteType: 'ritual_circle',
+    },
+    {
+      id: 'story_ar_frozen_warrior',
+      name: '时间冻结的战士',
+      description: '一位身着全副铠甲的战士被某种力量凝固在原地，保持着挥剑劈砍的姿势。他的面容扭曲着恐惧，铠甲上刻着封印守护者的徽章。虚空的时间扭曲力量将他永远定格在了最后一战的瞬间。',
+      col: 40, row: 75,
+      spriteType: 'frozen_corpse',
+    },
+    {
+      id: 'story_ar_demon_war_banner',
+      name: '恶魔军旗',
+      description: '一面由暗红色皮革制成的巨大旗帜，上面绘着深渊魔王的纹章。旗帜在没有风的虚空中诡异地飘动着，散发着令人不安的低沉嗡鸣。这是恶魔大军入侵人间时插下的战旗。',
+      col: 85, row: 65,
+      spriteType: 'war_banner',
+    },
+  ],
 };

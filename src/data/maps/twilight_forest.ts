@@ -45,4 +45,51 @@ export const TwilightForestMap: MapData = {
     { col: 45, row: 100, petId: 'pet_void_butterfly', chance: 0.08 },
   ],
   levelRange: [8, 17] as [number, number],
+
+  // ─── New Content: Field NPCs ──────────────────────────────────────────
+  fieldNpcs: [
+    { col: 60, row: 50, npcId: 'forest_tracker' },
+    { col: 35, row: 85, npcId: 'forest_spirit_medium' },
+  ],
+
+  // ─── New Content: Hidden Area ─────────────────────────────────────────
+  hiddenAreas: [
+    {
+      id: 'hidden_tf_moonlight_shrine',
+      name: '月光祭坛',
+      col: 110,
+      row: 15,
+      radius: 5,
+      discoveryText: '在茂密的树冠缝隙中，一道银白色的月光照射在一座古老的祭坛上。这就是传说中能净化亡灵的月光祭坛！',
+      rewards: [
+        { type: 'chest', value: 'rare', col: 110, row: 15 },
+        { type: 'lore', col: 112, row: 14 },
+      ],
+    },
+  ],
+
+  // ─── New Content: Environmental Storytelling Decorations ──────────────
+  storyDecorations: [
+    {
+      id: 'story_tf_skeletal_patrol',
+      name: '巡逻亡灵遗骸',
+      description: '数具身着铠甲的骷髅散落在林间小道旁。从他们的阵型来看，这曾是一支巡逻队。铠甲上的徽章表明他们是森林守卫骑士团的成员——在暮色降临时，他们是第一批牺牲的人。',
+      col: 48, row: 28,
+      spriteType: 'skeletal_remains',
+    },
+    {
+      id: 'story_tf_corrupted_shrine',
+      name: '被腐蚀的神龛',
+      description: '一座本应供奉森林之神的小型神龛，如今被黑暗能量彻底腐蚀。神像面目模糊，周围的石板上渗出淡淡的紫色雾气。有人在神龛前留下了枯萎的花束。',
+      col: 72, row: 60,
+      spriteType: 'broken_altar',
+    },
+    {
+      id: 'story_tf_ancient_tree_stump',
+      name: '千年古树残桩',
+      description: '一棵巨大的古树被拦腰折断，树桩的直径超过十人合抱。年轮中心处散发着微弱的绿光——这是森林生命之树的一部分。即使被摧毁，它仍在顽强地释放着生命能量。',
+      col: 15, row: 75,
+      spriteType: 'charred_tree',
+    },
+  ],
 };

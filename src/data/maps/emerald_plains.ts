@@ -38,4 +38,51 @@ export const EmeraldPlainsMap: MapData = {
     { col: 119, row: 60, targetMap: 'twilight_forest', targetCol: 2, targetRow: 58 },
   ],
   levelRange: [1, 7] as [number, number],
+
+  // ─── New Content: Field NPCs ──────────────────────────────────────────
+  fieldNpcs: [
+    { col: 50, row: 30, npcId: 'plains_herbalist' },
+    { col: 70, row: 65, npcId: 'plains_wanderer' },
+  ],
+
+  // ─── New Content: Hidden Area ─────────────────────────────────────────
+  hiddenAreas: [
+    {
+      id: 'hidden_ep_elven_cache',
+      name: '精灵族秘密宝库',
+      col: 108,
+      row: 108,
+      radius: 6,
+      discoveryText: '你发现了一处被草丛掩盖的精灵族遗迹！这里似乎是远古精灵用来储存珍贵物品的秘密宝库。',
+      rewards: [
+        { type: 'chest', value: 'rare', col: 108, row: 108 },
+        { type: 'gold_pile', value: '200', col: 110, row: 107 },
+      ],
+    },
+  ],
+
+  // ─── New Content: Environmental Storytelling Decorations ──────────────
+  storyDecorations: [
+    {
+      id: 'story_ep_ruined_tower',
+      name: '倒塌的精灵塔',
+      description: '这座塔楼曾是精灵族的瞭望塔，如今只剩残垣断壁。石块上仍可辨认出精灵族的蔓藤纹饰，诉说着远古文明的辉煌。',
+      col: 55, row: 45,
+      spriteType: 'ruins',
+    },
+    {
+      id: 'story_ep_goblin_totem',
+      name: '哥布林图腾柱',
+      description: '一根由杂乱骨头和兽皮拼接而成的图腾柱，散发着淡淡的腥臭。这是哥布林部落的领地标记，预示着前方有更强大的哥布林在等待。',
+      col: 40, row: 70,
+      spriteType: 'war_banner',
+    },
+    {
+      id: 'story_ep_ancient_well',
+      name: '干涸的古井',
+      description: '一口被青苔覆盖的石砌古井，井水早已干涸。井壁上刻着精灵文字——这曾是灵脉能量涌出的泉眼，如今灵脉断裂，泉水不再。',
+      col: 88, row: 55,
+      spriteType: 'broken_altar',
+    },
+  ],
 };

@@ -223,6 +223,84 @@ export interface MapData {
   decorations?: { col: number; row: number; type: string }[];
   safeZoneRadius?: number;
   petSpawns?: { col: number; row: number; petId: string; chance: number }[];
+  /** Hidden areas — not shown on minimap until the player enters the fog-revealed region. */
+  hiddenAreas?: HiddenArea[];
+  /** Sub-dungeon entrance tiles — interactable objects that load a separate sub-map. */
+  subDungeonEntrances?: SubDungeonEntrance[];
+  /** Environmental storytelling decorations (ruins, statues, skeletal remains, etc.). */
+  storyDecorations?: StoryDecoration[];
+  /** Field NPCs that are placed outside camps (standalone positions on the map). */
+  fieldNpcs?: { col: number; row: number; npcId: string }[];
+}
+
+/** A hidden area within a zone, not shown on minimap until discovered by fog-of-war. */
+export interface HiddenArea {
+  id: string;
+  /** Display name (Chinese). */
+  name: string;
+  /** Center tile position. */
+  col: number;
+  row: number;
+  /** Radius in tiles defining the hidden area region. */
+  radius: number;
+  /** Reward spawns inside the hidden area. */
+  rewards: HiddenAreaReward[];
+  /** Flavour text shown when discovering the area (Chinese). */
+  discoveryText: string;
+}
+
+export interface HiddenAreaReward {
+  type: 'chest' | 'gold_pile' | 'rare_spawn' | 'lore';
+  /** For chest/gold_pile: item quality or gold amount description. */
+  value?: string;
+  col: number;
+  row: number;
+}
+
+/** Sub-dungeon entrance definition on the parent map. */
+export interface SubDungeonEntrance {
+  id: string;
+  /** Display name (Chinese). */
+  name: string;
+  /** Entrance tile position on parent map. */
+  col: number;
+  row: number;
+  /** ID of the sub-dungeon map data to load. */
+  targetSubDungeon: string;
+}
+
+/** Complete sub-dungeon map data (a mini-map with its own spawns, mini-boss, and exit). */
+export interface SubDungeonMapData {
+  id: string;
+  name: string;
+  /** Parent zone map ID. */
+  parentZone: string;
+  cols: number;
+  rows: number;
+  theme: MapTheme;
+  seed: number;
+  spawns: { col: number; row: number; monsterId: string; count: number }[];
+  /** The mini-boss of this sub-dungeon. */
+  miniBoss: { col: number; row: number; monsterId: string };
+  /** Position where the player enters the sub-dungeon. */
+  playerStart: { col: number; row: number };
+  /** Exit back to parent zone (returns player near the entrance). */
+  exit: { col: number; row: number; returnCol: number; returnRow: number };
+  levelRange: [number, number];
+  bgColor?: string;
+}
+
+/** Environmental storytelling decoration placed in a zone. */
+export interface StoryDecoration {
+  id: string;
+  /** Display name (Chinese). */
+  name: string;
+  /** Description shown on interaction or proximity (Chinese, ≥30 chars). */
+  description: string;
+  col: number;
+  row: number;
+  /** Visual sprite type. */
+  spriteType: 'ruins' | 'skeletal_remains' | 'ancient_statue' | 'broken_altar' | 'war_banner' | 'charred_tree' | 'collapsed_pillar' | 'ritual_circle' | 'frozen_corpse' | 'sand_buried_structure';
 }
 
 export interface CampTheme {
