@@ -407,6 +407,47 @@ export class ZoneScene extends Phaser.Scene {
       recovery.hpRegenMultiplier = (recovery.hpRegenMultiplier ?? 1) * 0.5;
     }
 
+    // ── Passive skill wiring ────────────────────────────────
+    // Life Regen passive: adds extra HP regen per second based on skill level
+    const lifeRegenLevel = this.player.getSkillLevel('life_regen');
+    if (lifeRegenLevel > 0) {
+      const regenBonus = lifeRegenLevel * 2; // +2 HP/s per level
+      if (this.player.hp < this.player.maxHp && this.player.hp > 0) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + regenBonus * delta / 1000 * (recovery.hpRegenMultiplier ?? 1));
+      }
+    }
+
+    // Unyielding passive: auto-trigger damage reduction when HP < 30%
+    const unyieldingLevel = this.player.getSkillLevel('unyielding');
+    if (unyieldingLevel > 0 && this.player.hp > 0) {
+      const hpRatio = this.player.hp / this.player.maxHp;
+      const unyieldingSkill = this.player.getSkill('unyielding');
+      if (hpRatio < 0.3 && unyieldingSkill && this.player.isSkillReady('unyielding', time)) {
+        const buffValue = getSkillBuffValue(unyieldingSkill, unyieldingLevel);
+        const buffDuration = getSkillBuffDuration(unyieldingSkill, unyieldingLevel);
+        this.player.buffs.push({ stat: 'damageReduction', value: buffValue, duration: buffDuration, startTime: time });
+        this.player.skillCooldowns.set('unyielding', time + getSkillCooldown(unyieldingSkill, unyieldingLevel, eqStats.cooldownReduction));
+        this.skillEffects.play('unyielding', this.player.sprite.x, this.player.sprite.y);
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '不屈触发! 获得减伤效果', type: 'combat' });
+      }
+    }
+
+    // Dual Wield Mastery passive: damage bonus when weapon + offhand both equipped
+    const dualWieldLevel = this.player.getSkillLevel('dual_wield_mastery');
+    if (dualWieldLevel > 0) {
+      const hasWeapon = !!this.inventorySystem.equipment['weapon'];
+      const hasOffhand = !!this.inventorySystem.equipment['offhand'];
+      if (hasWeapon && hasOffhand) {
+        // Check if buff is already active (avoid stacking multiple copies)
+        const hasDWBuff = this.player.buffs.some(b => b.stat === 'dualWieldBonus');
+        if (!hasDWBuff) {
+          // +3% damage per level via a persistent buff that refreshes
+          const bonusValue = dualWieldLevel * 0.03;
+          this.player.buffs.push({ stat: 'damageBonus', value: bonusValue, duration: 2000, startTime: time });
+        }
+      }
+    }
+
     this.player.update(time, delta, recovery, eqStats);
 
     const safeRadius = this.mapData.safeZoneRadius ?? 9;
@@ -1056,6 +1097,121 @@ export class ZoneScene extends Phaser.Scene {
     }
 
 
+    // ── Teleport: instant reposition to walkable tile near target ──
+    if (skillId === 'teleport') {
+      // Block while stunned or frozen
+      if (this.statusEffects.isImmobilized('player')) {
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '无法传送：被控制中!', type: 'combat' });
+        return;
+      }
+      const pointer = this.input.activePointer;
+      const tile = worldToTile(pointer.worldX, pointer.worldY);
+      let destCol = Math.round(tile.col);
+      let destRow = Math.round(tile.row);
+      // Clamp to map bounds
+      destCol = Math.max(1, Math.min(this.mapData.cols - 2, destCol));
+      destRow = Math.max(1, Math.min(this.mapData.rows - 2, destRow));
+      // Find nearest walkable tile if destination is blocked
+      if (!this.mapData.collisions[destRow]?.[destCol]) {
+        let found = false;
+        for (let r = 1; r <= 3 && !found; r++) {
+          for (let dr = -r; dr <= r && !found; dr++) {
+            for (let dc = -r; dc <= r && !found; dc++) {
+              const nr = destRow + dr, nc = destCol + dc;
+              if (nr >= 1 && nr < this.mapData.rows - 1 && nc >= 1 && nc < this.mapData.cols - 1 && this.mapData.collisions[nr]?.[nc]) {
+                destCol = nc; destRow = nr; found = true;
+              }
+            }
+          }
+        }
+      }
+      const origX = this.player.sprite.x;
+      const origY = this.player.sprite.y;
+      this.player.moveTo(destCol, destRow);
+      this.player.path = [];
+      this.player.attackTarget = null;
+      this.skillEffects.play(skillId, origX, origY, this.player.sprite.x, this.player.sprite.y);
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
+      return;
+    }
+
+    // ── Shadow Step: teleport to target monster position ──
+    if (skillId === 'shadow_step' && target) {
+      const origX = this.player.sprite.x;
+      const origY = this.player.sprite.y;
+      // Move player behind the target (offset by 1 tile in the direction from target to player)
+      const dx = this.player.tileCol - target.tileCol;
+      const dy = this.player.tileRow - target.tileRow;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      let behindCol = Math.round(target.tileCol - dx / len);
+      let behindRow = Math.round(target.tileRow - dy / len);
+      // Clamp to bounds and fallback to target pos if not walkable
+      behindCol = Math.max(1, Math.min(this.mapData.cols - 2, behindCol));
+      behindRow = Math.max(1, Math.min(this.mapData.rows - 2, behindRow));
+      if (!this.mapData.collisions[behindRow]?.[behindCol]) {
+        behindCol = Math.round(target.tileCol);
+        behindRow = Math.round(target.tileRow);
+      }
+      this.player.moveTo(behindCol, behindRow);
+      this.player.path = [];
+      this.player.attackTarget = target.id;
+      // Apply crit bonus buff to player
+      if (skill.buff) {
+        const buffValue = getSkillBuffValue(skill, level);
+        const buffDuration = getSkillBuffDuration(skill, level);
+        this.player.buffs.push({ stat: skill.buff.stat, value: buffValue, duration: buffDuration, startTime: time });
+      }
+      this.skillEffects.play(skillId, origX, origY, this.player.sprite.x, this.player.sprite.y);
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
+      return;
+    }
+
+    // ── Death Mark: apply damageAmplify debuff to target monster ──
+    if (skillId === 'death_mark' && target) {
+      const buffValue = getSkillBuffValue(skill, level);
+      const buffDuration = getSkillBuffDuration(skill, level);
+      // Apply amplify debuff to the target monster, not to player
+      target.buffs.push({ stat: 'damageAmplify', value: buffValue, duration: buffDuration, startTime: time });
+      // Also deal the skill's base damage
+      if (skill.damageMultiplier > 0) {
+        const result = this.combatSystem.calculateDamage(this.player.toCombatEntity(this.getEquipStats()), target.toCombatEntity(), skill, level, this.player.skillLevels);
+        target.takeDamage(result.damage, this.player.sprite.x, this.player.sprite.y);
+        this.applySteal(result);
+        this.showDamageText(target.sprite.x, target.sprite.y, result.damage, result.isCrit, false, false, skill.damageType);
+        if (!target.isAlive()) this.onMonsterKilled(target);
+      }
+      this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y, target.sprite.x, target.sprite.y);
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 标记了 ${target.definition.name}!`, type: 'combat' });
+      return;
+    }
+
+    // ── Slow Trap: apply slow status effect to enemies in AoE, not buff to player ──
+    if (skillId === 'slow_trap') {
+      const scaledRadius = getSkillAoeRadius(skill, level);
+      const aoeTargets = this.monsters.filter(m =>
+        m.isAlive() && euclideanDistance(this.player.tileCol, this.player.tileRow, m.tileCol, m.tileRow) <= scaledRadius
+      );
+      // Apply damage
+      for (const t of aoeTargets) {
+        if (skill.damageMultiplier > 0) {
+          const result = this.combatSystem.calculateDamage(this.player.toCombatEntity(this.getEquipStats()), t.toCombatEntity(), skill, level, this.player.skillLevels);
+          t.takeDamage(result.damage, this.player.sprite.x, this.player.sprite.y);
+          this.applySteal(result);
+          this.showDamageText(t.sprite.x, t.sprite.y, result.damage, result.isCrit, false, false, skill.damageType);
+          if (!t.isAlive()) { this.onMonsterKilled(t); continue; }
+        }
+        // Apply Slow via StatusEffectSystem
+        const slowValue = skill.buff ? Math.round(getSkillBuffValue(skill, level) * 100) : 40;
+        const slowDuration = skill.buff ? getSkillBuffDuration(skill, level) : 5000;
+        this.statusEffects.apply(t.id, 'slow', slowValue, slowDuration, 'player', time);
+      }
+      this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y, this.player.sprite.x, this.player.sprite.y);
+      if (aoeTargets.length > 0) {
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 减速了${aoeTargets.length}个敌人!`, type: 'combat' });
+      }
+      return;
+    }
+
     if (skill.buff) {
       const buffValue = getSkillBuffValue(skill, level);
       const buffDuration = getSkillBuffDuration(skill, level);
@@ -1101,11 +1257,16 @@ export class ZoneScene extends Phaser.Scene {
       );
       for (const t of aoeTargets) {
         const result = this.combatSystem.calculateDamage(this.player.toCombatEntity(this.getEquipStats()), t.toCombatEntity(), skill, level, this.player.skillLevels);
-        t.takeDamage(result.damage, this.player.sprite.x, this.player.sprite.y);
+        // Combustion: +50% damage on burning targets
+        let finalDmg = result.damage;
+        if (skillId === 'combustion' && this.statusEffects.hasEffect(t.id, 'burn')) {
+          finalDmg = Math.floor(finalDmg * 1.5);
+        }
+        t.takeDamage(finalDmg, this.player.sprite.x, this.player.sprite.y);
         this.applySteal(result);
-        this.showDamageText(t.sprite.x, t.sprite.y, result.damage, result.isCrit, false, false, skill.damageType);
+        this.showDamageText(t.sprite.x, t.sprite.y, finalDmg, result.isCrit, false, false, skill.damageType);
         // Apply status effects from skill damage type
-        this.applySkillStatusEffect(t, skill, result.damage, time);
+        this.applySkillStatusEffect(t, skill, finalDmg, time);
         if (!t.isAlive()) this.onMonsterKilled(t);
         if (this.vfx && skill.damageType !== 'physical') {
           const impactColor = skillId.includes('fire') || skillId === 'meteor' ? 0xff6600
@@ -1128,11 +1289,16 @@ export class ZoneScene extends Phaser.Scene {
       }
     } else if (target) {
       const result = this.combatSystem.calculateDamage(this.player.toCombatEntity(this.getEquipStats()), target.toCombatEntity(), skill, level, this.player.skillLevels);
-      target.takeDamage(result.damage, this.player.sprite.x, this.player.sprite.y);
+      // Combustion: +50% damage on burning targets
+      let finalDmg = result.damage;
+      if (skillId === 'combustion' && this.statusEffects.hasEffect(target.id, 'burn')) {
+        finalDmg = Math.floor(finalDmg * 1.5);
+      }
+      target.takeDamage(finalDmg, this.player.sprite.x, this.player.sprite.y);
       this.applySteal(result);
-      this.showDamageText(target.sprite.x, target.sprite.y, result.damage, result.isCrit, false, false, skill.damageType);
+      this.showDamageText(target.sprite.x, target.sprite.y, finalDmg, result.isCrit, false, false, skill.damageType);
       // Apply status effects from skill damage type
-      this.applySkillStatusEffect(target, skill, result.damage, time);
+      this.applySkillStatusEffect(target, skill, finalDmg, time);
       if (!target.isAlive()) this.onMonsterKilled(target);
       this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y,
         target.sprite.x, target.sprite.y);

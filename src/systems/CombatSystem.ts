@@ -331,6 +331,12 @@ export class CombatSystem {
       finalDamage *= 1 + stealthBuff;
     }
 
+    // --- Buff: damageAmplify on defender increases damage taken ---
+    const damageAmplify = getBuffValue(defender, 'damageAmplify');
+    if (damageAmplify > 0) {
+      finalDamage *= 1 + damageAmplify;
+    }
+
     // Elemental resistance reduces non-physical damage
     if (damageType !== 'physical') {
       const resist = getResistance(defEq, damageType);
