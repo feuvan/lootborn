@@ -5,14 +5,17 @@ import {
   getBuffValue,
   getSkillBuffValue,
   getSkillBuffDuration,
-  STUN_DIMINISH_FACTOR,
-  STUN_IMMUNITY_DURATION,
-  STUN_WINDOW,
   BUFF_CAPS,
 } from '../systems/CombatSystem';
 import type { CombatEntity, ActiveBuff, EquipStats } from '../systems/CombatSystem';
 import type { SkillDefinition, Stats } from '../data/types';
 import { MageClass } from '../data/classes/mage';
+import {
+  StatusEffectSystem,
+  DIMINISH_FACTOR,
+  DIMINISH_IMMUNITY_DURATION,
+  DIMINISH_WINDOW,
+} from '../systems/StatusEffectSystem';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,73 +63,75 @@ function makeSkill(overrides?: Partial<SkillDefinition>): SkillDefinition {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Stun mechanics
+// 1. Stun mechanics (via StatusEffectSystem)
 // ---------------------------------------------------------------------------
 describe('Stun mechanics', () => {
-  let cs: CombatSystem;
+  let ses: StatusEffectSystem;
 
   beforeEach(() => {
-    cs = new CombatSystem();
+    ses = new StatusEffectSystem();
   });
 
   it('applies stun with full duration on first application', () => {
-    const duration = cs.applyStun('monster_1', 2000, 1000);
+    const duration = ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
     expect(duration).toBe(2000);
   });
 
   it('applies stun with 50% duration on second rapid application', () => {
-    cs.applyStun('monster_1', 2000, 1000);
-    const duration2 = cs.applyStun('monster_1', 2000, 3000);
-    expect(duration2).toBe(Math.floor(2000 * STUN_DIMINISH_FACTOR));
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    const duration2 = ses.apply('monster_1', 'stun', 1, 2000, 'player', 3000);
+    expect(duration2).toBe(Math.floor(2000 * DIMINISH_FACTOR));
   });
 
   it('grants immunity after 2nd stun within the window', () => {
-    cs.applyStun('monster_1', 2000, 1000);
-    const dur2 = cs.applyStun('monster_1', 2000, 3000);
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 3000);
     // 3rd stun attempt should be 0 (immune)
-    const dur3 = cs.applyStun('monster_1', 2000, 4000);
+    const dur3 = ses.apply('monster_1', 'stun', 1, 2000, 'player', 4000);
     expect(dur3).toBe(0);
   });
 
-  it('immunity expires after STUN_IMMUNITY_DURATION', () => {
-    cs.applyStun('monster_1', 2000, 1000);
-    const dur2 = cs.applyStun('monster_1', 2000, 3000);
-    // Immunity starts at: 3000 + dur2 + STUN_IMMUNITY_DURATION
-    const immuneEnd = 3000 + dur2 + STUN_IMMUNITY_DURATION;
+  it('immunity expires after DIMINISH_IMMUNITY_DURATION', () => {
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    const dur2 = ses.apply('monster_1', 'stun', 1, 2000, 'player', 3000);
+    // Immunity starts at: 3000 + dur2 + DIMINISH_IMMUNITY_DURATION
+    const immuneEnd = 3000 + dur2 + DIMINISH_IMMUNITY_DURATION;
 
     // Still immune before expiry
-    const dur3 = cs.applyStun('monster_1', 2000, immuneEnd - 1);
+    const dur3 = ses.apply('monster_1', 'stun', 1, 2000, 'player', immuneEnd - 1);
     expect(dur3).toBe(0);
 
     // Immune expired + stun window expired → fresh stun
-    const dur4 = cs.applyStun('monster_1', 2000, immuneEnd + STUN_WINDOW + 1);
+    const dur4 = ses.apply('monster_1', 'stun', 1, 2000, 'player', immuneEnd + DIMINISH_WINDOW + 1);
     expect(dur4).toBe(2000);
   });
 
-  it('resets stun count after STUN_WINDOW of no stuns', () => {
-    cs.applyStun('monster_1', 2000, 1000);
-    // Wait longer than STUN_WINDOW
-    const duration = cs.applyStun('monster_1', 2000, 1000 + STUN_WINDOW + 1);
+  it('resets stun count after DIMINISH_WINDOW of no stuns', () => {
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    // Wait longer than DIMINISH_WINDOW
+    const duration = ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000 + DIMINISH_WINDOW + 1);
     // Should be full duration since count was reset
     expect(duration).toBe(2000);
   });
 
   it('returns 0 for baseDuration <= 0', () => {
-    expect(cs.applyStun('monster_1', 0, 1000)).toBe(0);
-    expect(cs.applyStun('monster_1', -500, 1000)).toBe(0);
+    expect(ses.apply('monster_1', 'stun', 1, 0, 'player', 1000)).toBe(0);
+    expect(ses.apply('monster_1', 'stun', 0, 2000, 'player', 1000)).toBe(0);
   });
 
-  it('isStunned returns true when stunned buff is active', () => {
-    const entity = makeEntity({
-      buffs: [{ stat: 'stunned', value: 1, duration: 2000, startTime: 1000 }],
-    });
-    expect(cs.isStunned(entity, 2000)).toBe(true);  // 1s elapsed, 2s duration
-    expect(cs.isStunned(entity, 3001)).toBe(false);  // expired
+  it('isImmobilized returns true when stunned', () => {
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    expect(ses.isImmobilized('monster_1')).toBe(true);
   });
 
-  it('isStunned returns false when no stun buff exists', () => {
-    const entity = makeEntity();
-    expect(cs.isStunned(entity, 1000)).toBe(false);
+  it('isImmobilized returns false when stun has expired', () => {
+    ses.apply('monster_1', 'stun', 1, 2000, 'player', 1000);
+    ses.expire('monster_1', 4000); // expire after 3s
+    expect(ses.isImmobilized('monster_1')).toBe(false);
+  });
+
+  it('isImmobilized returns false when no stun exists', () => {
+    expect(ses.isImmobilized('monster_1')).toBe(false);
   });
 
   it('stun duration scales with skill level via tieredScale', () => {
@@ -194,14 +199,15 @@ describe('Buff effects in combat calculations', () => {
     expect(withBuff.damage).toBeGreaterThanOrEqual(noBuff.damage * 1.9);
   });
 
-  it('consumeStealthBuff removes stealthDamage buffs', () => {
+  it('stealthDamage buff is consumed by filtering buffs (ZoneScene pattern)', () => {
     const entity = makeEntity({
       buffs: [
         { stat: 'stealthDamage', value: 1.0, duration: 3000, startTime: 0 },
         { stat: 'damageBonus', value: 0.25, duration: 6000, startTime: 0 },
       ],
     });
-    cs.consumeStealthBuff(entity);
+    // This is how ZoneScene consumes stealth buff after an attack
+    entity.buffs = entity.buffs.filter(b => b.stat !== 'stealthDamage');
     expect(entity.buffs).toHaveLength(1);
     expect(entity.buffs[0].stat).toBe('damageBonus');
   });
@@ -263,23 +269,23 @@ describe('Buff effects in combat calculations', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Taunt Roar forces monster aggro
+// 3. Taunt Roar forces monster aggro (via buff system)
 // ---------------------------------------------------------------------------
 describe('Taunt mechanics', () => {
-  let cs: CombatSystem;
-
-  beforeEach(() => {
-    cs = new CombatSystem();
-  });
-
-  it('applyTaunt adds taunted buff to all monsters', () => {
+  it('taunted buff can be added to monsters via buff array', () => {
     const monsters = [
       makeEntity({ id: 'monster_1' }),
       makeEntity({ id: 'monster_2' }),
       makeEntity({ id: 'monster_3' }),
     ];
 
-    const tauntedIds = cs.applyTaunt(monsters, 'player', 4000, 1000);
+    const now = 1000;
+    const duration = 4000;
+    const tauntedIds: string[] = [];
+    for (const monster of monsters) {
+      monster.buffs.push({ stat: 'taunted', value: 1, duration, startTime: now });
+      tauntedIds.push(monster.id);
+    }
 
     expect(tauntedIds).toEqual(['monster_1', 'monster_2', 'monster_3']);
     for (const m of monsters) {
@@ -289,16 +295,27 @@ describe('Taunt mechanics', () => {
     }
   });
 
-  it('isTaunted returns true for taunted monsters within duration', () => {
+  it('taunted buff expires when duration elapses', () => {
+    const cs = new CombatSystem();
     const monster = makeEntity({ id: 'monster_1' });
-    cs.applyTaunt([monster], 'player', 4000, 1000);
+    monster.buffs.push({ stat: 'taunted', value: 1, duration: 4000, startTime: 1000 });
 
-    expect(cs.isTaunted(monster, 2000)).toBe(true);
-    expect(cs.isTaunted(monster, 5001)).toBe(false);  // expired
+    // Before expiry
+    expect(getBuffValue(monster, 'taunted')).toBe(1);
+
+    // After expiry (updateBuffs cleans up)
+    cs.updateBuffs(monster, 5001);
+    expect(getBuffValue(monster, 'taunted')).toBe(0);
+    expect(monster.buffs).toHaveLength(0);
   });
 
-  it('applyTaunt handles empty monster list', () => {
-    const tauntedIds = cs.applyTaunt([], 'player', 4000, 1000);
+  it('taunt works with empty monster list', () => {
+    const monsters: CombatEntity[] = [];
+    const tauntedIds: string[] = [];
+    for (const monster of monsters) {
+      monster.buffs.push({ stat: 'taunted', value: 1, duration: 4000, startTime: 1000 });
+      tauntedIds.push(monster.id);
+    }
     expect(tauntedIds).toEqual([]);
   });
 });

@@ -14,11 +14,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: [
-        'src/systems/CombatSystem.ts',
-        'src/systems/PathfindingSystem.ts',
-        'src/systems/LootSystem.ts',
-        'src/systems/InventorySystem.ts',
-        'src/systems/MapGenerator.ts',
+        'src/systems/*.ts',
       ],
       reporter: ['text', 'text-summary'],
     },

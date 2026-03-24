@@ -126,7 +126,7 @@ export class Monster {
     return 0x95a5a6;
   }
 
-  update(time: number, delta: number, playerCol: number, playerRow: number, collisions: boolean[][]): void {
+  update(time: number, delta: number, playerCol: number, playerRow: number, collisions: boolean[][], speedMultiplier = 1): void {
     if (this.state === 'dead') return;
 
     const distToPlayer = euclideanDistance(this.tileCol, this.tileRow, playerCol, playerRow);
@@ -136,7 +136,7 @@ export class Monster {
     if (distToSpawn > this.leashRange && this.state !== 'idle') {
       this.state = 'idle';
       this.currentMoveSpeed = 0;
-      this.moveToward(this.spawnCol, this.spawnRow, delta, collisions);
+      this.moveToward(this.spawnCol, this.spawnRow, delta, collisions, speedMultiplier);
       this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.01);
       this.updateHpBar();
       return;
@@ -163,7 +163,7 @@ export class Monster {
           this.state = 'chase';
           this.patrolTarget = null;
         } else if (this.patrolTarget) {
-          const arrived = this.moveToward(this.patrolTarget.col, this.patrolTarget.row, delta, collisions);
+          const arrived = this.moveToward(this.patrolTarget.col, this.patrolTarget.row, delta, collisions, speedMultiplier);
           if (arrived) {
             this.state = 'idle';
             this.currentMoveSpeed = 0;
@@ -182,7 +182,7 @@ export class Monster {
         } else if (distToPlayer <= this.definition.attackRange) {
           this.state = 'attack';
         } else {
-          this.moveToward(playerCol, playerRow, delta, collisions);
+          this.moveToward(playerCol, playerRow, delta, collisions, speedMultiplier);
         }
         break;
 
@@ -203,14 +203,14 @@ export class Monster {
     this.animator.update(delta);
   }
 
-  private moveToward(targetCol: number, targetRow: number, delta: number, collisions: boolean[][]): boolean {
+  private moveToward(targetCol: number, targetRow: number, delta: number, collisions: boolean[][], speedMultiplier = 1): boolean {
     const dx = targetCol - this.tileCol;
     const dy = targetRow - this.tileRow;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < 0.1) return true;
 
-    const targetSpeed = this.definition.speed * (delta / 1000) * 0.03;
+    const targetSpeed = this.definition.speed * speedMultiplier * (delta / 1000) * 0.03;
     this.currentMoveSpeed += (targetSpeed - this.currentMoveSpeed) * this.moveAccel * (delta / 1000);
     const nx = dx / dist;
     const ny = dy / dist;

@@ -401,6 +401,12 @@ export class ZoneScene extends Phaser.Scene {
     this.handleSkillInput(time);
     const eqStats = this.getEquipStats();
     this.player.recalcDerived(eqStats);
+
+    // Poison heal reduction: halve HP regen while poisoned
+    if (this.statusEffects && this.statusEffects.hasPoisonHealReduction('player')) {
+      recovery.hpRegenMultiplier = (recovery.hpRegenMultiplier ?? 1) * 0.5;
+    }
+
     this.player.update(time, delta, recovery, eqStats);
 
     const safeRadius = this.mapData.safeZoneRadius ?? 9;
@@ -433,10 +439,13 @@ export class ZoneScene extends Phaser.Scene {
           break;
         }
       }
+      // Get speed multiplier from StatusEffectSystem (Slow effect)
+      const speedMult = this.statusEffects.getSpeedMultiplier(monster.id);
+
       if (playerInSafe && !monster.isAggro()) {
-        monster.update(time, delta, -999, -999, this.mapData.collisions);
+        monster.update(time, delta, -999, -999, this.mapData.collisions, speedMult);
       } else {
-        monster.update(time, delta, this.player.tileCol, this.player.tileRow, this.mapData.collisions);
+        monster.update(time, delta, this.player.tileCol, this.player.tileRow, this.mapData.collisions, speedMult);
       }
     }
 
@@ -1058,6 +1067,30 @@ export class ZoneScene extends Phaser.Scene {
           this.vfx.healBurst(this.player.sprite.x, this.player.sprite.y - 16, 10);
         }
       }
+
+      // Taunt aggro-forcing: when Taunt Roar (or similar taunt skill) activates,
+      // monsters in AoE range switch aggro target to player
+      if (skillId === 'taunt_roar' && skill.aoe && skill.aoeRadius) {
+        const scaledTauntRadius = getSkillAoeRadius(skill, level);
+        const tauntTargets = this.monsters.filter(m =>
+          m.isAlive() && euclideanDistance(this.player.tileCol, this.player.tileRow, m.tileCol, m.tileRow) <= scaledTauntRadius
+        );
+        for (const m of tauntTargets) {
+          // Add taunted buff to monster
+          m.buffs.push({ stat: 'taunted', value: 1, duration: buffDuration, startTime: time });
+          // Force monster into chase/attack state targeting the player
+          if (m.state === 'idle' || m.state === 'patrol') {
+            m.state = 'chase';
+          }
+        }
+        if (tauntTargets.length > 0) {
+          EventBus.emit(GameEvents.LOG_MESSAGE, {
+            text: `嘲讽怒吼影响了${tauntTargets.length}个敌人`,
+            type: 'combat',
+          });
+        }
+      }
+
       return;
     }
 
@@ -1146,6 +1179,7 @@ export class ZoneScene extends Phaser.Scene {
           if (eq.thornsHeal > 0 && this.player.hp > 0) {
             const heal = Math.floor(this.player.maxHp * eq.thornsHeal / 100);
             this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+            EventBus.emit(GameEvents.PLAYER_HEALTH_CHANGED, { hp: this.player.hp, maxHp: this.player.maxHp });
           }
 
           this.player.playHurt(monster.sprite.x, monster.sprite.y);
@@ -1213,6 +1247,12 @@ export class ZoneScene extends Phaser.Scene {
         this.applySteal(result);
         this.showDamageText(target.sprite.x, target.sprite.y, result.damage, result.isCrit);
         this.skillEffects.playAttack(this.player.sprite.x, this.player.sprite.y, target.sprite.x, target.sprite.y, true);
+
+        // Consume stealthDamage buff after attack (it multiplies next attack only)
+        if (this.player.buffs.some(b => b.stat === 'stealthDamage')) {
+          this.player.buffs = this.player.buffs.filter(b => b.stat !== 'stealthDamage');
+        }
+
         // VFX for player attacks — crit flash + hit sparks
         if (result.isCrit || result.damage > 0) {
           EventBus.emit(GameEvents.COMBAT_DAMAGE, {
@@ -2217,13 +2257,29 @@ export class ZoneScene extends Phaser.Scene {
 
     const tracked = this.statusEffects.getTrackedEntities();
     for (const entityId of tracked) {
+      // Apply visual status tints via VFXManager
+      if (this.vfx) {
+        const effects = this.statusEffects.getEffectsOnEntity(entityId);
+        const sprite = this.getEntitySprite(entityId);
+        if (sprite) {
+          for (const effect of effects) {
+            const tintType = effect.type === 'burn' ? 'burn'
+              : (effect.type === 'freeze' || effect.type === 'stun') ? 'freeze'
+              : effect.type === 'poison' ? 'poison'
+              : null;
+            if (tintType) {
+              this.vfx.applyStatusTint(sprite, tintType);
+            }
+          }
+        }
+      }
+
       // Tick DoTs
       const ticks = this.statusEffects.tick(entityId, time);
       for (const tick of ticks) {
         if (entityId === 'player') {
           // DoT damage to player
           if (this.player.hp <= 0) continue;
-          // Poison heal reduction: halve healing while poisoned (handled in regen)
           this.player.hp = Math.max(0, this.player.hp - tick.damage);
           this.showDamageText(
             this.player.sprite.x, this.player.sprite.y,
@@ -2266,9 +2322,34 @@ export class ZoneScene extends Phaser.Scene {
           EventBus.emit(GameEvents.LOG_MESSAGE, {
             text: `${effectNames[type] ?? type}效果已消失`,
           });
+          // Clear status tint on expiry by resetting FX
+          const sprite = this.getEntitySprite(entityId);
+          if (sprite && (sprite as any).preFX) {
+            (sprite as any).preFX.clear();
+          }
         }
       }
     }
+  }
+
+  /** Helper to get a Phaser sprite for an entity by ID (for VFX tints). */
+  private getEntitySprite(entityId: string): Phaser.GameObjects.Sprite | Phaser.GameObjects.Image | null {
+    if (entityId === 'player') {
+      // Player sprite is a Container — find the first Sprite child
+      const children = this.player.sprite.list;
+      for (const child of children) {
+        if (child instanceof Phaser.GameObjects.Sprite) return child;
+      }
+      return null;
+    }
+    const monster = this.monsters.find(m => m.id === entityId && m.isAlive());
+    if (monster) {
+      const children = monster.sprite.list;
+      for (const child of children) {
+        if (child instanceof Phaser.GameObjects.Sprite) return child;
+      }
+    }
+    return null;
   }
 
   /**

@@ -36,7 +36,7 @@ export const AbyssRiftMap: MapData = {
   ],
   playerStart: { col: 3, row: 58 },
   exits: [
-    { col: 0, row: 58, targetMap: 'scorching_desert', targetCol: 118, targetRow: 119 },
+    { col: 0, row: 58, targetMap: 'scorching_desert', targetCol: 118, targetRow: 118 },
   ],
   levelRange: [38, 48] as [number, number],
 };

@@ -57,7 +57,7 @@ export const Armors: ArmorBase[] = [
   { id: 'a_greaves', name: '胫甲', nameEn: 'Greaves', description: '金属胫甲', type: 'armor', slot: 'boots', icon: 'a_boots', levelReq: 15, sellPrice: 40, stackable: false, maxStack: 1, baseDefense: 5, sockets: 0 },
   { id: 'a_war_belt', name: '战斗腰带', nameEn: 'War Belt', description: '镶甲的腰带', type: 'armor', slot: 'belt', icon: 'a_belt', levelReq: 15, sellPrice: 35, stackable: false, maxStack: 1, baseDefense: 4, sockets: 0 },
   // Upper-tier armor (lv 20)
-  { id: 'a_plate_armor', name: '板甲', nameEn: 'Plate Armor', description: '厚重的全身板甲', type: 'armor', slot: 'armor', icon: 'a_armor', levelReq: 20, sellPrice: 120, stackable: false, maxStack: 1, baseDefense: 20, sockets: 2 },
+  { id: 'a_heavy_plate_armor', name: '重型板甲', nameEn: 'Heavy Plate Armor', description: '加强型全身板甲', type: 'armor', slot: 'armor', icon: 'a_armor', levelReq: 20, sellPrice: 120, stackable: false, maxStack: 1, baseDefense: 20, sockets: 2 },
   { id: 'a_plate_helm', name: '板甲头盔', nameEn: 'Plate Helm', description: '全板甲头盔', type: 'armor', slot: 'helmet', icon: 'a_helm', levelReq: 20, sellPrice: 90, stackable: false, maxStack: 1, baseDefense: 14, sockets: 1 },
   { id: 'a_plate_gloves', name: '板甲手套', nameEn: 'Plate Gloves', description: '板甲护手', type: 'armor', slot: 'gloves', icon: 'a_gloves', levelReq: 20, sellPrice: 70, stackable: false, maxStack: 1, baseDefense: 7, sockets: 1 },
   { id: 'a_plate_boots', name: '板甲靴', nameEn: 'Plate Boots', description: '重装靴子', type: 'armor', slot: 'boots', icon: 'a_boots', levelReq: 20, sellPrice: 70, stackable: false, maxStack: 1, baseDefense: 6, sockets: 1 },

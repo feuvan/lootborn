@@ -99,24 +99,6 @@ export interface DamageResult {
   manaDamage?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Stun tracking for diminishing returns
-// ---------------------------------------------------------------------------
-
-export interface StunRecord {
-  /** Number of stuns applied within the immunity-reset window. */
-  stunCount: number;
-  /** Timestamp of last stun application. */
-  lastStunTime: number;
-  /** If > 0, entity is immune to stun until this timestamp. */
-  immuneUntil: number;
-}
-
-/** Stun diminishing-returns config (exported for tests). */
-export const STUN_DIMINISH_FACTOR = 0.5;  // 50% duration on 2nd stun
-export const STUN_IMMUNITY_DURATION = 3000;  // 3s immunity after 2nd stun
-export const STUN_WINDOW = 6000;  // reset stun count after 6s of no stuns
-
 /** Buff stacking caps. Values are the max total for additive stacking. */
 export const BUFF_CAPS: Record<string, number> = {
   damageReduction: 0.9,   // 90% max damage reduction
@@ -232,9 +214,6 @@ export function getBuffValue(entity: CombatEntity, stat: string): number {
 }
 
 export class CombatSystem {
-  /** Per-entity stun tracking for diminishing returns. Keyed by entity id. */
-  private stunRecords = new Map<string, StunRecord>();
-
   calculateDamage(
     attacker: CombatEntity,
     defender: CombatEntity,
@@ -422,136 +401,6 @@ export class CombatSystem {
 
   addBuff(entity: CombatEntity, buff: ActiveBuff): void {
     entity.buffs.push(buff);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Stun mechanics with diminishing returns
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Apply stun to a target entity.
-   * Returns the effective stun duration (0 if immune).
-   * The caller is responsible for setting the monster's state to 'stunned'
-   * and preventing movement/attack for the returned duration.
-   */
-  applyStun(targetId: string, baseDuration: number, now: number): number {
-    if (baseDuration <= 0) return 0;
-
-    let record = this.stunRecords.get(targetId);
-    if (!record) {
-      record = { stunCount: 0, lastStunTime: 0, immuneUntil: 0 };
-      this.stunRecords.set(targetId, record);
-    }
-
-    // Check immunity
-    if (now < record.immuneUntil) {
-      return 0;
-    }
-
-    // Reset stun count if outside the stun window
-    if (now - record.lastStunTime > STUN_WINDOW) {
-      record.stunCount = 0;
-    }
-
-    record.stunCount++;
-    record.lastStunTime = now;
-
-    let effectiveDuration = baseDuration;
-
-    if (record.stunCount === 2) {
-      // Second stun: 50% duration
-      effectiveDuration = Math.floor(baseDuration * STUN_DIMINISH_FACTOR);
-      // After 2nd stun, grant immunity
-      record.immuneUntil = now + effectiveDuration + STUN_IMMUNITY_DURATION;
-    } else if (record.stunCount > 2) {
-      // Should not happen if immunity is working, but safety: immune
-      record.immuneUntil = now + STUN_IMMUNITY_DURATION;
-      return 0;
-    }
-
-    return effectiveDuration;
-  }
-
-  /**
-   * Check whether an entity is currently stunned based on its active buffs.
-   * Stun is tracked as a buff with stat='stunned'.
-   */
-  isStunned(entity: CombatEntity, now: number): boolean {
-    for (const buff of entity.buffs) {
-      if (buff.stat === 'stunned' && now - buff.startTime < buff.duration) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** Get the stun record for an entity (useful for testing). */
-  getStunRecord(entityId: string): StunRecord | undefined {
-    return this.stunRecords.get(entityId);
-  }
-
-  /** Clear stun records (e.g. on entity death or zone change). */
-  clearStunRecord(entityId: string): void {
-    this.stunRecords.delete(entityId);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Taunt: force monster aggro
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Apply taunt to monsters in range.
-   * Returns the list of monster IDs that were taunted.
-   * The caller is responsible for:
-   *   1. Setting each monster's target to the player
-   *   2. Setting each monster's state to 'chase' or 'attack'
-   *
-   * @param monsterIds - IDs of monsters within AoE range
-   * @param playerId - ID of the player applying taunt
-   * @param duration - Duration of taunt in ms
-   * @param now - Current timestamp
-   */
-  applyTaunt(
-    monsters: CombatEntity[],
-    playerId: string,
-    duration: number,
-    now: number,
-  ): string[] {
-    const tauntedIds: string[] = [];
-    for (const monster of monsters) {
-      // Add a 'taunted' buff to the monster
-      this.addBuff(monster, {
-        stat: 'taunted',
-        value: 1,
-        duration,
-        startTime: now,
-      });
-      tauntedIds.push(monster.id);
-    }
-    EventBus.emit(GameEvents.LOG_MESSAGE, {
-      message: `嘲讽怒吼影响了${tauntedIds.length}个敌人`,
-    });
-    return tauntedIds;
-  }
-
-  /**
-   * Check if a monster is taunted.
-   */
-  isTaunted(entity: CombatEntity, now: number): boolean {
-    for (const buff of entity.buffs) {
-      if (buff.stat === 'taunted' && now - buff.startTime < buff.duration) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Consume stealth damage buff after an attack.
-   * Removes all stealthDamage buffs from the entity.
-   */
-  consumeStealthBuff(entity: CombatEntity): void {
-    entity.buffs = entity.buffs.filter(b => b.stat !== 'stealthDamage');
   }
 
   // ---------------------------------------------------------------------------
