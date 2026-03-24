@@ -1405,7 +1405,8 @@ export class UIScene extends Phaser.Scene {
   private updateMinimap(): void {
     if (!this.minimap || !this.zone) return;
     this.minimap.clear();
-    const mapData = AllMaps[(this.zone as any).currentMapId];
+    // Use AllMaps for regular zones; fall back to scene's mapData for dungeons/sub-dungeons
+    const mapData = AllMaps[(this.zone as any).currentMapId] ?? (this.zone as any).mapData;
     if (!mapData) return;
     const size = px(100);
     const sx = size / mapData.cols, sy = size / mapData.rows;
@@ -1423,9 +1424,19 @@ export class UIScene extends Phaser.Scene {
     this.minimap.fillStyle(0x5dade2);
     this.minimap.fillCircle(this.player.tileCol * sx, this.player.tileRow * sy, 3 * DPR);
     // Exits
+    // Exits
     for (const exit of mapData.exits) {
       this.minimap.fillStyle(0x00e676);
       this.minimap.fillRect(exit.col * sx - 1.5 * DPR, exit.row * sy - 1.5 * DPR, 4 * DPR, 4 * DPR);
+    }
+
+    // Dungeon portal marker (red-orange diamond) — only in abyss_rift
+    if ((this.zone as any).currentMapId === 'abyss_rift' && !(this.zone as any).isInDungeon) {
+      const dpCol = 60, dpRow = 60; // DungeonSystem portal position
+      this.minimap.fillStyle(0xFF6600, 0.9);
+      this.minimap.fillCircle(dpCol * sx, dpRow * sy, 3 * DPR);
+      this.minimap.lineStyle(1 * DPR, 0xFF3300, 0.8);
+      this.minimap.strokeCircle(dpCol * sx, dpRow * sy, 4 * DPR);
     }
 
     // Quest NPC markers on minimap
@@ -3363,7 +3374,7 @@ export class UIScene extends Phaser.Scene {
     if (this.autoLootText.style.color !== autoLootColor) this.autoLootText.setColor(autoLootColor);
 
     if (this.zone && (this.zone as any).currentMapId) {
-      const map = AllMaps[(this.zone as any).currentMapId];
+      const map = AllMaps[(this.zone as any).currentMapId] ?? (this.zone as any).mapData;
       if (map && this.zoneLabel.text !== map.name) this.zoneLabel.setText(map.name);
     }
 

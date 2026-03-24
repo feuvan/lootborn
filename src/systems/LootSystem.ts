@@ -2,6 +2,7 @@ import { randomInt, randomFloat, chance } from '../utils/MathUtils';
 import { Weapons, Armors, Accessories, Consumables, Gems, getItemBase } from '../data/items/bases';
 import { Prefixes, Suffixes } from '../data/items/affixes';
 import { LegendaryItems } from '../data/items/sets';
+import { DUNGEON_EXCLUSIVE_LEGENDARIES } from '../data/dungeonData';
 import type { ItemInstance, ItemQuality, ItemAffix, AffixDefinition, MonsterDefinition, WeaponBase, ArmorBase } from '../data/types';
 
 let uidCounter = 0;
@@ -223,7 +224,8 @@ export class LootSystem {
   }
 
   private makeLegendary(item: ItemInstance, baseId: string): void {
-    const legendaryDef = LegendaryItems.find(l => l.baseId === baseId);
+    const allLegendaries = [...LegendaryItems, ...DUNGEON_EXCLUSIVE_LEGENDARIES];
+    const legendaryDef = allLegendaries.find(l => l.baseId === baseId);
     if (legendaryDef) {
       item.name = legendaryDef.name;
       item.affixes = [...legendaryDef.fixedAffixes];

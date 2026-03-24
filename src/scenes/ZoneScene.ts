@@ -40,6 +40,9 @@ import { NPCDefinitions } from '../data/npcs';
 import { AllQuests } from '../data/quests/all_quests';
 import type { MapData, ClassDefinition, ItemInstance, SaveData, HiddenArea, SubDungeonEntrance, StoryDecoration, SubDungeonMapData } from '../data/types';
 import { AllSubDungeons, SubDungeonMiniBosses } from '../data/subDungeons';
+import { DungeonSystem } from '../systems/DungeonSystem';
+import type { DungeonRunState, DungeonFloorConfig } from '../systems/DungeonSystem';
+import { DungeonBossDef, DungeonMidBossDef } from '../data/dungeonData';
 import type { UIScene } from './UIScene';
 
 const TILE_KEYS = ['tile_grass', 'tile_dirt', 'tile_stone', 'tile_water', 'tile_wall', 'tile_camp', 'tile_camp_wall'];
@@ -184,6 +187,20 @@ export class ZoneScene extends Phaser.Scene {
   private isInSubDungeon = false;
   /** The parent zone info for returning from a sub-dungeon. */
   private parentZoneInfo: { mapId: string; returnCol: number; returnRow: number } | null = null;
+
+  // ─── Random Dungeon State ─────────────────────────────────────────────
+  /** Whether we are currently inside a random dungeon floor. */
+  private isInDungeon = false;
+  /** Active dungeon run state (null when not in dungeon). */
+  private dungeonRunState: DungeonRunState | null = null;
+  /** Current dungeon floor config (null when not in dungeon). */
+  private dungeonFloorConfig: DungeonFloorConfig | null = null;
+  /** Dungeon portal sprite in Abyss Rift. */
+  private dungeonPortalSprite: Phaser.GameObjects.Container | null = null;
+  /** Dungeon portal position in Abyss Rift. */
+  private static readonly DUNGEON_PORTAL_COL = 60;
+  private static readonly DUNGEON_PORTAL_ROW = 60;
+
   private readonly contextMenuHandler = (e: Event): void => {
     e.preventDefault();
   };
@@ -192,11 +209,18 @@ export class ZoneScene extends Phaser.Scene {
     super({ key: 'ZoneScene' });
   }
 
-  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number }): void {
+  init(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number; dungeonRun?: DungeonRunState; dungeonFloor?: DungeonFloorConfig }): void {
     this.currentMapId = data.mapId || 'emerald_plains';
     this.isInSubDungeon = !!data.subDungeon;
     this.parentZoneInfo = data.parentZoneInfo ?? null;
-    if (data.subDungeon) {
+    this.isInDungeon = !!data.dungeonRun;
+    this.dungeonRunState = data.dungeonRun ?? null;
+    this.dungeonFloorConfig = data.dungeonFloor ?? null;
+    if (data.dungeonRun && data.dungeonFloor) {
+      // For random dungeon floors, generate the floor map procedurally
+      this.mapData = DungeonSystem.generateFloorMap(data.dungeonFloor);
+      this.currentMapId = this.mapData.id;
+    } else if (data.subDungeon) {
       // For sub-dungeons, we generate a simple map on the fly
       this.mapData = this.generateSubDungeonMap(data.subDungeon);
     } else {
@@ -210,7 +234,7 @@ export class ZoneScene extends Phaser.Scene {
     }
   }
 
-  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[]; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number }): void {
+  create(data: { classId: string; mapId: string; saveData?: SaveData; playerStats?: any; miniBossDialogueSeen?: string[]; loreCollected?: string[]; subDungeon?: SubDungeonMapData; parentZoneInfo?: { mapId: string; returnCol: number; returnRow: number }; discoveredHiddenAreas?: string[]; targetCol?: number; targetRow?: number; dungeonRun?: DungeonRunState; dungeonFloor?: DungeonFloorConfig }): void {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     // `scene.restart()` reuses the same scene instance, so transient guards must
     // be cleared explicitly when entering a new zone.
@@ -309,6 +333,7 @@ export class ZoneScene extends Phaser.Scene {
     this.spawnLoreCollectibles();
     this.spawnSubDungeonEntrances();
     this.spawnStoryDecorations();
+    this.spawnDungeonPortal();
     this.spawnMercenarySprite();
     this.spawnPetSprite();
     this.spawnEscortNpc();
@@ -459,6 +484,12 @@ export class ZoneScene extends Phaser.Scene {
     const subEntrance = this.findSubDungeonEntranceAt(tile.col, tile.row);
     if (subEntrance && euclideanDistance(this.player.tileCol, this.player.tileRow, subEntrance.col, subEntrance.row) <= 3) {
       this.enterSubDungeon(subEntrance);
+      return;
+    }
+
+    // Random dungeon portal interaction
+    if (this.findDungeonPortalAt(tile.col, tile.row) && euclideanDistance(this.player.tileCol, this.player.tileRow, ZoneScene.DUNGEON_PORTAL_COL, ZoneScene.DUNGEON_PORTAL_ROW) <= 3) {
+      this.enterDungeon();
       return;
     }
 
@@ -861,6 +892,19 @@ export class ZoneScene extends Phaser.Scene {
               if (this.vfx) {
                 this.vfx.applyGlow(portal, 0x4488ff, 8, 0.1);
                 this.vfx.applyBloom(portal, 0.8);
+              }
+              // Add floor label for dungeon exit portals
+              if (this.isInDungeon && this.dungeonFloorConfig) {
+                const labelText = this.dungeonFloorConfig.isBossFloor
+                  ? '返回深渊裂谷'
+                  : DungeonSystem.getFloorExitLabel(this.dungeonFloorConfig.floorNumber + 1);
+                const exitLabel = this.add.text(pos.x, pos.y - 30 * DPR, labelText, {
+                  fontSize: fs(9),
+                  color: this.dungeonFloorConfig.isBossFloor ? '#66CCFF' : '#FF9933',
+                  fontFamily: 'sans-serif',
+                  stroke: '#000000',
+                  strokeThickness: Math.round(2 * DPR),
+                }).setOrigin(0.5).setDepth(pos.y + 3);
               }
             }
           }
@@ -2669,7 +2713,14 @@ export class ZoneScene extends Phaser.Scene {
     for (const exit of this.mapData.exits) {
       const dist = euclideanDistance(this.player.tileCol, this.player.tileRow, exit.col, exit.row);
       if (dist < 1.5) {
-        if (this.isInSubDungeon) {
+        if (this.isInDungeon) {
+          // In dungeon: either advance to next floor or exit dungeon
+          if (this.dungeonFloorConfig?.isBossFloor) {
+            this.exitDungeon();
+          } else {
+            this.advanceDungeonFloor();
+          }
+        } else if (this.isInSubDungeon) {
           this.exitSubDungeon();
         } else {
           this.changeZone(exit.targetMap, exit.targetCol, exit.targetRow);
@@ -2688,6 +2739,11 @@ export class ZoneScene extends Phaser.Scene {
 
   private async autoSave(): Promise<void> {
     try {
+      // When inside a random dungeon, save returns to Abyss Rift entrance (ephemeral runs)
+      const saveMapId = this.isInDungeon ? 'abyss_rift' : this.currentMapId;
+      const saveTileCol = this.isInDungeon ? ZoneScene.DUNGEON_PORTAL_COL : this.player.tileCol;
+      const saveTileRow = this.isInDungeon ? (ZoneScene.DUNGEON_PORTAL_ROW - 2) : this.player.tileRow;
+
       await this.saveSystem.autoSave({
         id: 'autosave',
         version: 1,
@@ -2698,7 +2754,7 @@ export class ZoneScene extends Phaser.Scene {
           hp: this.player.hp, maxHp: this.player.maxHp, mana: this.player.mana, maxMana: this.player.maxMana,
           stats: { ...this.player.stats }, freeStatPoints: this.player.freeStatPoints, freeSkillPoints: this.player.freeSkillPoints,
           skillLevels: Object.fromEntries(this.player.skillLevels),
-          tileCol: this.player.tileCol, tileRow: this.player.tileRow, currentMap: this.currentMapId,
+          tileCol: saveTileCol, tileRow: saveTileRow, currentMap: saveMapId,
         },
         inventory: this.inventorySystem.inventory,
         equipment: this.inventorySystem.equipment as any,
@@ -2822,8 +2878,14 @@ export class ZoneScene extends Phaser.Scene {
     const monsterDefs = MonstersByZone[this.currentMapId] || [];
     const safeRadius = this.mapData.safeZoneRadius ?? 9;
     for (const spawn of this.mapData.spawns) {
-      const def = monsterDefs.find(m => m.id === spawn.monsterId) || getMonsterDef(spawn.monsterId);
+      let def = monsterDefs.find(m => m.id === spawn.monsterId) || getMonsterDef(spawn.monsterId);
       if (!def) continue;
+
+      // Apply dungeon depth scaling if inside random dungeon
+      if (this.isInDungeon && this.dungeonFloorConfig && this.dungeonRunState) {
+        def = DungeonSystem.scaleMonster(def, this.dungeonFloorConfig, this.dungeonRunState.difficulty);
+      }
+
       for (let i = 0; i < spawn.count; i++) {
         const c = Math.max(1, Math.min(this.mapData.cols - 2, spawn.col + randomInt(-3, 3)));
         const r = Math.max(1, Math.min(this.mapData.rows - 2, spawn.row + randomInt(-3, 3)));
@@ -3438,6 +3500,223 @@ export class ZoneScene extends Phaser.Scene {
 
     const idx = this.hiddenAreaSprites.indexOf(entry);
     if (idx !== -1) this.hiddenAreaSprites.splice(idx, 1);
+  }
+
+  // ─── Random Dungeon Portal & Floor Transitions ───────────────────────
+
+  /** Spawn the dungeon portal in Abyss Rift zone. */
+  private spawnDungeonPortal(): void {
+    // Only spawn portal in abyss_rift zone, not inside dungeons or sub-dungeons
+    if (this.currentMapId !== 'abyss_rift' || this.isInSubDungeon || this.isInDungeon) return;
+
+    const portalCol = ZoneScene.DUNGEON_PORTAL_COL;
+    const portalRow = ZoneScene.DUNGEON_PORTAL_ROW;
+
+    // Ensure portal area is walkable
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const r = portalRow + dr;
+        const c = portalCol + dc;
+        if (r > 0 && r < this.mapData.rows - 1 && c > 0 && c < this.mapData.cols - 1) {
+          this.mapData.collisions[r][c] = true;
+          if (this.mapData.tiles[r] && this.mapData.tiles[r][c] !== undefined) {
+            this.mapData.tiles[r][c] = 2; // stone
+          }
+        }
+      }
+    }
+
+    const { x: worldX, y: worldY } = cartToIso(portalCol, portalRow);
+    const container = this.add.container(worldX, worldY);
+    container.setDepth(worldY + 100);
+
+    // Portal base — larger and visually distinct from exit/sub-dungeon portals
+    const portalBase = this.add.ellipse(0, 0, Math.round(40 * DPR), Math.round(20 * DPR), 0x440000, 0.8);
+    container.add(portalBase);
+
+    // Outer ring — crimson/dark-red glow (distinct from purple sub-dungeon portals)
+    const outerRing = this.add.ellipse(0, -20 * DPR, Math.round(36 * DPR), Math.round(44 * DPR));
+    outerRing.setStrokeStyle(Math.round(4 * DPR), 0xFF3300);
+    outerRing.setFillStyle(0x880000, 0.35);
+    container.add(outerRing);
+
+    // Inner glow — fiery red-orange
+    const innerGlow = this.add.ellipse(0, -20 * DPR, Math.round(22 * DPR), Math.round(30 * DPR), 0xFF6600, 0.5);
+    container.add(innerGlow);
+
+    // Core — bright center
+    const core = this.add.ellipse(0, -20 * DPR, Math.round(10 * DPR), Math.round(14 * DPR), 0xFFAA00, 0.6);
+    container.add(core);
+
+    // Pulsing animations
+    this.tweens.add({ targets: innerGlow, alpha: 0.2, scaleX: 0.8, scaleY: 0.8, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: outerRing, alpha: 0.5, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: core, alpha: 0.3, scaleX: 0.6, scaleY: 0.6, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // Label
+    const label = this.add.text(0, -46 * DPR, DungeonSystem.getDungeonPortalLabel(), {
+      fontSize: fs(11),
+      color: '#FF6633',
+      fontFamily: 'sans-serif',
+      stroke: '#000000',
+      strokeThickness: Math.round(2 * DPR),
+    }).setOrigin(0.5);
+    container.add(label);
+
+    container.setSize(Math.round(50 * DPR), Math.round(60 * DPR));
+    container.setInteractive();
+
+    this.dungeonPortalSprite = container;
+  }
+
+  /** Find dungeon portal at a tile position. */
+  private findDungeonPortalAt(col: number, row: number): boolean {
+    if (!this.dungeonPortalSprite) return false;
+    return Math.abs(col - ZoneScene.DUNGEON_PORTAL_COL) < 2 && Math.abs(row - ZoneScene.DUNGEON_PORTAL_ROW) < 2;
+  }
+
+  /** Enter the random dungeon from Abyss Rift. */
+  private enterDungeon(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.autoSave();
+
+    const run = DungeonSystem.createRun(this.difficulty);
+    const floorConfig = DungeonSystem.getFloorConfig(run, 1);
+
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: `进入深渊迷宫... (共${run.totalFloors}层)`,
+      type: 'system',
+    });
+    EventBus.emit(GameEvents.DUNGEON_ENTER, { totalFloors: run.totalFloors });
+
+    const doRestart = () => {
+      this.scene.restart({
+        classId: this.player.classData.id,
+        mapId: `dungeon_floor_1`,
+        dungeonRun: run,
+        dungeonFloor: floorConfig,
+        miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+        loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+        playerStats: {
+          level: this.player.level,
+          exp: this.player.exp,
+          gold: this.player.gold,
+          hp: this.player.hp,
+          mana: this.player.mana,
+          stats: { ...this.player.stats },
+          freeStatPoints: this.player.freeStatPoints,
+          freeSkillPoints: this.player.freeSkillPoints,
+          skillLevels: Object.fromEntries(this.player.skillLevels),
+          buffs: [...this.player.buffs],
+          autoCombat: this.player.autoCombat,
+          autoLootMode: this.player.autoLootMode,
+        },
+      });
+    };
+
+    if (this.vfx) {
+      this.vfx.zoneTransition(doRestart);
+    } else {
+      doRestart();
+    }
+  }
+
+  /** Advance to the next dungeon floor. */
+  private advanceDungeonFloor(): void {
+    if (!this.dungeonRunState || !this.dungeonFloorConfig || this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    const nextFloor = this.dungeonRunState.currentFloor + 1;
+    const nextRun = { ...this.dungeonRunState, currentFloor: nextFloor };
+    const nextConfig = DungeonSystem.getFloorConfig(nextRun, nextFloor);
+
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: `进入第${nextFloor}层...`,
+      type: 'system',
+    });
+    EventBus.emit(GameEvents.DUNGEON_FLOOR_CHANGE, { floor: nextFloor, totalFloors: nextRun.totalFloors });
+
+    const doRestart = () => {
+      this.scene.restart({
+        classId: this.player.classData.id,
+        mapId: `dungeon_floor_${nextFloor}`,
+        dungeonRun: nextRun,
+        dungeonFloor: nextConfig,
+        miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+        loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+        playerStats: {
+          level: this.player.level,
+          exp: this.player.exp,
+          gold: this.player.gold,
+          hp: this.player.hp,
+          mana: this.player.mana,
+          stats: { ...this.player.stats },
+          freeStatPoints: this.player.freeStatPoints,
+          freeSkillPoints: this.player.freeSkillPoints,
+          skillLevels: Object.fromEntries(this.player.skillLevels),
+          buffs: [...this.player.buffs],
+          autoCombat: this.player.autoCombat,
+          autoLootMode: this.player.autoLootMode,
+        },
+      });
+    };
+
+    if (this.vfx) {
+      this.vfx.zoneTransition(doRestart);
+    } else {
+      doRestart();
+    }
+  }
+
+  /** Exit the random dungeon and return to Abyss Rift. */
+  private exitDungeon(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    EventBus.emit(GameEvents.LOG_MESSAGE, {
+      text: '离开深渊迷宫，返回深渊裂谷...',
+      type: 'system',
+    });
+    EventBus.emit(GameEvents.DUNGEON_EXIT, {});
+
+    this.dungeonRunState = null;
+    this.dungeonFloorConfig = null;
+    this.isInDungeon = false;
+
+    const doRestart = () => {
+      this.scene.restart({
+        classId: this.player.classData.id,
+        mapId: 'abyss_rift',
+        targetCol: ZoneScene.DUNGEON_PORTAL_COL,
+        targetRow: ZoneScene.DUNGEON_PORTAL_ROW - 2,
+        miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+        loreCollected: [...this.loreCollected],
+        discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+        playerStats: {
+          level: this.player.level,
+          exp: this.player.exp,
+          gold: this.player.gold,
+          hp: this.player.hp,
+          mana: this.player.mana,
+          stats: { ...this.player.stats },
+          freeStatPoints: this.player.freeStatPoints,
+          freeSkillPoints: this.player.freeSkillPoints,
+          skillLevels: Object.fromEntries(this.player.skillLevels),
+          buffs: [...this.player.buffs],
+          autoCombat: this.player.autoCombat,
+          autoLootMode: this.player.autoLootMode,
+        },
+      });
+    };
+
+    if (this.vfx) {
+      this.vfx.zoneTransition(doRestart);
+    } else {
+      doRestart();
+    }
   }
 
   // ─── Zone Content Wiring: Sub-Dungeon Entrances ──────────────────────
