@@ -1,0 +1,15 @@
+{
+  "featureId": "endgame-scrutiny-fix-difficulty-selector",
+  "reviewedAt": "2026-03-25T00:00:00Z",
+  "commitId": "8c77822011f3a76d023b7f5b1fbdfb2348e8768e",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix fully addresses the prior blocking persistence gap. MenuScene now derives missing completed difficulties from the persisted save difficulty before deciding whether to open the selector, so migrated or externally provided saves with difficulty='nightmare'/'hell' and empty or missing completedDifficulties correctly enter the difficulty selector and preserve their selectable progression state.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/endgame/scrutiny/reviews/difficulty-system.json",
+  "summary": "Reviewed worker session 295d63be-f7b0-49f6-9927-75b2accdeacc, its transcript skeleton, handoff, the original failed difficulty-system diff, and fix commit 8c77822011f3a76d023b7f5b1fbdfb2348e8768e. The original blocker is resolved: Continue now shows the difficulty selector when a save has persisted non-normal difficulty even if completedDifficulties is empty, and the inferred prerequisite completions produce the correct selector state for migrated nightmare/hell saves. No new blocking or non-blocking issues were found in the scoped fix."
+}
