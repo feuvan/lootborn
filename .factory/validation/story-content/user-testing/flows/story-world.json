@@ -1,0 +1,95 @@
+{
+  "assertions": [
+    {
+      "id": "VAL-STORY-002",
+      "status": "blocked",
+      "reason": "Browser validation could not reliably drive the Phaser canvas to a fresh new game in this isolated session; code-backed verification confirms all five zone mini-bosses are elite, have 3+ Chinese pre-fight dialogue lines, persist non-repeat tracking via miniBossDialogueSeen, and define guaranteed enhanced loot tables.",
+      "evidence": [
+        "browser:screenshots/menu.png",
+        "browser:screenshots/class-selection.png",
+        "code:/Users/feuvan/src/abyssfire/src/data/miniBosses.ts",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts:3014-3043",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts:3031-3099"
+      ]
+    },
+    {
+      "id": "VAL-STORY-003",
+      "status": "blocked",
+      "reason": "Real browser collection flow was blocked by fragile canvas interaction, but code-backed verification confirms each zone has at least 4 lore collectibles with distinct visuals, Chinese lore text well over 50 characters, hidden/non-obvious placement flags, lore popups, and lore log progress strings like \"X/Y 收集\" in the UI.",
+      "evidence": [
+        "browser:screenshots/quest-log-lore-tab.png",
+        "code:/Users/feuvan/src/abyssfire/src/data/loreCollectibles.ts",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts:3051-3229",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts:3116-3252"
+      ]
+    },
+    {
+      "id": "VAL-STORY-004",
+      "status": "blocked",
+      "reason": "Could not run enough exploratory movement through the Phaser canvas to trigger live events, so verification remained code-backed: RandomEventSystem enforces a 30000ms cooldown, blocks in safe zones and combat, defines ambush and treasure cache events with Chinese warnings, and ZoneScene routes those events into gameplay/log output.",
+      "evidence": [
+        "code:/Users/feuvan/src/abyssfire/src/systems/RandomEventSystem.ts:1-260",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts:1781-1916",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/RandomEventSystem.test.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/random-events-scrutiny-fix.test.ts"
+      ]
+    },
+    {
+      "id": "VAL-STORY-005",
+      "status": "blocked",
+      "reason": "Live merchant/rescue/puzzle event execution was blocked by the same Phaser canvas control limitation, but code-backed verification shows wandering merchant, rescue, and environmental puzzle events are implemented with zone-scaled data, Chinese UI/log strings, shop payload wiring, rescue rewards, and puzzle interaction handling.",
+      "evidence": [
+        "code:/Users/feuvan/src/abyssfire/src/systems/RandomEventSystem.ts:78-155",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts:1916-2140",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/RandomEventSystem.test.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/random-events-scrutiny-fix.test.ts"
+      ]
+    },
+    {
+      "id": "VAL-STORY-010",
+      "status": "blocked",
+      "reason": "The browser session reached the game shell but reliable in-canvas travel/interaction to NPCs, hidden areas, and sub-dungeon portals was not achievable. Code-backed verification confirms every zone has 2 new NPCs with Chinese dialogue, 1 hidden area with reward/discovery text, 3 story decorations, and at least 2 zones expose sub-dungeon entrances with enter/exit flow and companion-carrying scene restart data.",
+      "evidence": [
+        "browser:screenshots/zone-start.png",
+        "code:/Users/feuvan/src/abyssfire/src/data/npcs.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/maps/emerald_plains.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/maps/twilight_forest.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/maps/anvil_mountains.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/maps/scorching_desert.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/maps/abyss_rift.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/subDungeons.ts",
+        "code:/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts:3240-3579"
+      ]
+    },
+    {
+      "id": "VAL-STORY-012",
+      "status": "pass",
+      "reason": "Code-backed audit found the new story-content data and UI strings in Chinese (Simplified) across mini-boss dialogue, lore text, hidden areas, random events, NPC names/dialogue, sub-dungeon names, and story decoration metadata, with dedicated tests asserting Chinese content.",
+      "evidence": [
+        "code:/Users/feuvan/src/abyssfire/src/data/miniBosses.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/loreCollectibles.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/npcs.ts",
+        "code:/Users/feuvan/src/abyssfire/src/data/subDungeons.ts",
+        "code:/Users/feuvan/src/abyssfire/src/systems/RandomEventSystem.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/mini-bosses-lore.test.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/zone-content-expansion.test.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/zone-content-runtime-wiring.test.ts",
+        "code:/Users/feuvan/src/abyssfire/src/__tests__/RandomEventSystem.test.ts"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "agent-browser",
+    "Read",
+    "Grep"
+  ],
+  "frictions": [
+    "agent-browser opened the app at http://localhost:5173/abyssfire/ and screenshots worked, but Phaser canvas clicks were not reliable enough to guarantee a fresh new-game interaction path or deterministic in-world traversal.",
+    "The runtime game instance was not exposed on window/Phaser.GAMES in this build, so user-surface checks had to rely on screenshots plus code-backed verification instead of runtime introspection."
+  ],
+  "blockers": [
+    "Assigned browser validation for Phaser canvas flows was partially blocked by opaque canvas interactions; assertions needing actual traversal/combat/event triggering remain blocked rather than guessed."
+  ],
+  "appliedUpdates": [],
+  "summary": "Validated six assigned story-world assertions. VAL-STORY-012 passed via code-backed audit; VAL-STORY-002/003/004/005/010 are blocked for real-user-surface confirmation because the Phaser canvas could not be driven reliably enough in this session, though source inspection confirms the underlying implementations and wiring exist."
+}

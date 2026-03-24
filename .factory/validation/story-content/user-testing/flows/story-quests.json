@@ -1,0 +1,108 @@
+{
+  "assertions": [
+    {
+      "id": "VAL-STORY-001",
+      "status": "blocked",
+      "reason": "Code and tests confirm branching dialogue trees with multiple selectable choices, prerequisite-gated options, long-dialogue scrolling, and save/load support for dialogue state. Different branches can trigger different quest/reward outcomes. However, no browser/user-surface run was captured here, so screenshot-backed UI confirmation is still missing.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/data/dialogueTrees.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/data/types.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/DialogueTrees.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    },
+    {
+      "id": "VAL-STORY-006",
+      "status": "blocked",
+      "reason": "Source and tests show end-to-end escort wiring: escort quest data, active escort NPC spawn, NPC-follow logic, NPC-only destination completion gate, NPC death failure, quest log labels/progress, and re-acceptance after failure. But this validation is code-backed rather than browser-observed, so the actual user-surface flow remains unconfirmed.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/data/quests/all_quests.ts",
+        "/Users/feuvan/src/abyssfire/src/systems/QuestSystem.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/NewQuestTypes.test.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/quest-dialogue-scrutiny-fix.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    },
+    {
+      "id": "VAL-STORY-007",
+      "status": "blocked",
+      "reason": "Defend quest wave progression, target HP/failure logic, and investigate clue discovery/progress are wired in code and covered by tests. Quest log shows wave counts and clue counts, and minimap markers are implemented. The contract also requires a visible target HP bar, enemy-wave user flow, and interactable clue objects with visual indicators; those user-surface aspects were not directly exercised and cannot be claimed from code alone.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/data/quests/all_quests.ts",
+        "/Users/feuvan/src/abyssfire/src/systems/QuestSystem.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/NewQuestTypes.test.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/quest-dialogue-scrutiny-fix.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    },
+    {
+      "id": "VAL-STORY-008",
+      "status": "blocked",
+      "reason": "Craft-and-deliver quests are defined with three ordered phases, quest log phase display, NPC-triggered craft/deliver advancement, and save/load preservation. Tests verify collect→craft→deliver sequencing and gating. This supports the logic, but the actual in-game crafting-at-NPC flow was not exercised through the browser, so full end-to-end UX confirmation is still missing.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/data/quests/all_quests.ts",
+        "/Users/feuvan/src/abyssfire/src/systems/QuestSystem.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/NewQuestTypes.test.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/quest-dialogue-scrutiny-fix.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    },
+    {
+      "id": "VAL-STORY-009",
+      "status": "blocked",
+      "reason": "New quest types are integrated into quest data/types, Chinese quest-log labels and colored tags, QuestSystem.updateProgress handling, QUEST_COMPLETED emission, rewards on turn-in, minimap objective markers, and NPC quest marker updates. However, without user-surface execution, I cannot fully prove marker transitions or real turn-in presentation from gameplay alone.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/systems/QuestSystem.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/utils/EventBus.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/NewQuestTypes.test.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/quest-dialogue-scrutiny-fix.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    },
+    {
+      "id": "VAL-STORY-011",
+      "status": "blocked",
+      "reason": "Quest save/load preservation for new quest types is strongly supported: SaveData includes quests, ZoneScene serializes/restores quest progress, and tests verify persisted progress for escort/defend/investigate/craft quests. Dialogue state persistence is also present. Quest log pagination exists, but the contract's expanded-count scenario (42+ existing plus new) was not exercised in the UI, so that portion remains unverified.",
+      "evidence": [
+        "/Users/feuvan/src/abyssfire/src/data/types.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/ZoneScene.ts",
+        "/Users/feuvan/src/abyssfire/src/systems/SaveSystem.ts",
+        "/Users/feuvan/src/abyssfire/src/scenes/UIScene.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/NewQuestTypes.test.ts",
+        "/Users/feuvan/src/abyssfire/src/__tests__/DialogueTrees.test.ts",
+        "vitest: npm run test -- src/__tests__/NewQuestTypes.test.ts src/__tests__/DialogueTrees.test.ts src/__tests__/quest-dialogue-scrutiny-fix.test.ts (189 passing)"
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "Read",
+    "Grep",
+    "Glob",
+    "LS",
+    "Execute"
+  ],
+  "frictions": [
+    "Assigned assertions are largely flow/UI oriented, but this run used conservative code-backed verification instead of Phaser browser automation.",
+    "Canvas-based Phaser interaction is documented as fragile and opaque, so no reliable screenshot evidence was gathered in this worker run.",
+    "Tests validate quest/dialogue wiring well, but some contract clauses require visible runtime UX states that are not provable from source alone."
+  ],
+  "blockers": [
+    "No browser/user-surface session was used, so screenshot-backed confirmation for dialogue, escort, defend, investigate, crafting, marker transitions, and pagination-at-scale is unavailable.",
+    "Some contract requirements (e.g. interactable clue objects with visible indicators, wave UI behavior, quest log pagination under 42+ quests) need runtime observation beyond the inspected test coverage."
+  ],
+  "appliedUpdates": [
+    "Created conservative JSON validation report for assigned assertions based on source inspection and targeted test execution.",
+    "Ran targeted validation tests covering dialogue trees and new quest types (189 passing)."
+  ],
+  "summary": "All six assigned story-quest assertions are supported in code and tests, but none were promoted to pass because this worker run did not capture browser/user-surface evidence for the required gameplay flows. The report therefore marks each assertion as blocked with explicit evidence and remaining verification gaps."
+}
