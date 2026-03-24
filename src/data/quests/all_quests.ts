@@ -773,4 +773,186 @@ export const AllQuests: QuestDefinition[] = [
     level: 3,
     questArea: { col: 35, row: 20, radius: 15 },
   },
+
+  // ═══════════════════════════════════════
+  // Escort Quests (护送)
+  // ═══════════════════════════════════════
+  {
+    id: 'q_escort_merchant_plains',
+    name: '护送商人',
+    description: '一位商人需要穿越翡翠平原前往南方营地，但路途上满是哥布林。护送他安全抵达目的地。',
+    zone: 'emerald_plains',
+    type: 'escort',
+    category: 'side',
+    objectives: [
+      { type: 'escort', targetId: 'escort_merchant', targetName: '护送商人到南方营地', required: 1, current: 0, location: { col: 50, row: 90, radius: 5 } },
+    ],
+    rewards: { exp: 350, gold: 60, items: ['c_hp_potion_m'] },
+    prereqQuests: ['q_kill_goblins'],
+    level: 5,
+    questArea: { col: 50, row: 90, radius: 8 },
+    escortNpc: { name: '旅行商人', spriteKey: 'npc_merchant', startCol: 30, startRow: 40, destCol: 50, destRow: 90 },
+    reacceptable: true,
+  },
+  {
+    id: 'q_escort_survivor_desert',
+    name: '护送幸存者',
+    description: '一名探险者在沙漠中迷路，伤势严重。护送他穿越蝎谷到达绿洲营地。途中小心沙漠蝎子和火焰元素。',
+    zone: 'scorching_desert',
+    type: 'escort',
+    category: 'side',
+    objectives: [
+      { type: 'escort', targetId: 'escort_survivor', targetName: '护送幸存者到绿洲', required: 1, current: 0, location: { col: 45, row: 22, radius: 5 } },
+    ],
+    rewards: { exp: 4500, gold: 300, items: ['c_hp_potion_l'] },
+    prereqQuests: ['q_explore_desert'],
+    level: 33,
+    questArea: { col: 45, row: 22, radius: 10 },
+    escortNpc: { name: '受伤的探险者', spriteKey: 'npc_quest', startCol: 64, startRow: 48, destCol: 45, destRow: 22 },
+    reacceptable: true,
+  },
+
+  // ═══════════════════════════════════════
+  // Defend Quests (防守)
+  // ═══════════════════════════════════════
+  {
+    id: 'q_defend_camp_forest',
+    name: '守卫营地',
+    description: '暮色森林营地收到情报，亡灵大军即将来袭！坚守营地篝火，击退三波亡灵攻势。营地篝火若被摧毁，一切将付之东流。',
+    zone: 'twilight_forest',
+    type: 'defend',
+    category: 'side',
+    objectives: [
+      { type: 'defend_wave', targetId: 'defend_forest_camp', targetName: '击退亡灵浪潮', required: 3, current: 0 },
+    ],
+    rewards: { exp: 1200, gold: 100, items: ['c_hp_potion_m'] },
+    prereqQuests: ['q_kill_undead'],
+    level: 14,
+    questArea: { col: 40, row: 35, radius: 12 },
+    defendTarget: { name: '营地篝火', col: 40, row: 35, totalWaves: 3 },
+    reacceptable: true,
+  },
+  {
+    id: 'q_defend_seal_abyss',
+    name: '守护封印',
+    description: '深渊封印正在被恶魔军团攻击！你必须击退五波恶魔，保护封印石不被摧毁。一旦封印石破碎，深渊将再次扩张。',
+    zone: 'abyss_rift',
+    type: 'defend',
+    category: 'side',
+    objectives: [
+      { type: 'defend_wave', targetId: 'defend_abyss_seal', targetName: '击退恶魔浪潮', required: 5, current: 0 },
+    ],
+    rewards: { exp: 8000, gold: 500, items: ['g_ruby_2'] },
+    prereqQuests: ['q_collect_demon_essence'],
+    level: 46,
+    questArea: { col: 38, row: 58, radius: 10 },
+    defendTarget: { name: '封印石', col: 38, row: 58, totalWaves: 5 },
+    reacceptable: true,
+  },
+
+  // ═══════════════════════════════════════
+  // Investigate Quests (调查)
+  // ═══════════════════════════════════════
+  {
+    id: 'q_investigate_ruins_mountains',
+    name: '遗迹调查',
+    description: '矮人长老希望你调查铁砧山脉中散落的古代遗迹。搜索指定区域，找到四处被隐藏的符文石碑，记录上面的铭文。',
+    zone: 'anvil_mountains',
+    type: 'investigate',
+    category: 'side',
+    objectives: [
+      { type: 'investigate_clue', targetId: 'clue_rune_1', targetName: '北方符文石碑', required: 1, current: 0, location: { col: 30, row: 15, radius: 5 } },
+      { type: 'investigate_clue', targetId: 'clue_rune_2', targetName: '东方符文石碑', required: 1, current: 0, location: { col: 60, row: 30, radius: 5 } },
+      { type: 'investigate_clue', targetId: 'clue_rune_3', targetName: '矿洞符文石碑', required: 1, current: 0, location: { col: 35, row: 50, radius: 5 } },
+      { type: 'investigate_clue', targetId: 'clue_rune_4', targetName: '山顶符文石碑', required: 1, current: 0, location: { col: 55, row: 65, radius: 5 } },
+    ],
+    rewards: { exp: 2800, gold: 220, items: ['g_sapphire_2'] },
+    prereqQuests: ['q_explore_dwarf_ruins'],
+    level: 23,
+    questArea: { col: 45, row: 40, radius: 30 },
+    clues: [
+      { id: 'clue_rune_1', name: '北方符文石碑', col: 30, row: 15 },
+      { id: 'clue_rune_2', name: '东方符文石碑', col: 60, row: 30 },
+      { id: 'clue_rune_3', name: '矿洞符文石碑', col: 35, row: 50 },
+      { id: 'clue_rune_4', name: '山顶符文石碑', col: 55, row: 65 },
+    ],
+  },
+  {
+    id: 'q_investigate_corruption_forest',
+    name: '腐化溯源',
+    description: '森林中的腐化蔓延不止，隐士怀疑有多个腐化源头。在暮色森林中寻找三处腐化痕迹，收集样本以确定根源。',
+    zone: 'twilight_forest',
+    type: 'investigate',
+    category: 'side',
+    objectives: [
+      { type: 'investigate_clue', targetId: 'clue_corrupt_1', targetName: '腐化树根', required: 1, current: 0, location: { col: 20, row: 25, radius: 5 } },
+      { type: 'investigate_clue', targetId: 'clue_corrupt_2', targetName: '污染水源', required: 1, current: 0, location: { col: 50, row: 40, radius: 5 } },
+      { type: 'investigate_clue', targetId: 'clue_corrupt_3', targetName: '暗影祭坛', required: 1, current: 0, location: { col: 15, row: 60, radius: 5 } },
+    ],
+    rewards: { exp: 900, gold: 80 },
+    prereqQuests: ['q_explore_forest'],
+    level: 13,
+    questArea: { col: 30, row: 40, radius: 25 },
+    clues: [
+      { id: 'clue_corrupt_1', name: '腐化树根', col: 20, row: 25 },
+      { id: 'clue_corrupt_2', name: '污染水源', col: 50, row: 40 },
+      { id: 'clue_corrupt_3', name: '暗影祭坛', col: 15, row: 60 },
+    ],
+  },
+
+  // ═══════════════════════════════════════
+  // Craft-and-Deliver Quests (制作交付)
+  // ═══════════════════════════════════════
+  {
+    id: 'q_craft_dwarf_weapon',
+    name: '锻造矮人战锤',
+    description: '矮人长老希望重铸一把传奇战锤。先收集秘银锭和符文碎片，然后在高级铁匠处锻造，最后将成品交给矮人长老。',
+    zone: 'anvil_mountains',
+    type: 'craft',
+    category: 'side',
+    objectives: [
+      { type: 'craft_collect', targetId: 'mat_dwarf_ingot', targetName: '秘银锭', required: 3, current: 0 },
+      { type: 'craft_collect', targetId: 'mat_rune_fragment', targetName: '符文碎片', required: 5, current: 0 },
+      { type: 'craft_craft', targetId: 'craft_dwarf_hammer', targetName: '在铁匠处锻造战锤', required: 1, current: 0 },
+      { type: 'craft_deliver', targetId: 'deliver_dwarf_hammer', targetName: '交付给矮人长老', required: 1, current: 0 },
+    ],
+    rewards: { exp: 3200, gold: 280, items: ['w_battle_axe'] },
+    prereqQuests: ['q_collect_dwarf_relics'],
+    level: 26,
+    questArea: { col: 45, row: 40, radius: 15 },
+    craftPhases: {
+      materials: [
+        { itemId: 'mat_dwarf_ingot', name: '秘银锭', required: 3 },
+        { itemId: 'mat_rune_fragment', name: '符文碎片', required: 5 },
+      ],
+      craftNpc: 'blacksmith_advanced',
+      deliverNpc: 'quest_dwarf',
+    },
+  },
+  {
+    id: 'q_craft_fire_ward',
+    name: '制作火焰护符',
+    description: '沙漠游牧民需要一枚火焰护符来抵御灼热。先收集净化水囊和蝎毒作为材料，在沙漠商人处制作护符，最后交付给游牧民。',
+    zone: 'scorching_desert',
+    type: 'craft',
+    category: 'side',
+    objectives: [
+      { type: 'craft_collect', targetId: 'mat_water', targetName: '净化水囊', required: 3, current: 0 },
+      { type: 'craft_collect', targetId: 'mat_venom', targetName: '蝎毒', required: 3, current: 0 },
+      { type: 'craft_craft', targetId: 'craft_fire_ward', targetName: '在商人处制作护符', required: 1, current: 0 },
+      { type: 'craft_deliver', targetId: 'deliver_fire_ward', targetName: '交付给沙漠游牧民', required: 1, current: 0 },
+    ],
+    rewards: { exp: 4000, gold: 320 },
+    prereqQuests: ['q_kill_fire_elementals'],
+    level: 34,
+    questArea: { col: 40, row: 30, radius: 15 },
+    craftPhases: {
+      materials: [
+        { itemId: 'mat_water', name: '净化水囊', required: 3 },
+        { itemId: 'mat_venom', name: '蝎毒', required: 3 },
+      ],
+      craftNpc: 'merchant_desert',
+      deliverNpc: 'quest_nomad',
+    },
+  },
 ];

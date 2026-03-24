@@ -1968,7 +1968,8 @@ export class ZoneScene extends Phaser.Scene {
       if (!hasCompletedQuest) {
         const available = this.questSystem.getAvailableQuests(def.quests, this.player.level);
         for (const q of available) {
-          if (!this.questSystem.progress.has(q.id)) {
+          const qProg = this.questSystem.progress.get(q.id);
+          if (!qProg || (qProg.status === 'failed' && q.reacceptable)) {
             hasAvailableQuest = true;
             if (q.category === 'main') isMainQuest = true;
             break;
@@ -1995,6 +1996,7 @@ export class ZoneScene extends Phaser.Scene {
       if (quest.zone !== this.currentMapId) continue;
       for (let i = 0; i < quest.objectives.length; i++) {
         const obj = quest.objectives[i];
+        // Handle explore objectives
         if (obj.type === 'explore' && obj.location && progress.objectives[i].current < obj.required) {
           const dx = this.player.tileCol - obj.location.col;
           const dy = this.player.tileRow - obj.location.row;
@@ -2003,6 +2005,32 @@ export class ZoneScene extends Phaser.Scene {
             this.questSystem.updateProgress('explore', obj.targetId);
             EventBus.emit(GameEvents.LOG_MESSAGE, {
               text: `发现: ${obj.targetName}`,
+              type: 'system',
+            });
+          }
+        }
+        // Handle investigate clue objectives (location-based discovery)
+        if (obj.type === 'investigate_clue' && obj.location && progress.objectives[i].current < obj.required) {
+          const dx = this.player.tileCol - obj.location.col;
+          const dy = this.player.tileRow - obj.location.row;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= obj.location.radius) {
+            this.questSystem.updateProgress('investigate_clue', obj.targetId);
+            EventBus.emit(GameEvents.LOG_MESSAGE, {
+              text: `发现线索: ${obj.targetName}`,
+              type: 'system',
+            });
+          }
+        }
+        // Handle escort destination check
+        if (obj.type === 'escort' && obj.location && progress.objectives[i].current < obj.required) {
+          const dx = this.player.tileCol - obj.location.col;
+          const dy = this.player.tileRow - obj.location.row;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= obj.location.radius) {
+            this.questSystem.updateProgress('escort', obj.targetId);
+            EventBus.emit(GameEvents.LOG_MESSAGE, {
+              text: `护送完成: ${obj.targetName}`,
               type: 'system',
             });
           }
@@ -2326,7 +2354,7 @@ export class ZoneScene extends Phaser.Scene {
           const available = this.questSystem.getAvailableQuests(def.quests, this.player.level);
           for (const q of available) {
             const prog = this.questSystem.progress.get(q.id);
-            if (!prog) {
+            if (!prog || (prog.status === 'failed' && q.reacceptable)) {
               actions.push({
                 label: `接受: ${q.name}`,
                 callback: () => { this.questSystem.acceptQuest(q.id); },

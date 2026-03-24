@@ -242,17 +242,31 @@ export interface QuestDefinition {
   name: string;
   description: string;
   zone: string;
-  type: 'kill' | 'collect' | 'explore' | 'talk';
+  type: 'kill' | 'collect' | 'explore' | 'talk' | 'escort' | 'defend' | 'investigate' | 'craft';
   category: 'main' | 'side';
   objectives: QuestObjective[];
   rewards: QuestReward;
   prereqQuests?: string[];
   level: number;
   questArea?: { col: number; row: number; radius: number };
+  /** Escort quest: NPC to follow player to destination. */
+  escortNpc?: { name: string; spriteKey: string; startCol: number; startRow: number; destCol: number; destRow: number };
+  /** Defend quest: location/object to protect and enemy wave config. */
+  defendTarget?: { name: string; col: number; row: number; totalWaves: number };
+  /** Investigate quest: clue objects to find. */
+  clues?: { id: string; name: string; col: number; row: number }[];
+  /** Craft quest phase definitions: collect → craft → deliver. */
+  craftPhases?: {
+    materials: { itemId: string; name: string; required: number }[];
+    craftNpc: string;
+    deliverNpc: string;
+  };
+  /** Whether this quest can be re-accepted after failure. */
+  reacceptable?: boolean;
 }
 
 export interface QuestObjective {
-  type: 'kill' | 'collect' | 'explore' | 'talk';
+  type: 'kill' | 'collect' | 'explore' | 'talk' | 'escort' | 'defend_wave' | 'investigate_clue' | 'craft_collect' | 'craft_craft' | 'craft_deliver';
   targetId: string;
   targetName: string;
   required: number;
@@ -269,7 +283,7 @@ export interface QuestReward {
 
 export interface QuestProgress {
   questId: string;
-  status: 'available' | 'active' | 'completed' | 'turned_in';
+  status: 'available' | 'active' | 'completed' | 'turned_in' | 'failed';
   objectives: { current: number }[];
 }
 

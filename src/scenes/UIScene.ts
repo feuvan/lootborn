@@ -11,6 +11,7 @@ import type { Player } from '../entities/Player';
 import type { ZoneScene } from './ZoneScene';
 import type { ItemInstance, WeaponBase, ArmorBase, DialogueTree, DialogueNode, DialogueChoice } from '../data/types';
 import { MercenarySystem, MERCENARY_DEFS, MERCENARY_TYPES } from '../systems/MercenarySystem';
+import { QUEST_TYPE_LABELS } from '../systems/QuestSystem';
 import type { MercenaryState } from '../systems/MercenarySystem';
 import { LoreByZone, AllLoreEntries, getLoreCountByZone } from '../data/loreCollectibles';
 import type { LoreEntry } from '../data/loreCollectibles';
@@ -1442,7 +1443,8 @@ export class UIScene extends Phaser.Scene {
           if (!hasCompleted) {
             const avail = this.zone.questSystem.getAvailableQuests(npcDef.quests, this.player.level);
             for (const q of avail) {
-              if (!this.zone.questSystem.progress.has(q.id)) { hasAvailable = true; break; }
+              const qProg = this.zone.questSystem.progress.get(q.id);
+              if (!qProg || (qProg.status === 'failed' && q.reacceptable)) { hasAvailable = true; break; }
             }
           }
           if (hasCompleted || hasAvailable) {
@@ -1487,6 +1489,32 @@ export class UIScene extends Phaser.Scene {
             this.minimap.fillStyle(0xf39c12, 0.5);
             this.minimap.fillRect(obj.location.col * sx - 1.5 * DPR, obj.location.row * sy - 1.5 * DPR, 3 * DPR, 3 * DPR);
           }
+          // Investigate clue markers (purple)
+          if (obj.type === 'investigate_clue' && obj.location && progress.objectives[i].current < obj.required) {
+            this.minimap.fillStyle(0x9b59b6, 0.6);
+            this.minimap.fillRect(obj.location.col * sx - 1.5 * DPR, obj.location.row * sy - 1.5 * DPR, 3 * DPR, 3 * DPR);
+          }
+          // Escort destination marker (orange)
+          if (obj.type === 'escort' && obj.location && progress.objectives[i].current < obj.required) {
+            this.minimap.fillStyle(0xe67e22, 0.6);
+            this.minimap.fillRect(obj.location.col * sx - 2 * DPR, obj.location.row * sy - 2 * DPR, 4 * DPR, 4 * DPR);
+          }
+        }
+
+        // Defend target marker (red)
+        if (quest.type === 'defend' && quest.defendTarget && progress.status === 'active') {
+          const dt = quest.defendTarget;
+          this.minimap.fillStyle(0xe74c3c, 0.5);
+          this.minimap.fillCircle(dt.col * sx, dt.row * sy, 3 * DPR);
+          this.minimap.lineStyle(1 * DPR, 0xe74c3c, 0.8);
+          this.minimap.strokeCircle(dt.col * sx, dt.row * sy, 4 * DPR);
+        }
+
+        // Escort NPC start marker (orange)
+        if (quest.type === 'escort' && quest.escortNpc && progress.status === 'active') {
+          const en = quest.escortNpc;
+          this.minimap.fillStyle(0xe67e22, 0.5);
+          this.minimap.fillCircle(en.startCol * sx, en.startRow * sy, 2 * DPR);
         }
       }
     }
@@ -1759,7 +1787,7 @@ export class UIScene extends Phaser.Scene {
         // Apply quest trigger
         if (choice.questTrigger && questSystem) {
           const prog = questSystem.progress.get(choice.questTrigger);
-          if (!prog) {
+          if (!prog || (prog.status === 'failed')) {
             questSystem.acceptQuest(choice.questTrigger);
           }
         }
@@ -1969,10 +1997,29 @@ export class UIScene extends Phaser.Scene {
       this.questLogPanel!.add(this.add.text(px(12), y + px(5), tag, {
         fontSize: fs(12), color: tagColor, fontFamily: FONT, fontStyle: 'bold',
       }));
+
+      // Quest type label for new types
+      const questTypeColors: Record<string, string> = {
+        escort: '#e67e22', defend: '#e74c3c', investigate: '#9b59b6', craft: '#1abc9c',
+      };
+      const typeLabel = QUEST_TYPE_LABELS[entry.quest.type] ?? '';
+      const hasTypeTag = ['escort', 'defend', 'investigate', 'craft'].includes(entry.quest.type);
+      const typeSuffix = hasTypeTag ? ` [${typeLabel}]` : '';
+
       const nameColor = this.questLogTab === 'completed' ? '#555' : (isSelected ? '#e0d8cc' : '#aaa');
       this.questLogPanel!.add(this.add.text(px(36), y + px(5), `${entry.quest.name} Lv.${entry.quest.level}`, {
         fontSize: fs(12), color: nameColor, fontFamily: FONT,
       }));
+
+      if (hasTypeTag) {
+        const typeColor = questTypeColors[entry.quest.type] ?? '#aaa';
+        const nameWidth = px(36) + this.add.text(0, 0, `${entry.quest.name} Lv.${entry.quest.level}`, {
+          fontSize: fs(12), fontFamily: FONT,
+        }).setVisible(false).width;
+        this.questLogPanel!.add(this.add.text(nameWidth + px(4), y + px(5), `[${typeLabel}]`, {
+          fontSize: fs(10), color: typeColor, fontFamily: FONT, fontStyle: 'bold',
+        }));
+      }
     });
 
     // Pagination
@@ -2024,7 +2071,10 @@ export class UIScene extends Phaser.Scene {
     };
     const catText = selected.quest.category === 'main' ? '主线任务' : '支线任务';
     const catColor = selected.quest.category === 'main' ? '#c0934a' : '#95a5a6';
-    this.questLogPanel.add(this.add.text(detailX + px(5), dy, `${catText}  |  Lv.${selected.quest.level}  |  ${zoneNames[selected.quest.zone] ?? selected.quest.zone}`, {
+    const questTypeLabel = QUEST_TYPE_LABELS[selected.quest.type] ?? '';
+    const typeDisplay = ['escort', 'defend', 'investigate', 'craft'].includes(selected.quest.type)
+      ? `  |  类型: ${questTypeLabel}` : '';
+    this.questLogPanel.add(this.add.text(detailX + px(5), dy, `${catText}  |  Lv.${selected.quest.level}  |  ${zoneNames[selected.quest.zone] ?? selected.quest.zone}${typeDisplay}`, {
       fontSize: fs(12), color: catColor, fontFamily: FONT,
     }));
     dy += px(20);
@@ -2034,6 +2084,36 @@ export class UIScene extends Phaser.Scene {
       fontSize: fs(13), color: '#bbb', fontFamily: FONT, wordWrap: { width: detailW - px(20) },
     }));
     dy += px(40);
+
+    // Type-specific summary for investigate, defend, craft
+    if (selected.quest.type === 'investigate') {
+      const totalClues = selected.quest.objectives.filter(o => o.type === 'investigate_clue').length;
+      const foundClues = selected.quest.objectives
+        .map((o, i) => o.type === 'investigate_clue' && (selected.progress.objectives[i]?.current ?? 0) >= o.required ? 1 : 0)
+        .reduce((a: number, b: number) => a + b, 0);
+      this.questLogPanel.add(this.add.text(detailX + px(5), dy, `线索 ${foundClues}/${totalClues}`, {
+        fontSize: fs(13), color: '#9b59b6', fontFamily: FONT, fontStyle: 'bold',
+      }));
+      dy += px(18);
+    } else if (selected.quest.type === 'defend' && selected.quest.defendTarget) {
+      const waveObj = selected.quest.objectives.find(o => o.type === 'defend_wave');
+      const waveIdx = waveObj ? selected.quest.objectives.indexOf(waveObj) : -1;
+      const curWave = waveIdx >= 0 ? (selected.progress.objectives[waveIdx]?.current ?? 0) : 0;
+      this.questLogPanel.add(this.add.text(detailX + px(5), dy, `浪潮 ${curWave}/${selected.quest.defendTarget.totalWaves}`, {
+        fontSize: fs(13), color: '#e74c3c', fontFamily: FONT, fontStyle: 'bold',
+      }));
+      dy += px(18);
+    } else if (selected.quest.type === 'craft') {
+      // Show current craft phase
+      const qs = this.zone?.questSystem;
+      if (qs) {
+        const phaseLabel = qs.getCraftPhaseLabel(selected.quest, selected.progress);
+        this.questLogPanel.add(this.add.text(detailX + px(5), dy, `当前阶段: ${phaseLabel}`, {
+          fontSize: fs(13), color: '#1abc9c', fontFamily: FONT, fontStyle: 'bold',
+        }));
+        dy += px(18);
+      }
+    }
 
     // Objectives header
     this.questLogPanel.add(this.add.text(detailX + px(5), dy, '目标:', {
@@ -3329,24 +3409,48 @@ export class UIScene extends Phaser.Scene {
     for (const { quest, progress } of sorted) {
       const tag = quest.category === 'main' ? '[主线]' : '[支线]';
       const statusTag = progress.status === 'completed' ? ' \u2713' : '';
-      entries.push({ text: `${tag} ${quest.name}${statusTag}`, isTitle: true, isMain: quest.category === 'main', isDone: progress.status === 'completed' });
-      for (let i = 0; i < quest.objectives.length; i++) {
-        const obj = quest.objectives[i];
-        const cur = progress.objectives[i]?.current ?? 0;
-        const done = cur >= obj.required;
-        const mark = done ? '\u2713' : `${cur}/${obj.required}`;
-        let locHint = '';
-        if (obj.type === 'explore' && !done && obj.location) {
-          const dc = obj.location.col - playerCol;
-          const dr = obj.location.row - playerRow;
-          const dist = Math.sqrt(dc * dc + dr * dr);
-          if (dist > 3) {
-            const dir = getDirection(dc, dr);
-            const distLabel = dist > 30 ? '很远' : dist > 15 ? '较远' : '附近';
-            locHint = ` (${dir} ${distLabel})`;
+      // Add type tag for new quest types
+      const typeTag = ['escort', 'defend', 'investigate', 'craft'].includes(quest.type)
+        ? ` [${QUEST_TYPE_LABELS[quest.type] ?? ''}]` : '';
+      entries.push({ text: `${tag} ${quest.name}${typeTag}${statusTag}`, isTitle: true, isMain: quest.category === 'main', isDone: progress.status === 'completed' });
+
+      // For investigate quests, show aggregate clue count
+      if (quest.type === 'investigate') {
+        const totalClues = quest.objectives.filter(o => o.type === 'investigate_clue').length;
+        const foundClues = quest.objectives
+          .map((o, idx) => o.type === 'investigate_clue' && (progress.objectives[idx]?.current ?? 0) >= o.required ? 1 : 0)
+          .reduce((a: number, b: number) => a + b, 0);
+        entries.push({ text: `  线索 ${foundClues}/${totalClues}`, isTitle: false, isMain: quest.category === 'main', isDone: foundClues >= totalClues });
+      }
+
+      // For defend quests, show wave counter
+      if (quest.type === 'defend' && quest.defendTarget) {
+        const waveObj = quest.objectives.find(o => o.type === 'defend_wave');
+        const waveIdx = waveObj ? quest.objectives.indexOf(waveObj) : -1;
+        const curWave = waveIdx >= 0 ? (progress.objectives[waveIdx]?.current ?? 0) : 0;
+        entries.push({ text: `  浪潮 ${curWave}/${quest.defendTarget.totalWaves}`, isTitle: false, isMain: quest.category === 'main', isDone: curWave >= quest.defendTarget.totalWaves });
+      }
+
+      // For other quest types and non-aggregate objectives, show individual entries
+      if (quest.type !== 'investigate' && quest.type !== 'defend') {
+        for (let i = 0; i < quest.objectives.length; i++) {
+          const obj = quest.objectives[i];
+          const cur = progress.objectives[i]?.current ?? 0;
+          const done = cur >= obj.required;
+          const mark = done ? '\u2713' : `${cur}/${obj.required}`;
+          let locHint = '';
+          if ((obj.type === 'explore' || obj.type === 'investigate_clue' || obj.type === 'escort') && !done && obj.location) {
+            const dc = obj.location.col - playerCol;
+            const dr = obj.location.row - playerRow;
+            const dist = Math.sqrt(dc * dc + dr * dr);
+            if (dist > 3) {
+              const dir = getDirection(dc, dr);
+              const distLabel = dist > 30 ? '很远' : dist > 15 ? '较远' : '附近';
+              locHint = ` (${dir} ${distLabel})`;
+            }
           }
+          entries.push({ text: `  ${obj.targetName} ${mark}${locHint}`, isTitle: false, isMain: quest.category === 'main', isDone: done });
         }
-        entries.push({ text: `  ${obj.targetName} ${mark}${locHint}`, isTitle: false, isMain: quest.category === 'main', isDone: done });
       }
     }
 

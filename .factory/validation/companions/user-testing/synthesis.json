@@ -1,0 +1,39 @@
+{
+  "milestone": "companions",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-COMP-001",
+    "VAL-COMP-002",
+    "VAL-COMP-003",
+    "VAL-COMP-004",
+    "VAL-COMP-005",
+    "VAL-COMP-006",
+    "VAL-COMP-007",
+    "VAL-COMP-008",
+    "VAL-COMP-009",
+    "VAL-COMP-010",
+    "VAL-COMP-011",
+    "VAL-COMP-012",
+    "VAL-COMP-013",
+    "VAL-COMP-014"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null,
+  "method": "Source-guided user-surface validation after browser-flow subagents failed to return reports; validated user-visible behaviors through focused tests, UI source inspection, and runtime wiring review.",
+  "flowReports": [],
+  "issues": [
+    {
+      "severity": "non_blocking",
+      "description": "Both user-testing-flow-validator subagents exited without producing reports, so synthesis relied on direct validator review of user-surface code paths plus targeted tests."
+    }
+  ]
+}

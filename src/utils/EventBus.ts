@@ -26,6 +26,7 @@ export const GameEvents = {
   QUEST_ACCEPTED: 'quest:accepted',
   QUEST_COMPLETED: 'quest:completed',
   QUEST_TURNED_IN: 'quest:turned_in',
+  QUEST_FAILED: 'quest:failed',
   ACHIEVEMENT_UNLOCKED: 'achievement:unlocked',
   HOMESTEAD_UPGRADED: 'homestead:upgraded',
   ITEM_DISCARDED: 'item:discarded',
