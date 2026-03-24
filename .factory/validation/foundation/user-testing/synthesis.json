@@ -1,0 +1,46 @@
+{
+  "milestone": "foundation",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-FOUND-001",
+    "VAL-FOUND-002",
+    "VAL-FOUND-003",
+    "VAL-FOUND-004",
+    "VAL-FOUND-005",
+    "VAL-FOUND-006",
+    "VAL-FOUND-007",
+    "VAL-FOUND-008",
+    "VAL-FOUND-009",
+    "VAL-FOUND-010",
+    "VAL-FOUND-011",
+    "VAL-FOUND-012",
+    "VAL-FOUND-013",
+    "VAL-FOUND-014"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null,
+  "flowReports": [
+    {
+      "flowId": "cli-tests",
+      "assertions": ["VAL-FOUND-001", "VAL-FOUND-002", "VAL-FOUND-003", "VAL-FOUND-004", "VAL-FOUND-005", "VAL-FOUND-006", "VAL-FOUND-007", "VAL-FOUND-008", "VAL-FOUND-009", "VAL-FOUND-010", "VAL-FOUND-011", "VAL-FOUND-012"],
+      "result": "all pass",
+      "method": "CLI: npx vitest run (328 tests pass), npx tsc --noEmit (exit 0), npm run build (exit 0)"
+    },
+    {
+      "flowId": "browser-visual",
+      "assertions": ["VAL-FOUND-013", "VAL-FOUND-014"],
+      "result": "all pass",
+      "method": "Browser: agent-browser with Phaser runtime introspection. Verified 120x120 map rendering at all corners, viewport culling (~14% tiles rendered), minimap scaling, fog of war at edges, zone transitions, save/load at (100,100), decorations in outer region (55.6%), NPC positions at camps, safe zone radius with 50x regen and zero monsters."
+    }
+  ],
+  "notes": "All 14 foundation assertions pass. CLI group verified via 328 Vitest unit tests covering all combat, balance, pathfinding, and map systems. Browser group verified via headless Chromium with Phaser runtime introspection confirming 120x120 map rendering, viewport culling, zone transitions, save/load, and camp safe zones. FPS was 19-22 in headless Canvas mode (no GPU) which is expected — WebGL on real devices would be higher."
+}

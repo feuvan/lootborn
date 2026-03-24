@@ -1,0 +1,74 @@
+{
+  "flowId": "cli-tests",
+  "testedAt": "2026-03-24T11:07:00Z",
+  "isolation": {
+    "workingDirectory": "/Users/feuvan/src/abyssfire",
+    "tools": ["npx vitest run", "npx tsc --noEmit", "npm run build", "code inspection"]
+  },
+  "toolsUsed": ["vitest", "tsc", "vite build"],
+  "assertions": {
+    "VAL-FOUND-001": {
+      "status": "pass",
+      "reason": "Vitest is installed (v4.1.1) and configured in vitest.config.ts. `npx vitest run` exits 0 with 328 passing tests across 6 test files. Coverage config in vitest.config.ts includes CombatSystem, PathfindingSystem, LootSystem, InventorySystem, and MapGenerator. Tests import non-Phaser modules using a Phaser mock alias (vitest.config.ts alias: phaser → src/__mocks__/phaser.ts) without canvas/DOM errors. `npx tsc --noEmit` exits 0. `npm run build` exits 0 and produces dist/ with index.html and assets/.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt, evidence/foundation/cli-tests/tsc-noEmit-output.txt, evidence/foundation/cli-tests/npm-build-output.txt"
+    },
+    "VAL-FOUND-002": {
+      "status": "pass",
+      "reason": "CombatSystemBugs.test.ts 'Stun mechanics' suite (9 tests) covers: full duration on first application, 50% duration on second rapid application (STUN_DIMINISH_FACTOR), immunity after 2nd stun within window, immunity expiry after STUN_IMMUNITY_DURATION, stun count reset after STUN_WINDOW, 0 duration for baseDuration<=0, isStunned active/expired checks, and stun duration scaling with skill level via tieredScale (War Stomp test). StatusEffectSystem.test.ts 'Stun' suite (4 tests) and 'Diminishing Returns' suite (7 tests with parametrized freeze/stun) further confirm: immobilization during stun, speed=0, DR 50% on second application, immunity on third, DR reset after window. All 20 stun-related tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — CombatSystemBugs.test.ts 'Stun mechanics' (9 tests ✓), StatusEffectSystem.test.ts 'Stun' (4 tests ✓), 'Diminishing Returns' (7 tests ✓)"
+    },
+    "VAL-FOUND-003": {
+      "status": "pass",
+      "reason": "CombatSystemBugs.test.ts 'Buff effects in combat calculations' suite (5 tests) covers: poisonDamage buff adds bonus damage, stealthDamage buff doubles next attack damage (consumed via consumeStealthBuff), defenseBonus buff reduces damage taken, damageBonus buff multiplies total damage by +25%, damageReduction buff halves damage. 'Taunt mechanics' suite (3 tests) covers applyTaunt adding 'taunted' buff to monsters for forced aggro. 'All buff types integration' suite (3 tests) verifies attackSpeed is readable, combined damageBonus+stealthDamage multiply together (~2.5x), combined defenseBonus+damageReduction stack to reduce damage heavily. 'Buff stacking and expiration' suite also verifies all 6 buff types are recognized. Mana Shield test verifies manaShield stat is not damageReduction. All 35 tests in CombatSystemBugs.test.ts pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — CombatSystemBugs.test.ts 'Buff effects in combat calculations' (5 tests ✓), 'Taunt mechanics' (3 tests ✓), 'All buff types integration' (3 tests ✓)"
+    },
+    "VAL-FOUND-004": {
+      "status": "pass",
+      "reason": "CombatSystemBugs.test.ts 'Buff stacking and expiration' suite (7 tests) covers: getBuffValue sums multiple buffs of same stat additively, getBuffValue caps at BUFF_CAPS limit (0.9 for damageReduction), updateBuffs removes expired buffs correctly, updateBuffs removes all buffs when all expired, expired buffs immediately stop affecting combat calculations, multiple buff types stack independently, and no buff persists indefinitely (duration 0 immediately removed). All pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — CombatSystemBugs.test.ts 'Buff stacking and expiration' (7 tests ✓)"
+    },
+    "VAL-FOUND-005": {
+      "status": "pass",
+      "reason": "CombatSystemBugs.test.ts 'Mana Shield' suite (5 tests) covers: redirects 30% of damage to mana (manaDamage in DamageResult), HP damage is less than without shield, overflow when mana insufficient (manaDamage capped at defender mana, overflow to HP), applyDamage deducts mana when manaDamage present, mana shield has no effect when mana is 0, and Mana Shield skill definition uses 'manaShield' stat (value=0.3) not 'damageReduction'. All pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — CombatSystemBugs.test.ts 'Mana Shield' (5 tests ✓)"
+    },
+    "VAL-FOUND-006": {
+      "status": "pass",
+      "reason": "SetBonusEffects.test.ts (44 tests) covers all 7 set bonus procs: critDoubleStrike (8 tests — threshold, no-crit, boundary edge cases, 0/negative), doubleShot (8 tests — ranged threshold, melee rejection, range boundaries), freeCast (6 tests — threshold, edge cases), dodgeCounter via forceCrit (3 tests — forced crit always crits, crit multiplier applied, natural crit not overridden), deathSave (5 tests — checkDeathSave value/used/0/negative checks, 30% maxHp heal math), killHealPercent (6 tests — calcKillHeal percent-of-maxHP with rounding edge cases), thornsHeal (5 tests — calcThornsHeal percent-of-maxHP). EquipStats integration (3 tests) verifies all fields initialized to 0, forceCrit flows through calculateDamage, and multiple proc checks are independent. All 44 tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — SetBonusEffects.test.ts (44 tests ✓)"
+    },
+    "VAL-FOUND-007": {
+      "status": "pass",
+      "reason": "StatusEffectSystem.test.ts (65 tests) covers all 6 status effect lifecycles. Burn: apply with duration/tick rate, 1s ticks, stacking from multiple sources, expiry, no immobilization. Freeze: apply/immobilize, speed=0, no damage ticks, diminishing returns, immunity after 2nd, DR reset, clean expiry. Poison: apply, 1s DoT ticks, refresh policy (stronger value kept, duration refreshed), heal reduction active during poison, no immobilization. Bleed: apply, 1s ticks (ignores defense), stacking from multiple sources, cumulative damage, no immobilization. Slow: apply/speed reduction, 20% minimum speed floor, no damage ticks, replace policy (stronger slow wins), expiry restores speed, no immobilization. Stun: apply/immobilize, speed=0, DR 50%, immunity window, clean expiry. Entity death cleanup: clears all effects, clears DR records, no cross-entity effects. All 65 tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — StatusEffectSystem.test.ts (65 tests ✓)"
+    },
+    "VAL-FOUND-008": {
+      "status": "pass",
+      "reason": "StatusEffectSystem.test.ts covers interaction edge cases: Freeze has diminishing returns on reapplication (50% on 2nd, immune on 3rd) with DR reset after window. Multiple Poison stacks follow refresh policy (keep stronger value, refresh duration). Slow doesn't reduce speed below 20% of base (SLOW_MIN_SPEED_FACTOR). 'Monster applies effects to player' suite (3 tests) verifies fire monster applies burn to player, monster applies poison with heal reduction, and monster applies slow to player. Freeze and slow coexist with freeze taking priority (speed=0 while frozen, reverts to slow after freeze expires). Independent DR tracks for freeze and stun. All pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — StatusEffectSystem.test.ts 'Diminishing Returns' (7 tests ✓), 'Monster applies effects to player' (3 tests ✓), 'Edge cases' (13 tests ✓)"
+    },
+    "VAL-FOUND-009": {
+      "status": "pass",
+      "reason": "NumericalBalance.test.ts covers all level progression checkpoints. 'Experience curve' suite (6 tests): at levels 5/15/25/35/45, kills per level in current zone are within 10-35 range (targeting 15-25); exp curve is monotonically increasing. 'Player survivability at checkpoints' suite (5 tests): at each checkpoint level, simulated warrior can survive 3+ fights against toughest normal monster (no one-shot, hitsToKillMonster < 50, hitsToKill >= 3). 'Comprehensive checkpoint balance' suite (15 tests across 5 checkpoints): player HP adequate for zone, deals meaningful damage (<20 hits to kill weakest), exp rewards match kills-per-level target (8-40). 'Skill damage scaling' suite: for all skills with damageMultiplier > 0 across all 3 classes, level 10 does 1.5x-4.0x level 1 damage. All 74 tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — NumericalBalance.test.ts (74 tests ✓)"
+    },
+    "VAL-FOUND-010": {
+      "status": "pass",
+      "reason": "NumericalBalance.test.ts covers economy and itemization. 'Gold economy' suite (6 tests): gold drops scale with zone difficulty (each zone's avg gold > previous), weapons affordable after ~30 min farming at each checkpoint. 'Monster stat curves' suite (5 tests): HP/damage/defense/exp/gold progress smoothly across zones (no 10x jumps), elite monsters significantly stronger than normals. 'Item power scaling' suite (4 tests): weapons exist for all level tiers, weapon damage and armor defense scale with levelReq. 'Affix tiers match zone difficulty' suite (2 tests): zone 1 (lv1-7) generates tier 1-3 affixes, zone 5 (lv38+) generates tier 4-5 affixes. 'Minimum damage guarantees' suite (3 tests): damage always >=1 even with extreme defense, >=1 with max damageReduction buff, never NaN/Infinity. 'Stat growth meaningfulness' suite (3 tests): +1 STR ≈ +0.8 damage, +1 VIT = +10 HP, level 10 warrior has 2x+ HP and 1.5x+ damage vs level 1. 'Skill multiplier caps': no skill has base damageMultiplier > 3.0. All pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — NumericalBalance.test.ts 'Gold economy' (6 ✓), 'Minimum damage guarantees' (3 ✓), 'Affix tiers' (2 ✓), 'Item power scaling' (4 ✓), 'Stat growth' (3 ✓)"
+    },
+    "VAL-FOUND-011": {
+      "status": "pass",
+      "reason": "PathfindingAndMaps.test.ts covers pathfinding correctness, edge cases, and performance. 'Correctness' suite (5 tests): straight-line path, diagonal path, L-shaped wall navigation, adjacent-only steps (no teleporting), optimal path length. 'Edge Cases' suite (9 tests): start==end returns empty, unwalkable destination returns empty, out-of-bounds returns empty, negative coords returns empty, surrounded destination returns empty, diagonal wall-clipping prevention, fractional coordinate rounding, 1-wide corridor, unwalkable start. 'Performance' suite (2 tests): 100 random paths on 120×120 grid with 10% obstacles complete in <2000ms (with >50 paths found), corner-to-corner on open 120×120 in <100ms. 'Path consistency' suite (2 tests): complex maze produces correct path, deterministic output. All 18 pathfinding tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — PathfindingAndMaps.test.ts 'Correctness' (5 ✓), 'Edge Cases' (9 ✓), 'Performance' (2 ✓), 'Path consistency' (2 ✓)"
+    },
+    "VAL-FOUND-012": {
+      "status": "pass",
+      "reason": "PathfindingAndMaps.test.ts covers all zone map validation. 'Zone Maps — 120×120 Validation' suite (35 tests): all 5 zones have cols=120/rows=120, playerStart within bounds and walkable, all spawn positions within bounds on walkable tiles, all camp positions within bounds, all exit positions on border, exit target coordinates valid in destination maps, spawns cover all 4 quadrants. 'MapGenerator — 120×120 Generation' suite (11 tests): generates 120×120 tiles/collisions, border walls intact on all 4 edges, player start walkable, walkable path from start to each exit, decorations span full area, deterministic with same seed, all 5 themes generate valid grids, walkable paths between all camps and spawn areas. 'Zone Maps — Generated Map Validation' suite (4 tests): all 5 zone maps have generated 120×120 tiles, all have walkable playerStart, cross-zone exit coordinates consistent, walkable path from player start to each exit in every zone. All 50 map-related tests pass.",
+      "evidence": "evidence/foundation/cli-tests/vitest-run-output.txt — PathfindingAndMaps.test.ts 'Zone Maps — 120×120 Validation' (35 ✓), 'MapGenerator — 120×120 Generation' (11 ✓), 'Zone Maps — Generated Map Validation' (4 ✓)"
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 12 assertions: all 12 passed. 328 tests pass across 6 test files (vitest run exit 0), tsc --noEmit exit 0, npm run build exit 0 producing dist/. Coverage config covers all 5 required systems. All assertion requirements have comprehensive unit test coverage that verifies the specified behaviors."
+}

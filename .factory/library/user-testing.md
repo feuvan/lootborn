@@ -37,3 +37,37 @@ Testing surface, required tools, resource cost classification per surface.
 - Start: `npx vite --port 5173`
 - Healthcheck: `curl -sf http://localhost:5173`
 - The dev server may already be running from user's terminal
+
+## Flow Validator Guidance: Browser
+
+**Surface**: Browser at http://localhost:5173
+
+**Testing tool**: agent-browser skill (Chrome DevTools MCP)
+
+**Isolation rules**:
+- Each validator gets its own browser session via `--session` flag
+- Session naming: `<workerSessionPrefix>__<group>` (e.g., `86077514a2eb__visual`)
+- All validators share the single Vite dev server on port 5173
+- Game state is per-browser-tab (IndexedDB is per-origin, so validators using same origin share storage)
+- To avoid storage conflicts: each validator should start a new game rather than relying on saves
+- Close browser sessions after testing
+
+**Interaction approach**:
+1. Navigate to http://localhost:5173
+2. Wait for game load (look for menu/title screen)
+3. Start new game by clicking appropriate menu buttons (coordinate-based clicks on canvas)
+4. Use keyboard shortcuts for interaction: WASD (move), 1-6 (skills), I/K/M/H/C/J/O (panels), TAB (auto-combat)
+5. Take screenshots for visual evidence
+6. Use `evaluate_script` to query internal game state when possible
+
+**Key constraints**:
+- Canvas is opaque to accessibility tree — you must use screenshots + coordinate clicks
+- Phaser game runs at 1280×720 resolution
+- Class selection is on the menu screen before gameplay starts
+- Game auto-generates procedural sprites so all visuals will be present without external assets
+
+**Common patterns**:
+- To verify map rendering: start a game, move around with WASD, take screenshots at different positions
+- To verify combat: engage monsters (walk near them), observe auto-combat or use skill keys
+- To verify UI panels: press keyboard shortcut (I, K, M, etc.), screenshot the panel
+- To check positions/coordinates: use evaluate_script to read player position from game state
