@@ -54,6 +54,10 @@ export interface DungeonFloorConfig {
   monsterIds: string[];
   /** Spawn count per group. */
   spawnCountRange: [number, number];
+  /** Loot quality bonus scaling with floor depth (additive bonus to quality rolls). */
+  lootQualityBonus: number;
+  /** Magic find bonus percentage for this floor. */
+  magicFindBonus: number;
 }
 
 export interface DungeonRunState {
@@ -116,6 +120,12 @@ export class DungeonSystem {
     // Floor seed for map generation
     const floorSeed = run.seed * 31 + floorNumber * 997;
 
+    // Loot bonuses scale with floor depth
+    // Floor 1: +5 quality, +10% MF. Floor 5/10: +15 quality, +30% MF. Boss floor: extra boost.
+    const baseLootBonus = 5 + Math.floor(depthRatio * 15);
+    const lootQualityBonus = isBossFloor ? baseLootBonus + 10 : baseLootBonus;
+    const magicFindBonus = 10 + Math.floor(depthRatio * 30) + (isBossFloor ? 20 : 0);
+
     return {
       floorNumber,
       totalFloors,
@@ -127,6 +137,8 @@ export class DungeonSystem {
       hasMidBoss,
       monsterIds,
       spawnCountRange: [baseMin, baseMax],
+      lootQualityBonus,
+      magicFindBonus,
     };
   }
 
@@ -231,7 +243,7 @@ export class DungeonSystem {
       levelRange: [40 + config.floorNumber * 2, 48 + config.floorNumber * 2],
       theme: 'abyss' as MapTheme,
       seed: config.seed,
-      bgColor: '#08000a',
+      bgColor: '#12081a',
     };
 
     // Use MapGenerator to procedurally generate tiles/collisions/decorations

@@ -13,7 +13,7 @@ export const AnvilMountainsMap: MapData = {
   collisions: [],
   theme: 'mountain',
   seed: 37035,
-  bgColor: '#1a1a1a',
+  bgColor: '#222228',
   spawns: [
     // Q1 — top-left quadrant
     { col: 35, row: 15, monsterId: 'gargoyle', count: 8 },

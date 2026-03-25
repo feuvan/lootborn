@@ -24,16 +24,19 @@ export const Weapons: WeaponBase[] = [
   { id: 'w_assassin_blade', name: '刺客之刃', nameEn: 'Assassin Blade', description: '涂毒的弯刀', type: 'weapon', slot: 'weapon', icon: 'w_dagger', levelReq: 20, sellPrice: 140, stackable: false, maxStack: 1, baseDamage: [12, 22], attackSpeed: 600, weaponType: 'dagger', sockets: 2 },
   { id: 'w_war_bow', name: '战争之弓', nameEn: 'War Bow', description: '强力的复合弓', type: 'weapon', slot: 'weapon', icon: 'w_bow', levelReq: 20, sellPrice: 145, stackable: false, maxStack: 1, baseDamage: [14, 24], attackSpeed: 1100, weaponType: 'bow', sockets: 2 },
   { id: 'w_elder_staff', name: '长老法杖', nameEn: 'Elder Staff', description: '蕴含强大魔力', type: 'weapon', slot: 'weapon', icon: 'w_staff', levelReq: 20, sellPrice: 155, stackable: false, maxStack: 1, baseDamage: [16, 28], attackSpeed: 1300, weaponType: 'staff', sockets: 2 },
+  { id: 'w_kite_shield', name: '鸢盾', nameEn: 'Kite Shield', description: '轻便而坚固的盾牌', type: 'weapon', slot: 'offhand', icon: 'w_shield', levelReq: 20, sellPrice: 130, stackable: false, maxStack: 1, baseDamage: [0, 0], attackSpeed: 0, weaponType: 'shield', sockets: 1 },
   // High-tier weapons (lv 28)
   { id: 'w_flamberge', name: '烈焰巨剑', nameEn: 'Flamberge', description: '波浪刃的大型剑', type: 'weapon', slot: 'weapon', icon: 'w_sword', levelReq: 28, sellPrice: 250, stackable: false, maxStack: 1, baseDamage: [25, 42], attackSpeed: 1300, weaponType: 'sword', sockets: 2 },
   { id: 'w_shadow_blade', name: '暗影之刃', nameEn: 'Shadow Blade', description: '隐匿于黑暗的刀刃', type: 'weapon', slot: 'weapon', icon: 'w_dagger', levelReq: 28, sellPrice: 240, stackable: false, maxStack: 1, baseDamage: [16, 30], attackSpeed: 550, weaponType: 'dagger', sockets: 2 },
   { id: 'w_eagle_bow', name: '苍鹰之弓', nameEn: 'Eagle Bow', description: '精准如鹰的利器', type: 'weapon', slot: 'weapon', icon: 'w_bow', levelReq: 28, sellPrice: 245, stackable: false, maxStack: 1, baseDamage: [20, 35], attackSpeed: 1050, weaponType: 'bow', sockets: 2 },
   { id: 'w_lich_staff', name: '巫妖法杖', nameEn: 'Lich Staff', description: '亡灵之力凝聚', type: 'weapon', slot: 'weapon', icon: 'w_staff', levelReq: 28, sellPrice: 255, stackable: false, maxStack: 1, baseDamage: [22, 38], attackSpeed: 1250, weaponType: 'staff', sockets: 2 },
+  { id: 'w_runic_shield', name: '符文盾', nameEn: 'Runic Shield', description: '刻满符文的防御盾', type: 'weapon', slot: 'offhand', icon: 'w_shield', levelReq: 28, sellPrice: 220, stackable: false, maxStack: 1, baseDamage: [0, 0], attackSpeed: 0, weaponType: 'shield', sockets: 2 },
   // Top-tier weapons (lv 35)
   { id: 'w_demon_blade', name: '恶魔之刃', nameEn: 'Demon Blade', description: '散发着黑暗气息', type: 'weapon', slot: 'weapon', icon: 'w_sword', levelReq: 35, sellPrice: 350, stackable: false, maxStack: 1, baseDamage: [32, 52], attackSpeed: 1200, weaponType: 'sword', sockets: 3 },
   { id: 'w_abyssal_staff', name: '深渊法杖', nameEn: 'Abyssal Staff', description: '深渊之力凝聚', type: 'weapon', slot: 'weapon', icon: 'w_staff', levelReq: 35, sellPrice: 360, stackable: false, maxStack: 1, baseDamage: [28, 46], attackSpeed: 1300, weaponType: 'staff', sockets: 3 },
   { id: 'w_abyssal_bow', name: '深渊之弓', nameEn: 'Abyssal Bow', description: '深渊能量注入的弓', type: 'weapon', slot: 'weapon', icon: 'w_bow', levelReq: 35, sellPrice: 355, stackable: false, maxStack: 1, baseDamage: [26, 44], attackSpeed: 1000, weaponType: 'bow', sockets: 3 },
   { id: 'w_abyssal_dagger', name: '深渊匕首', nameEn: 'Abyssal Dagger', description: '黑暗的刺杀利器', type: 'weapon', slot: 'weapon', icon: 'w_dagger', levelReq: 35, sellPrice: 345, stackable: false, maxStack: 1, baseDamage: [22, 38], attackSpeed: 500, weaponType: 'dagger', sockets: 3 },
+  { id: 'w_abyssal_shield', name: '深渊之盾', nameEn: 'Abyssal Shield', description: '深渊能量铸造的盾牌', type: 'weapon', slot: 'offhand', icon: 'w_shield', levelReq: 35, sellPrice: 340, stackable: false, maxStack: 1, baseDamage: [0, 0], attackSpeed: 0, weaponType: 'shield', sockets: 2 },
 ];
 
 export const Armors: ArmorBase[] = [

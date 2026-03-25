@@ -1,8 +1,8 @@
 import { randomInt, randomFloat, chance } from '../utils/MathUtils';
 import { Weapons, Armors, Accessories, Consumables, Gems, getItemBase } from '../data/items/bases';
 import { Prefixes, Suffixes } from '../data/items/affixes';
-import { LegendaryItems, SetDefinitions } from '../data/items/sets';
-import { DUNGEON_EXCLUSIVE_LEGENDARIES, DUNGEON_EXCLUSIVE_SETS } from '../data/dungeonData';
+import { LegendaryItems, SetDefinitions, SetPieceBases } from '../data/items/sets';
+import { DUNGEON_EXCLUSIVE_LEGENDARIES, DUNGEON_EXCLUSIVE_SETS, DUNGEON_SET_PIECE_BASES } from '../data/dungeonData';
 import type { ItemInstance, ItemQuality, ItemAffix, AffixDefinition, MonsterDefinition, WeaponBase, ArmorBase } from '../data/types';
 
 let uidCounter = 0;
@@ -123,6 +123,11 @@ export class LootSystem {
   }
 
   generateEquipment(level: number, quality: ItemQuality): ItemInstance | null {
+    // For set quality, directly pick a random set piece to avoid the base-matching problem
+    if (quality === 'set') {
+      return this.generateSetPiece(level);
+    }
+
     // Pick a random base appropriate for the level
     const allEquip = [...Weapons, ...Armors, ...Accessories]
       .filter(b => b.levelReq <= level + 3 && b.levelReq >= Math.max(1, level - 10));
@@ -130,6 +135,51 @@ export class LootSystem {
 
     const base = allEquip[randomInt(0, allEquip.length - 1)];
     return this.createItem(base.id, level, quality);
+  }
+
+  private generateSetPiece(level: number): ItemInstance | null {
+    const allSets = [...SetDefinitions, ...DUNGEON_EXCLUSIVE_SETS];
+    const allPieceBases = { ...SetPieceBases, ...DUNGEON_SET_PIECE_BASES };
+
+    // Collect all valid set pieces (level-appropriate)
+    const candidates: { pieceId: string; baseId: string; setDef: typeof allSets[number] }[] = [];
+    for (const setDef of allSets) {
+      for (const pieceId of setDef.pieces) {
+        const baseId = allPieceBases[pieceId];
+        if (!baseId) continue;
+        const base = getItemBase(baseId);
+        if (!base) continue;
+        if (base.levelReq <= level + 5 && base.levelReq >= Math.max(1, level - 15)) {
+          candidates.push({ pieceId, baseId, setDef });
+        }
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    const pick = candidates[randomInt(0, candidates.length - 1)];
+    const base = getItemBase(pick.baseId);
+    if (!base) return null;
+
+    const item: ItemInstance = {
+      uid: genUid(),
+      baseId: pick.baseId,
+      name: `${pick.setDef.name} ${base.name}`,
+      quality: 'set',
+      level,
+      affixes: [],
+      sockets: [],
+      identified: true,
+      quantity: 1,
+      stats: {},
+      setId: pick.setDef.id,
+    };
+
+    const pieceAffixes = pick.setDef.pieceAffixes?.[pick.pieceId];
+    if (pieceAffixes) {
+      item.affixes = [...pieceAffixes];
+    }
+    this.computeStats(item);
+    return item;
   }
 
   createItem(baseId: string, level: number, quality: ItemQuality): ItemInstance | null {
@@ -227,7 +277,12 @@ export class LootSystem {
     const legendaryDef = allLegendaries.find(l => l.baseId === baseId);
     if (legendaryDef) {
       item.name = legendaryDef.name;
-      item.affixes = [...legendaryDef.fixedAffixes];
+      // Scale legendary affix values by item level (base values defined for ~lv30-40)
+      const levelScale = Math.max(0.6, Math.min(1.5, item.level / 35));
+      item.affixes = legendaryDef.fixedAffixes.map(a => ({
+        ...a,
+        value: Math.round(a.value * levelScale),
+      }));
       item.legendaryEffect = legendaryDef.specialEffectDescription;
       item.identified = true;
     } else {

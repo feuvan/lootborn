@@ -13,7 +13,7 @@ export const TwilightForestMap: MapData = {
   collisions: [],
   theme: 'forest',
   seed: 24690,
-  bgColor: '#0d1117',
+  bgColor: '#141a22',
   spawns: [
     // Q1 — top-left quadrant
     { col: 25, row: 15, monsterId: 'skeleton', count: 8 },

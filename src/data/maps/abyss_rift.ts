@@ -13,7 +13,7 @@ export const AbyssRiftMap: MapData = {
   collisions: [],
   theme: 'abyss',
   seed: 61725,
-  bgColor: '#0a0005',
+  bgColor: '#1a0a12',
   spawns: [
     // Q1 — top-left quadrant
     { col: 35, row: 15, monsterId: 'imp', count: 10 },

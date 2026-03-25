@@ -373,6 +373,14 @@ export class ZoneScene extends Phaser.Scene {
     // VFX Manager — camera effects, FX pipeline, combat juice
     this.vfx = new VFXManager(this);
 
+    // Player ambient light — subtle glow under player for visibility on dark maps
+    if (this.renderer.type === Phaser.WEBGL) {
+      const playerSprite = this.player.sprite.list[0] as Phaser.GameObjects.Sprite;
+      if (playerSprite?.preFX) {
+        playerSprite.preFX.addGlow(0xccddff, 3, 0, false, 0.08);
+      }
+    }
+
     // Weather system — per-zone weather + environmental ambience
     this.weather = new WeatherSystem(this);
     this.weather.setZone(this.currentMapId);
@@ -522,7 +530,17 @@ export class ZoneScene extends Phaser.Scene {
 
     const exit = this.findExitAt(tile.col, tile.row);
     if (exit) {
-      this.changeZone(exit.targetMap, exit.targetCol, exit.targetRow);
+      if (this.isInDungeon) {
+        if (this.dungeonFloorConfig?.isBossFloor) {
+          this.exitDungeon();
+        } else {
+          this.advanceDungeonFloor();
+        }
+      } else if (this.isInSubDungeon) {
+        this.exitSubDungeon();
+      } else {
+        this.changeZone(exit.targetMap, exit.targetCol, exit.targetRow);
+      }
       return;
     }
 
@@ -541,6 +559,7 @@ export class ZoneScene extends Phaser.Scene {
   private handlePlayerDied(): void {
     // Clear status effects on player death
     this.statusEffects.clearEntity('player');
+    this.isPortaling = false;
 
     if (this.vfx) {
       this.vfx.cameraFlash(80, 0.6, 0xffffff);
@@ -558,9 +577,54 @@ export class ZoneScene extends Phaser.Scene {
       this.tweens.add({
         targets: deathText, alpha: 0, duration: 250, onComplete: () => deathText.destroy(),
       });
-      const camp = this.campPositions[0];
-      this.player.respawnAtCamp(camp.col, camp.row);
-      this.cameras.main.fadeIn(300);
+
+      if (this.isInDungeon || this.isInSubDungeon) {
+        // Dying in a dungeon/sub-dungeon: exit back to parent zone's campfire
+        const parentMapId = this.isInDungeon ? 'abyss_rift' : this.parentZoneInfo?.mapId ?? 'emerald_plains';
+        const parentMap = AllMaps[parentMapId];
+        const parentCamp = parentMap?.camps[0];
+        const respawnCol = parentCamp?.col ?? parentMap?.playerStart?.col ?? 3;
+        const respawnRow = parentCamp?.row ?? parentMap?.playerStart?.row ?? 3;
+
+        if (this.isInDungeon) {
+          this.dungeonRunState = null;
+          this.dungeonFloorConfig = null;
+          this.isInDungeon = false;
+          EventBus.emit(GameEvents.DUNGEON_EXIT, {});
+        } else {
+          EventBus.emit(GameEvents.SUBDUNGEON_EXIT, { mapId: parentMapId });
+        }
+
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已死亡，返回营地复活...', type: 'system' });
+        this.isTransitioning = true;
+        this.scene.restart({
+          classId: this.player.classData.id,
+          mapId: parentMapId,
+          targetCol: respawnCol,
+          targetRow: respawnRow,
+          miniBossDialogueSeen: [...this.miniBossDialogueSeen],
+          loreCollected: [...this.loreCollected],
+          discoveredHiddenAreas: [...this.discoveredHiddenAreas],
+          playerStats: {
+            level: this.player.level,
+            exp: this.player.exp,
+            gold: this.player.gold,
+            hp: this.player.maxHp,
+            mana: this.player.maxMana,
+            stats: { ...this.player.stats },
+            freeStatPoints: this.player.freeStatPoints,
+            freeSkillPoints: this.player.freeSkillPoints,
+            skillLevels: Object.fromEntries(this.player.skillLevels),
+            buffs: [...this.player.buffs],
+            autoCombat: this.player.autoCombat,
+            autoLootMode: this.player.autoLootMode,
+          },
+        });
+      } else {
+        const camp = this.campPositions[0];
+        this.player.respawnAtCamp(camp.col, camp.row);
+        this.cameras.main.fadeIn(300);
+      }
     });
   }
 
@@ -2456,11 +2520,13 @@ export class ZoneScene extends Phaser.Scene {
       }
     }
 
-    const luckBonus = this.player.stats.lck + (homeBonus['magicFind'] ?? 0);
-    // Elite affix loot quality bonus
-    const affixLootBonus = monster.eliteAffixes.length > 0
+    const luckBonus = this.player.stats.lck + (homeBonus['magicFind'] ?? 0)
+      + (this.isInDungeon && this.dungeonFloorConfig ? this.dungeonFloorConfig.magicFindBonus : 0);
+    // Elite affix loot quality bonus + dungeon floor depth bonus
+    const dungeonLootBonus = this.isInDungeon && this.dungeonFloorConfig ? this.dungeonFloorConfig.lootQualityBonus : 0;
+    const affixLootBonus = (monster.eliteAffixes.length > 0
       ? this.eliteAffixSystem.getCombinedStats(monster.eliteAffixes).lootQualityBonus
-      : 0;
+      : 0) + dungeonLootBonus;
     const loot = this.lootSystem.generateLoot(monster.definition, luckBonus, affixLootBonus);
     const potionAmounts: Record<string, { type: 'hp' | 'mp'; amount: number }> = {
       c_hp_potion_s: { type: 'hp', amount: 50 },
@@ -4366,14 +4432,38 @@ export class ZoneScene extends Phaser.Scene {
 
   private useTownPortal(): void {
     if (this.player.hp <= 0 || this.isPortaling || this.isTransitioning) return;
-    const camp = this.campPositions[0];
-    if (!camp) return;
 
-    // Check if player is already inside the main camp safe zone
-    const safeRadius = this.mapData.safeZoneRadius ?? 9;
-    if (euclideanDistance(this.player.tileCol, this.player.tileRow, camp.col, camp.row) < safeRadius) {
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已在营地中，无法使用传送门。', type: 'system' });
-      return;
+    // Determine portal destination based on context
+    let destCol: number;
+    let destRow: number;
+    let arrivalMsg: string;
+
+    if (this.isInSubDungeon || this.isInDungeon) {
+      // In a sub-dungeon or random dungeon: teleport to the exit tile
+      const exit = this.mapData.exits[0];
+      if (!exit) return;
+      destCol = exit.col;
+      destRow = exit.row;
+      arrivalMsg = this.isInSubDungeon ? '已传送至副本入口。' : '已传送至楼层出口。';
+
+      // Already near exit?
+      if (euclideanDistance(this.player.tileCol, this.player.tileRow, destCol, destRow) < 3) {
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已在出口附近。', type: 'system' });
+        return;
+      }
+    } else {
+      const camp = this.campPositions[0];
+      if (!camp) return;
+      destCol = camp.col;
+      destRow = camp.row;
+      arrivalMsg = '已传送回营地。';
+
+      // Already near camp?
+      const safeRadius = this.mapData.safeZoneRadius ?? 9;
+      if (euclideanDistance(this.player.tileCol, this.player.tileRow, destCol, destRow) < safeRadius) {
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已在营地中，无法使用传送门。', type: 'system' });
+        return;
+      }
     }
 
     this.isPortaling = true;
@@ -4389,36 +4479,40 @@ export class ZoneScene extends Phaser.Scene {
     const ring = this.add.circle(px, py, 4, 0x4488ff, 0).setDepth(900);
     const ring2 = this.add.circle(px, py, 4, 0x66aaff, 0).setDepth(900);
     const glow = this.add.circle(px, py, 2, 0x2266cc, 0).setDepth(899);
+    const portalFx = [ring, ring2, glow];
 
-    this.tweens.add({
+    const t1 = this.tweens.add({
       targets: ring, radius: 28, alpha: 0.7, duration: 1200, ease: 'Sine.easeOut',
     });
-    this.tweens.add({
+    const t2 = this.tweens.add({
       targets: ring2, radius: 20, alpha: 0.5, duration: 1200, ease: 'Sine.easeOut', delay: 200,
     });
-    this.tweens.add({
+    const t3 = this.tweens.add({
       targets: glow, radius: 30, alpha: 0.3, duration: 1200, ease: 'Sine.easeOut',
     });
+    const portalTweens = [t1, t2, t3];
 
     // Player flicker during cast
-    this.tweens.add({
+    const flickerTween = this.tweens.add({
       targets: this.player.sprite, alpha: 0.5, duration: 200, yoyo: true, repeat: 3,
     });
 
     this.time.delayedCall(1500, () => {
+      // Stop all portal tweens before destroying their targets
+      for (const tw of portalTweens) tw.stop();
+      flickerTween.stop();
+
       // Flash & teleport
       if (this.vfx) this.vfx.cameraFlash(200, 0.5, 0x4488ff);
       audioManager.playSFX('zone_transition');
 
-      ring.destroy();
-      ring2.destroy();
-      glow.destroy();
+      for (const fx of portalFx) if (fx.active) fx.destroy();
 
-      this.player.moveTo(camp.col, camp.row);
+      this.player.moveTo(destCol, destRow);
       this.player.sprite.setAlpha(1);
       this.isPortaling = false;
 
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '已传送回营地。', type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: arrivalMsg, type: 'system' });
     });
   }
 

@@ -25,7 +25,7 @@ export const subDungeonDwarfMine: SubDungeonMapData = {
   playerStart: { col: 5, row: 5 },
   exit: { col: 5, row: 3, returnCol: 35, returnRow: 92 },
   levelRange: [20, 27],
-  bgColor: '#0d0d0d',
+  bgColor: '#161616',
 };
 
 // ─── Sub-Dungeon 2: Demon Altar Cavern (Abyss Rift) ───────────────────
@@ -47,7 +47,7 @@ export const subDungeonDemonAltar: SubDungeonMapData = {
   playerStart: { col: 5, row: 5 },
   exit: { col: 5, row: 3, returnCol: 90, returnRow: 40 },
   levelRange: [40, 48],
-  bgColor: '#0a0005',
+  bgColor: '#140810',
 };
 
 /** Sub-dungeon mini-boss definitions. */

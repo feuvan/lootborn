@@ -12,6 +12,8 @@ export class InventorySystem {
   inventory: ItemInstance[] = [];
   equipment: Partial<Record<EquipSlot, ItemInstance>> = {};
   stash: ItemInstance[] = [];
+  buybackItems: { item: ItemInstance; buybackPrice: number }[] = [];
+  private static readonly MAX_BUYBACK = 5;
 
   addItem(item: ItemInstance): boolean {
     // Try to stack with existing
@@ -112,8 +114,27 @@ export class InventorySystem {
 
     const base = getItemBase(item.baseId);
     const price = base ? base.sellPrice * item.quantity : 1;
+
+    const soldCopy = { ...item, sockets: [...item.sockets], affixes: [...item.affixes], stats: { ...item.stats } };
+    this.buybackItems.push({ item: soldCopy, buybackPrice: price * 5 });
+    if (this.buybackItems.length > InventorySystem.MAX_BUYBACK) {
+      this.buybackItems.shift();
+    }
+
     this.removeItem(uid, item.quantity);
     return price;
+  }
+
+  buybackItem(index: number): { item: ItemInstance; cost: number } | null {
+    if (index < 0 || index >= this.buybackItems.length) return null;
+    const entry = this.buybackItems[index];
+    if (this.inventory.length >= MAX_INVENTORY) {
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '背包已满!', type: 'system' });
+      return null;
+    }
+    this.buybackItems.splice(index, 1);
+    this.inventory.push(entry.item);
+    return { item: entry.item, cost: entry.buybackPrice };
   }
 
   getEquipmentStats(): Record<string, number> {

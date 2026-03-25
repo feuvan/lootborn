@@ -21,6 +21,17 @@ import { ImpDrawer } from './sprites/monsters/Imp';
 import { LesserDemonDrawer } from './sprites/monsters/LesserDemon';
 import { SuccubusDrawer } from './sprites/monsters/Succubus';
 import { DemonLordDrawer } from './sprites/monsters/DemonLord';
+import { DungeonShadeDrawer } from './sprites/monsters/DungeonShade';
+import { DungeonFiendDrawer } from './sprites/monsters/DungeonFiend';
+import { DungeonBossDrawer } from './sprites/monsters/DungeonBoss';
+import { DungeonMidBossDrawer } from './sprites/monsters/DungeonMidBoss';
+import { GoblinShamanDrawer } from './sprites/monsters/GoblinShaman';
+import { ShadowWeaverDrawer } from './sprites/monsters/ShadowWeaver';
+import { IronGuardianDrawer } from './sprites/monsters/IronGuardian';
+import { SandWraithDrawer } from './sprites/monsters/SandWraith';
+import { VoidHeraldDrawer } from './sprites/monsters/VoidHerald';
+import { SubMineGuardianDrawer } from './sprites/monsters/SubMineGuardian';
+import { SubAltarKeeperDrawer } from './sprites/monsters/SubAltarKeeper';
 import { PlayerWarriorDrawer } from './sprites/players/PlayerWarrior';
 import { PlayerMageDrawer } from './sprites/players/PlayerMage';
 import { PlayerRogueDrawer } from './sprites/players/PlayerRogue';
@@ -44,6 +55,16 @@ import { CactusDrawer } from './sprites/decorations/Cactus';
 import { BoulderDrawer } from './sprites/decorations/Boulder';
 import { CrystalDrawer } from './sprites/decorations/Crystal';
 import { BonesDrawer } from './sprites/decorations/Bones';
+import { RuinsDrawer } from './sprites/decorations/Ruins';
+import { SkeletalRemainsDrawer } from './sprites/decorations/SkeletalRemains';
+import { AncientStatueDrawer } from './sprites/decorations/AncientStatue';
+import { BrokenAltarDrawer } from './sprites/decorations/BrokenAltar';
+import { WarBannerDrawer } from './sprites/decorations/WarBanner';
+import { CharredTreeDrawer } from './sprites/decorations/CharredTree';
+import { CollapsedPillarDrawer } from './sprites/decorations/CollapsedPillar';
+import { RitualCircleDrawer } from './sprites/decorations/RitualCircle';
+import { FrozenCorpseDrawer } from './sprites/decorations/FrozenCorpse';
+import { SandBuriedStructureDrawer } from './sprites/decorations/SandBuriedStructure';
 import { LootBagDrawer } from './sprites/effects/LootBag';
 import { ExitPortalDrawer } from './sprites/effects/ExitPortal';
 
@@ -87,6 +108,17 @@ const MONSTER_DRAWERS: EntityDrawer[] = [
   LesserDemonDrawer,
   SuccubusDrawer,
   DemonLordDrawer,
+  DungeonShadeDrawer,
+  DungeonFiendDrawer,
+  DungeonBossDrawer,
+  DungeonMidBossDrawer,
+  GoblinShamanDrawer,
+  ShadowWeaverDrawer,
+  IronGuardianDrawer,
+  SandWraithDrawer,
+  VoidHeraldDrawer,
+  SubMineGuardianDrawer,
+  SubAltarKeeperDrawer,
 ];
 
 const NPC_DRAWERS: EntityDrawer[] = [
@@ -127,6 +159,16 @@ const DECOR_DRAWERS: EntityDrawer[] = [
   BoulderDrawer,
   CrystalDrawer,
   BonesDrawer,
+  RuinsDrawer,
+  SkeletalRemainsDrawer,
+  AncientStatueDrawer,
+  BrokenAltarDrawer,
+  WarBannerDrawer,
+  CharredTreeDrawer,
+  CollapsedPillarDrawer,
+  RitualCircleDrawer,
+  FrozenCorpseDrawer,
+  SandBuriedStructureDrawer,
 ];
 
 const EFFECT_DRAWERS: EntityDrawer[] = [

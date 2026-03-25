@@ -632,6 +632,12 @@ export class UIScene extends Phaser.Scene {
   }
 
   // --- Shop Panel (Diablo-style split) ---
+  private reopenShop(data: { npcId: string; shopItems: string[]; type: string }): void {
+    this.shopPanel?.destroy(); this.shopPanel = null;
+    if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
+    this.openShop(data, true);
+  }
+
   private openShop(data: { npcId: string; shopItems: string[]; type: string }, keepPage = false): void {
     this.closeAllPanels();
     audioManager.playSFX('click');
@@ -690,14 +696,52 @@ export class UIScene extends Phaser.Scene {
             audioManager.playSFX('click');
             const item = this.zone.lootSystem.createItem(itemId, this.player.level, 'normal');
             if (item) { item.identified = true; this.zone.inventorySystem.addItem(item); }
-            this.shopPanel?.destroy(); this.shopPanel = null;
-            if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
-            this.openShop(data, true);
+            this.reopenShop(data);
           }
         });
         this.shopPanel!.add(buyBtn);
       }
     });
+
+    // --- Buyback section ---
+    const buybackItems = this.zone.inventorySystem.buybackItems;
+    if (buybackItems.length > 0) {
+      const buybackStartY = px(58) + data.shopItems.length * px(28) + px(12);
+      this.shopPanel.add(this.add.rectangle(dividerX / 2, buybackStartY - px(4), dividerX - px(28), Math.round(1 * DPR), 0x333344));
+      this.shopPanel.add(this.add.text(dividerX / 2, buybackStartY, '回购', {
+        fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
+      }).setOrigin(0.5, 0));
+      buybackItems.forEach((entry, i) => {
+        const by = buybackStartY + px(20) + i * px(24);
+        if (by > ph - px(50)) return;
+        const canAfford = this.player.gold >= entry.buybackPrice;
+        const qualColor = this.getQualityTextColor(entry.item.quality);
+        this.shopPanel!.add(this.add.text(px(14), by, entry.item.name, {
+          fontSize: fs(12), color: canAfford ? qualColor : '#555', fontFamily: FONT,
+        }));
+        this.shopPanel!.add(this.add.text(dividerX - px(60), by, `${entry.buybackPrice}G`, {
+          fontSize: fs(12), color: canAfford ? '#e8a040' : '#555', fontFamily: FONT,
+        }).setOrigin(1, 0));
+        if (canAfford) {
+          const bbBtn = this.add.text(dividerX - px(14), by, '[回购]', {
+            fontSize: fs(12), color: '#e8a040', fontFamily: FONT,
+          }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+          bbBtn.on('pointerdown', () => {
+            if (this.player.gold >= entry.buybackPrice) {
+              const result = this.zone.inventorySystem.buybackItem(i);
+              if (result) {
+                this.player.gold -= result.cost;
+                audioManager.playSFX('click');
+                EventBus.emit(GameEvents.LOG_MESSAGE, { text: `回购了 ${result.item.name}`, type: 'loot' });
+              }
+              this.reopenShop(data);
+            }
+          });
+          this.shopPanel!.add(bbBtn);
+        }
+      });
+    }
+
     this.shopPanel.add(this.add.text(px(14), ph - px(26), `金币: ${this.player.gold}G`, {
       fontSize: fs(13), color: '#f1c40f', fontFamily: FONT,
     }));
@@ -737,18 +781,25 @@ export class UIScene extends Phaser.Scene {
         this.showItemTooltip(item, pointer.x, pointer.y);
       });
       itemBg.on('pointerout', () => this.hideItemTooltip());
-      itemBg.on('pointerdown', () => {
+      itemBg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         this.hideItemTooltip();
-        const needsConfirm = item.quality === 'rare' || item.quality === 'legendary' || item.quality === 'set';
-        if (needsConfirm) {
-          this.showSellConfirm(item, data);
-        } else {
+        const isRightClick = pointer.rightButtonDown();
+        const isHighValue = item.quality === 'legendary' || item.quality === 'set';
+
+        if (isRightClick && !isHighValue) {
+          // Right-click quick-sell for rare and below
           const gold = this.zone.inventorySystem.sellItem(item.uid);
           this.player.gold += gold;
           audioManager.playSFX('click');
-          this.shopPanel?.destroy(); this.shopPanel = null;
-          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
-          this.openShop(data, true);
+          this.reopenShop(data);
+        } else if (isHighValue) {
+          this.showSellConfirm(item, data);
+        } else {
+          // Left-click on normal/magic — also sell directly
+          const gold = this.zone.inventorySystem.sellItem(item.uid);
+          this.player.gold += gold;
+          audioManager.playSFX('click');
+          this.reopenShop(data);
         }
       });
     });
@@ -762,9 +813,7 @@ export class UIScene extends Phaser.Scene {
         }).setInteractive({ useHandCursor: true });
         prevBtn.on('pointerdown', () => {
           this.shopInventoryPage--;
-          this.shopPanel?.destroy(); this.shopPanel = null;
-          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
-          this.openShop(data, true);
+          this.reopenShop(data);
         });
         this.shopPanel.add(prevBtn);
       }
@@ -777,9 +826,7 @@ export class UIScene extends Phaser.Scene {
         }).setInteractive({ useHandCursor: true });
         nextBtn.on('pointerdown', () => {
           this.shopInventoryPage++;
-          this.shopPanel?.destroy(); this.shopPanel = null;
-          if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
-          this.openShop(data, true);
+          this.reopenShop(data);
         });
         this.shopPanel.add(nextBtn);
       }
@@ -788,6 +835,11 @@ export class UIScene extends Phaser.Scene {
     // Gold on right side too
     this.shopPanel.add(this.add.text(rightX, ph - px(26), `金币: ${this.player.gold}G`, {
       fontSize: fs(13), color: '#f1c40f', fontFamily: FONT,
+    }));
+
+    // Hint for right-click selling
+    this.shopPanel.add(this.add.text(rightX, ph - px(12), '右键快速卖出', {
+      fontSize: fs(10), color: '#555566', fontFamily: FONT,
     }));
   }
 
@@ -810,9 +862,7 @@ export class UIScene extends Phaser.Scene {
       this.player.gold += gold;
       audioManager.playSFX('click');
       this.hideContextPopup();
-      this.shopPanel?.destroy(); this.shopPanel = null;
-      if (this.dialogueBackdrop) { this.dialogueBackdrop.destroy(); this.dialogueBackdrop = null; }
-      this.openShop(shopData, true);
+      this.reopenShop(shopData);
     });
     this.contextPopup.add(yesBtn);
     const noBtn = this.add.text(popW / 2 + px(30), px(38), '[取消]', {
@@ -1473,7 +1523,7 @@ export class UIScene extends Phaser.Scene {
   private toggleCharacter(): void {
     if (this.charPanel) { this.charPanel.destroy(); this.charPanel = null; return; }
     this.closeAllPanels();
-    const pw = px(320), ph = px(380), panelX = (W - pw) / 2, panelY = px(30);
+    const pw = px(320), ph = px(440), panelX = (W - pw) / 2, panelY = px(20);
     this.charPanel = this.add.container(panelX, panelY).setDepth(PANEL_STYLE.depth.panel);
     this.animatePanelOpen(this.charPanel);
     this.charPanel.add(this.createPanelBg(pw, ph));
@@ -1492,23 +1542,24 @@ export class UIScene extends Phaser.Scene {
       ['幸运 LCK', 'lck', '掉宝率/暴击倍率'],
     ];
     const eqStatsRaw = this.zone.inventorySystem.getEquipmentStats();
+    const statRowH = px(36);
     statKeys.forEach(([label, key, desc], i) => {
-      const sy = px(50) + i * px(40);
+      const sy = px(50) + i * statRowH;
       const base = this.player.stats[key];
       const bonus = eqStatsRaw[key] ?? 0;
       this.charPanel!.add(this.add.text(px(14), sy, label, {
-        fontSize: fs(14), color: '#e0d8cc', fontFamily: FONT,
+        fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT,
       }));
       const valStr = bonus > 0 ? `${base} (+${bonus})` : `${base}`;
       this.charPanel!.add(this.add.text(px(140), sy, valStr, {
-        fontSize: fs(14), color: bonus > 0 ? '#8be9fd' : '#fff', fontFamily: FONT, fontStyle: 'bold',
+        fontSize: fs(13), color: bonus > 0 ? '#8be9fd' : '#fff', fontFamily: FONT, fontStyle: 'bold',
       }));
-      this.charPanel!.add(this.add.text(px(14), sy + px(16), desc, {
-        fontSize: fs(11), color: '#666', fontFamily: FONT,
+      this.charPanel!.add(this.add.text(px(14), sy + px(15), desc, {
+        fontSize: fs(10), color: '#666', fontFamily: FONT,
       }));
       if (this.player.freeStatPoints > 0) {
-        const plusBtn = this.add.text(px(170), sy, '[+]', {
-          fontSize: fs(14), color: '#27ae60', fontFamily: FONT,
+        const plusBtn = this.add.text(pw - px(40), sy, '[+]', {
+          fontSize: fs(13), color: '#27ae60', fontFamily: FONT,
         }).setInteractive({ useHandCursor: true });
         plusBtn.on('pointerdown', () => {
           if (this.player.freeStatPoints > 0) {
@@ -1522,7 +1573,11 @@ export class UIScene extends Phaser.Scene {
       }
     });
 
-    const dy = px(50) + statKeys.length * px(40) + px(8);
+    const dividerY = px(50) + statKeys.length * statRowH + px(2);
+    const divider = this.add.rectangle(pw / 2, dividerY, pw - px(28), Math.round(1 * DPR), 0x333344);
+    this.charPanel.add(divider);
+
+    const dy = dividerY + px(8);
     const eqStats = this.zone.inventorySystem.getEquipmentStats();
     const effectiveDex = this.player.stats.dex + (eqStats['dex'] ?? 0);
     const effectiveLck = this.player.stats.lck + (eqStats['lck'] ?? 0);
@@ -1536,8 +1591,8 @@ export class UIScene extends Phaser.Scene {
       `金币: ${this.player.gold}G`,
     ];
     derived.forEach((line, i) => {
-      this.charPanel!.add(this.add.text(px(14), dy + i * px(16), line, {
-        fontSize: fs(12), color: '#888', fontFamily: FONT,
+      this.charPanel!.add(this.add.text(px(14), dy + i * px(18), line, {
+        fontSize: fs(12), color: '#aaa', fontFamily: FONT,
       }));
     });
   }
@@ -2231,10 +2286,13 @@ export class UIScene extends Phaser.Scene {
           const meetsPrereqs = choice.prereqQuests.every(qid => completedQuests.includes(qid));
           if (!meetsPrereqs) continue;
         }
-        // Don't show choices that trigger already-accepted or turned-in quests
+        // Hide choices only when quest is already handled AND the target is a dead-end
         if (choice.questTrigger && questSystem) {
           const prog = questSystem.progress.get(choice.questTrigger);
-          if (prog && (prog.status === 'active' || prog.status === 'turned_in')) continue;
+          if (prog && (prog.status === 'active' || prog.status === 'turned_in')) {
+            const targetNode = tree.nodes[choice.nextNodeId];
+            if (targetNode && targetNode.isEnd) continue;
+          }
         }
         visibleChoices.push(choice);
       }
@@ -2253,8 +2311,11 @@ export class UIScene extends Phaser.Scene {
     const btnH = px(30);
     const btnGap = px(6);
     const choicesToShow = visibleChoices.length > 0 ? visibleChoices : [];
-    const hasEndBtn = node.isEnd || (choicesToShow.length === 0 && !node.nextNodeId);
-    const numBtns = choicesToShow.length + (hasEndBtn ? 1 : 0) + (node.nextNodeId && !node.isEnd && choicesToShow.length === 0 ? 1 : 0);
+    // When all choices were filtered out on a non-root branching node, offer a "go back" button
+    const allChoicesFiltered = node.choices && node.choices.length > 0 && choicesToShow.length === 0 && !node.isEnd;
+    const showBackToRoot = allChoicesFiltered && node.id !== tree.startNodeId;
+    const hasEndBtn = node.isEnd || (choicesToShow.length === 0 && !node.nextNodeId && !showBackToRoot);
+    const numBtns = choicesToShow.length + (hasEndBtn ? 1 : 0) + (showBackToRoot ? 1 : 0) + (node.nextNodeId && !node.isEnd && choicesToShow.length === 0 && !showBackToRoot ? 1 : 0);
     const btnAreaH = numBtns * (btnH + btnGap) + px(10);
 
     // Calculate panel height
@@ -2344,11 +2405,25 @@ export class UIScene extends Phaser.Scene {
     // Render visible choices
     for (const choice of choicesToShow) {
       const by = btnStartY + btnIdx * (btnH + btnGap);
-      const btnBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a2a1a)
-        .setStrokeStyle(Math.round(1 * DPR), 0x27ae60).setInteractive({ useHandCursor: true });
 
-      const btnText = this.add.text(pw / 2, by + btnH / 2, choice.text, {
-        fontSize: fs(13), color: '#27ae60', fontFamily: FONT,
+      // Dim choices whose quest is already active (navigation-only)
+      let questAlreadyActive = false;
+      if (choice.questTrigger && questSystem) {
+        const prog = questSystem.progress.get(choice.questTrigger);
+        if (prog && (prog.status === 'active' || prog.status === 'turned_in')) questAlreadyActive = true;
+      }
+      const btnColor = questAlreadyActive ? 0x1a1a2a : 0x1a2a1a;
+      const btnStroke = questAlreadyActive ? 0x556688 : 0x27ae60;
+      const textColor = questAlreadyActive ? '#556688' : '#27ae60';
+      const hoverBg = questAlreadyActive ? 0x222233 : 0x224422;
+      const hoverText = questAlreadyActive ? '#7799bb' : '#44dd44';
+      const labelText = questAlreadyActive ? `${choice.text}（进行中）` : choice.text;
+
+      const btnBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, btnColor)
+        .setStrokeStyle(Math.round(1 * DPR), btnStroke).setInteractive({ useHandCursor: true });
+
+      const btnText = this.add.text(pw / 2, by + btnH / 2, labelText, {
+        fontSize: fs(13), color: textColor, fontFamily: FONT,
       }).setOrigin(0.5);
 
       // Truncate long choice text
@@ -2357,12 +2432,12 @@ export class UIScene extends Phaser.Scene {
       }
 
       btnBg.on('pointerover', () => {
-        btnBg.setFillStyle(0x224422);
-        btnText.setColor('#44dd44');
+        btnBg.setFillStyle(hoverBg);
+        btnText.setColor(hoverText);
       });
       btnBg.on('pointerout', () => {
-        btnBg.setFillStyle(0x1a2a1a);
-        btnText.setColor('#27ae60');
+        btnBg.setFillStyle(btnColor);
+        btnText.setColor(textColor);
       });
       btnBg.on('pointerdown', () => {
         // Record choice
@@ -2413,7 +2488,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Auto-continue button (for nodes with nextNodeId but no choices)
-    if (node.nextNodeId && !node.isEnd && choicesToShow.length === 0) {
+    if (node.nextNodeId && !node.isEnd && choicesToShow.length === 0 && !showBackToRoot) {
       const by = btnStartY + btnIdx * (btnH + btnGap);
       const continueBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a2e)
         .setStrokeStyle(Math.round(1 * DPR), 0x5dade2).setInteractive({ useHandCursor: true });
@@ -2432,6 +2507,25 @@ export class UIScene extends Phaser.Scene {
       });
       this.dialoguePanel!.add(continueBg);
       this.dialoguePanel!.add(continueText);
+      btnIdx++;
+    }
+
+    // Back-to-root button when all choices filtered on a non-root node
+    if (showBackToRoot) {
+      const by = btnStartY + btnIdx * (btnH + btnGap);
+      const backBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a2e)
+        .setStrokeStyle(Math.round(1 * DPR), 0xc0934a).setInteractive({ useHandCursor: true });
+      const backText = this.add.text(pw / 2, by + btnH / 2, '← 返回', {
+        fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
+      }).setOrigin(0.5);
+      backBg.on('pointerover', () => { backBg.setFillStyle(0x2a2a1a); backText.setColor('#ddbb66'); });
+      backBg.on('pointerout', () => { backBg.setFillStyle(0x1a1a2e); backText.setColor('#c0934a'); });
+      backBg.on('pointerdown', () => {
+        const rootNode = tree.nodes[tree.startNodeId];
+        this.renderDialogueTreeNode(tree, rootNode, npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state);
+      });
+      this.dialoguePanel!.add(backBg);
+      this.dialoguePanel!.add(backText);
       btnIdx++;
     }
 
@@ -4383,6 +4477,16 @@ export class UIScene extends Phaser.Scene {
       case 'legendary': return 0xd35400;
       case 'set': return 0x1e8449;
       default: return 0x222233;
+    }
+  }
+
+  private getQualityTextColor(quality: string): string {
+    switch (quality) {
+      case 'magic': return '#5dade2';
+      case 'rare': return '#f1c40f';
+      case 'legendary': return '#e67e22';
+      case 'set': return '#2ecc71';
+      default: return '#e0d8cc';
     }
   }
 

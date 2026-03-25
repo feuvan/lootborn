@@ -65,8 +65,8 @@ export class FogOfWarSystem {
           } else {
             // Explored but out of view: semi-transparent with gradient near edge
             const edgeFade = dist < this.viewRadius + edgeBand
-              ? 0.25 + (dist - this.viewRadius) / edgeBand * 0.2
-              : 0.45;
+              ? 0.18 + (dist - this.viewRadius) / edgeBand * 0.15
+              : 0.35;
             this.fogLayer.fillStyle(0x000000, edgeFade);
             this.drawIsoTile(pos.x, pos.y);
           }

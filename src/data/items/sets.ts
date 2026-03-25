@@ -1,6 +1,37 @@
 import type { SetDefinition, LegendaryDefinition } from '../types';
 
 /**
+ * Mapping from set piece ID → base item ID.
+ * Each set piece inherits its base stats from a real equipment item.
+ */
+export const SetPieceBases: Record<string, string> = {
+  // Iron Guardian (Warrior)
+  set_iron_helm: 'a_plate_helm',
+  set_iron_armor: 'a_plate_armor',
+  set_iron_shield: 'w_tower_shield',
+  set_iron_belt: 'a_war_belt',
+  // Shadow Assassin (Rogue)
+  set_shadow_helm: 'a_full_helm',
+  set_shadow_armor: 'a_chain_mail',
+  set_shadow_gloves: 'a_chain_gloves',
+  set_shadow_boots: 'a_chain_boots',
+  // Archmage (Mage)
+  set_archmage_hat: 'a_demon_helm',
+  set_archmage_robe: 'a_scale_mail',
+  set_archmage_staff: 'w_arcane_staff',
+  set_archmage_ring: 'j_gold_ring',
+  // Wilds Hunter
+  set_hunter_helm: 'a_leather_helm',
+  set_hunter_armor: 'a_leather_armor',
+  set_hunter_boots: 'a_leather_boots',
+  set_hunter_bow: 'w_war_bow',
+  // Abyssfire Oath (endgame universal)
+  set_abyss_ring: 'j_platinum_ring',
+  set_abyss_amulet: 'j_arcane_amulet',
+  set_abyss_belt: 'a_plated_belt',
+};
+
+/**
  * D2-style set design philosophy:
  * - Each piece has fixed individual affixes (like D2 unique items within a set)
  * - 2-piece bonus: utility / defensive
