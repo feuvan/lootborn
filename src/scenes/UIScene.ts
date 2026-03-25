@@ -3,6 +3,8 @@ import { GAME_WIDTH, GAME_HEIGHT, DPR } from '../config';
 import { EventBus, GameEvents } from '../utils/EventBus';
 import { getItemBase, GEM_STAT_MAP } from '../data/items/bases';
 import { STAT_DISPLAY } from '../data/items/affixes';
+import { SetDefinitions } from '../data/items/sets';
+import { DUNGEON_EXCLUSIVE_SETS } from '../data/dungeonData';
 import { AllMaps, MapOrder } from '../data/maps/index';
 import { getSkillManaCost, getSkillCooldown, getSkillDamageMultiplier, getSkillBuffValue, getSkillBuffDuration, getSkillAoeRadius } from '../systems/CombatSystem';
 import { NPCDefinitions } from '../data/npcs';
@@ -345,7 +347,7 @@ export class UIScene extends Phaser.Scene {
       fontSize: fs(12), color: '#666680', fontFamily: FONT, align: 'center',
     }).setOrigin(0.5).setDepth(3001);
     alBg.on('pointerdown', () => {
-      const modes: Array<'off' | 'all' | 'magic' | 'rare'> = ['off', 'all', 'magic', 'rare'];
+      const modes: Array<'off' | 'all' | 'magic' | 'rare' | 'legendary'> = ['off', 'all', 'magic', 'rare', 'legendary'];
       const idx = modes.indexOf(this.player.autoLootMode);
       this.player.autoLootMode = modes[(idx + 1) % modes.length];
     });
@@ -2860,7 +2862,7 @@ export class UIScene extends Phaser.Scene {
   private showItemTooltip(item: ItemInstance, screenX: number, screenY: number): void {
     this.hideItemTooltip();
     const base = getItemBase(item.baseId);
-    const tipW = px(200);
+    const tipW = px(220);
     const lines: { text: string; color: string; size: number }[] = [];
     const qualityColors: Record<string, string> = {
       normal: '#cccccc', magic: '#5dade2', rare: '#f1c40f', legendary: '#e67e22', set: '#2ecc71',
@@ -2881,6 +2883,10 @@ export class UIScene extends Phaser.Scene {
       let typeLine = typeLabels[base.type] ?? base.type;
       if (base.slot) typeLine += ` (${slotLabels[base.slot] ?? base.slot})`;
       lines.push({ text: typeLine, color: '#777', size: 12 });
+      // Base item description
+      if (base.description) {
+        lines.push({ text: base.description, color: '#8a8a7a', size: 11 });
+      }
       if ('baseDamage' in base) {
         const wb = base as WeaponBase;
         lines.push({ text: `伤害: ${wb.baseDamage[0]}-${wb.baseDamage[1]}`, color: '#e0d8cc', size: 12 });
@@ -2921,6 +2927,25 @@ export class UIScene extends Phaser.Scene {
         lines.push({ text: `插槽: ${filled}/${maxSock}`, color: '#666', size: 11 });
       }
     }
+
+    // ── Set bonus section ──
+    if (item.setId) {
+      const allSets = [...SetDefinitions, ...DUNGEON_EXCLUSIVE_SETS];
+      const setDef = allSets.find(s => s.id === item.setId);
+      if (setDef) {
+        const equippedCount = this.zone.inventorySystem.getEquippedSetPieceCount(setDef.id);
+        const totalPieces = setDef.pieces.length;
+        lines.push({ text: '', color: '#333', size: 4 }); // spacer
+        lines.push({ text: `${setDef.name} (${equippedCount}/${totalPieces})`, color: '#2ecc71', size: 13 });
+        for (const bonus of setDef.bonuses) {
+          const isActive = equippedCount >= bonus.count;
+          const prefix = isActive ? '✓' : '○';
+          const color = isActive ? '#2ecc71' : '#555550';
+          lines.push({ text: `${prefix} (${bonus.count}) ${bonus.description}`, color, size: 11 });
+        }
+      }
+    }
+
     if (base) {
       lines.push({ text: `售价: ${base.sellPrice}G`, color: '#f1c40f', size: 12 });
     }
@@ -4548,8 +4573,8 @@ export class UIScene extends Phaser.Scene {
     if (this.autoCombatText.style.color !== autoCombatColor) this.autoCombatText.setColor(autoCombatColor);
 
     // Auto-loot button update
-    const alLabels: Record<string, string> = { off: '拾取\nOFF', all: '拾取\n全部', magic: '拾取\n魔法+', rare: '拾取\n稀有+' };
-    const alColors: Record<string, string> = { off: '#666680', all: '#e0d8cc', magic: '#2471a3', rare: '#c0934a' };
+    const alLabels: Record<string, string> = { off: '拾取\nOFF', all: '拾取\n全部', magic: '拾取\n魔法+', rare: '拾取\n稀有+', legendary: '拾取\n传奇+' };
+    const alColors: Record<string, string> = { off: '#666680', all: '#e0d8cc', magic: '#2471a3', rare: '#c0934a', legendary: '#e67e22' };
     const autoLootText = alLabels[this.player.autoLootMode] ?? '拾取\nOFF';
     const autoLootColor = alColors[this.player.autoLootMode] ?? '#666680';
     if (this.autoLootText.text !== autoLootText) this.autoLootText.setText(autoLootText);

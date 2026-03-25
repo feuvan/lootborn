@@ -193,12 +193,15 @@ export class InventorySystem {
   /** Count equipped set pieces and return aggregated set bonus stats. */
   private getSetBonusStats(): Record<string, number> {
     const stats: Record<string, number> = {};
-    const equippedIds = new Set<string>();
+    // Count equipped pieces per setId
+    const setCounts = new Map<string, number>();
     for (const item of Object.values(this.equipment)) {
-      if (item && item.setId) equippedIds.add(item.baseId);
+      if (item?.setId) {
+        setCounts.set(item.setId, (setCounts.get(item.setId) ?? 0) + 1);
+      }
     }
     for (const setDef of [...SetDefinitions, ...DUNGEON_EXCLUSIVE_SETS]) {
-      const count = setDef.pieces.filter(p => equippedIds.has(p)).length;
+      const count = setCounts.get(setDef.id) ?? 0;
       for (const bonus of setDef.bonuses) {
         if (count >= bonus.count) {
           for (const [stat, value] of Object.entries(bonus.stats)) {
@@ -208,6 +211,15 @@ export class InventorySystem {
       }
     }
     return stats;
+  }
+
+  /** Get the number of pieces equipped for a given set ID. */
+  getEquippedSetPieceCount(setId: string): number {
+    let count = 0;
+    for (const item of Object.values(this.equipment)) {
+      if (item?.setId === setId) count++;
+    }
+    return count;
   }
 
   moveToStash(uid: string): boolean {

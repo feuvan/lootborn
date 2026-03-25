@@ -520,7 +520,7 @@ export interface SaveData {
     autoCombat: boolean;
     musicVolume: number;
     sfxVolume: number;
-    autoLootMode: 'off' | 'all' | 'magic' | 'rare';
+    autoLootMode: 'off' | 'all' | 'magic' | 'rare' | 'legendary';
   };
   difficulty: 'normal' | 'nightmare' | 'hell';
   completedDifficulties: string[];

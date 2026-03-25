@@ -2305,7 +2305,8 @@ export class ZoneScene extends Phaser.Scene {
 
   private handleAutoLoot(): void {
     const qualityRank: Record<string, number> = { normal: 0, magic: 1, rare: 2, legendary: 3, set: 3 };
-    const minRank = this.player.autoLootMode === 'all' ? 0 : this.player.autoLootMode === 'magic' ? 1 : 2;
+    const modeMinRank: Record<string, number> = { all: 0, magic: 1, rare: 2, legendary: 3 };
+    const minRank = modeMinRank[this.player.autoLootMode] ?? 0;
     for (let i = this.lootDrops.length - 1; i >= 0; i--) {
       const loot = this.lootDrops[i];
       const rank = qualityRank[loot.item.quality] ?? 0;
