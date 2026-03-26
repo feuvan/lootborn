@@ -8,22 +8,16 @@ Testing surface, required tools, resource cost classification per surface.
 
 ## Validation Surface
 
-- **Primary surface**: Browser at http://localhost:5173
-- **Tool**: agent-browser (Chrome DevTools MCP)
-- **Interaction methods**:
-  - Keyboard shortcuts: WASD (movement), 1-6 (skills), TAB (auto-combat), I/K/M/H/C/J/O/P (panels), ESC (menu)
-  - Coordinate-based mouse clicks on Phaser canvas (canvas is opaque to a11y tree)
-  - `evaluate_script` for querying game state via `window.game` (if exposed)
-- **Limitations**:
-  - Canvas is opaque — a11y snapshot only shows root element
-  - All verification requires screenshot analysis + keyboard-driven interaction
-  - Button positions must be estimated from screenshots (fragile on layout changes)
+- **Primary surface**: Command-only validation (tests + typecheck + build)
+- **User explicitly opted out of agent-browser validation** due to excessive CPU/memory usage from browser instances
+- **Validation approach**: `npx vitest run` (all tests pass) + `npx tsc --noEmit` (zero errors) + `npm run build` (succeeds)
+- **DO NOT use agent-browser** — no browser sessions, no screenshots, no interactive testing
+- **DO NOT start browser instances** — validate through tests and type checking only
 
 ## Validation Concurrency
 
-- **Max concurrent validators**: 2
-- **Rationale**: Phaser game loop uses ~105% CPU per instance on 8-core machine. 16GB RAM with ~6GB baseline. Each browser instance ~500MB. 2 instances = ~1GB additional = safe within 70% of 10GB headroom.
-- **Dev server**: Single Vite server at port 5173, shared across validator instances
+- **Max concurrent validators**: 5
+- **Rationale**: Command-only validation (no browser). Each vitest run uses ~200MB. 16GB RAM with 8 cores. No browser overhead.
 
 ## Testing Infrastructure
 
