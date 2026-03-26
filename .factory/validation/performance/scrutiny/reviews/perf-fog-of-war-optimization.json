@@ -1,0 +1,39 @@
+{
+  "featureId": "perf-fog-of-war-optimization",
+  "reviewedAt": "2026-03-26T11:42:35Z",
+  "commitId": "c31f3debdc2e1486d2aa874fa33f6fec46391e1e",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature throttles fog recomputation on tile changes and preserves save/load compatibility, but it does not actually implement the requested dirty-tile rendering optimization or the required viewport-culling test coverage. The Phaser renderer still clears and redraws every visible tile whenever the player changes tile, so the main performance goal remains unmet.",
+    "issues": [
+      {
+        "file": "src/systems/FogOfWarSystem.ts",
+        "line": 41,
+        "severity": "blocking",
+        "description": "`render()` still starts with `this.fogLayer.clear()` and then iterates every viewport-visible tile (`for (let r = 0; r < rows; r++)` at line 56) on each tile change. The feature explicitly required replacing full redraws with a dirty-tile render path that redraws only tiles whose visibility changed since last render; this implementation computes dirty tiles in `FogOfWarCore` but never uses them in the Phaser renderer, so the key optimization is missing."
+      },
+      {
+        "file": "src/__tests__/FogOfWarOptimization.test.ts",
+        "line": 181,
+        "severity": "blocking",
+        "description": "The required test coverage for viewport culling logic is missing. The tests labeled as viewport-culling checks only inspect `FogOfWarCore.dirty` sizes and never exercise the Phaser renderer or camera bounds behavior from `FogOfWarSystem.render()`, so they do not verify the requested viewport-culling requirement."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The systems-worker skill instructs workers to 'import the system module directly' and mock Phaser dependencies, but this feature hit a real constraint where importing the system pulled in `config.ts` and Phaser-only symbols. The worker had to introduce a separate pure-logic `FogOfWarCore` module to make tests viable.",
+      "evidence": "systems-worker SKILL.md step 3 says tests should import the system module directly; worker transcript states the FogOfWarSystem -> config.ts -> Phaser.Scale import chain blocked tests and documents splitting to `src/systems/FogOfWarCore.ts` as the workaround."
+    },
+    {
+      "area": "knowledge",
+      "observation": "ZoneScene does not currently integrate `FogOfWarSystem`; gameplay exploration fog is handled by ZoneScene's own `fogData` and flat `exploredTiles` state. That architectural reality is not documented in the shared library even though the worker spent time discovering it during implementation.",
+      "evidence": "Worker transcript notes 'FogOfWarSystem isn't currently imported/used by ZoneScene directly'. Current code in `src/scenes/ZoneScene.ts:112-118` and `3496-3512` shows ZoneScene managing `fogData` and `exploredTiles` itself, while `rg` only finds `FogOfWarSystem` in its own files/tests."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill, shared-state docs, commit c31f3de, and the fog optimization code/tests. Result: fail, because the implementation still performs full viewport redraws in `FogOfWarSystem.render()` and the added tests do not actually verify viewport culling in the renderer."
+}

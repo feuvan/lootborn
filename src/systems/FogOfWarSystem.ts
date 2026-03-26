@@ -18,6 +18,8 @@ export class FogOfWarSystem {
   private scene: Phaser.Scene;
   private fogLayer: Phaser.GameObjects.Graphics;
   readonly core: FogOfWarCore;
+  /** Tracks whether a full render pass has been done yet. */
+  private hasRendered = false;
 
   constructor(scene: Phaser.Scene, cols: number, rows: number, viewRadius = 10) {
     this.scene = scene;
@@ -34,13 +36,22 @@ export class FogOfWarSystem {
   update(playerCol: number, playerRow: number): void {
     const changed = this.core.update(playerCol, playerRow);
     if (!changed) return;
-    this.render(playerCol, playerRow);
+
+    if (!this.hasRendered) {
+      this.renderFull(playerCol, playerRow);
+      this.hasRendered = true;
+    } else {
+      this.renderDirty(playerCol, playerRow);
+    }
   }
 
-  private render(playerCol: number, playerRow: number): void {
+  /**
+   * Full render pass — clears the entire fog layer and redraws all
+   * viewport-visible tiles.  Used only on the very first render.
+   */
+  private renderFull(playerCol: number, playerRow: number): void {
     this.fogLayer.clear();
 
-    // Camera viewport culling bounds
     const cam = this.scene.cameras.main;
     const camCX = cam.scrollX + cam.width / 2 / cam.zoom;
     const camCY = cam.scrollY + cam.height / 2 / cam.zoom;
@@ -50,8 +61,6 @@ export class FogOfWarSystem {
 
     const cols = this.core.cols;
     const rows = this.core.rows;
-    const edgeBand = 3;
-    const innerEdge = this.core.viewRadius - edgeBand;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -62,27 +71,73 @@ export class FogOfWarSystem {
         // Viewport culling
         if (dx > viewW + TILE_WIDTH * margin || dy > viewH + TILE_HEIGHT * margin) continue;
 
-        const dist = Math.sqrt((c - playerCol) ** 2 + (r - playerRow) ** 2);
+        this.drawTileFog(c, r, playerCol, playerRow, pos);
+      }
+    }
+  }
 
-        if (dist > this.core.viewRadius) {
-          if (!this.core.isExplored(c, r)) {
-            this.fogLayer.fillStyle(0x000000, 0.85);
-            this.drawIsoTile(pos.x, pos.y);
-          } else {
-            const edgeFade = dist < this.core.viewRadius + edgeBand
-              ? 0.18 + (dist - this.core.viewRadius) / edgeBand * 0.15
-              : 0.35;
-            this.fogLayer.fillStyle(0x000000, edgeFade);
-            this.drawIsoTile(pos.x, pos.y);
-          }
-        } else if (dist > innerEdge) {
-          const t = (dist - innerEdge) / edgeBand;
-          const alpha = t * 0.15;
-          if (alpha > 0.01) {
-            this.fogLayer.fillStyle(0x000000, alpha);
-            this.drawIsoTile(pos.x, pos.y);
-          }
-        }
+  /**
+   * Incremental render — only erases and redraws tiles whose visibility
+   * state changed (dirty tiles from FogOfWarCore).  No fogLayer.clear().
+   */
+  private renderDirty(playerCol: number, playerRow: number): void {
+    const dirty = this.core.dirty;
+    if (dirty.size === 0) return;
+
+    const cam = this.scene.cameras.main;
+    const camCX = cam.scrollX + cam.width / 2 / cam.zoom;
+    const camCY = cam.scrollY + cam.height / 2 / cam.zoom;
+    const viewW = cam.width / cam.zoom / 2;
+    const viewH = cam.height / cam.zoom / 2;
+    const margin = 4;
+
+    const cols = this.core.cols;
+
+    for (const idx of dirty) {
+      const c = idx % cols;
+      const r = (idx - c) / cols;
+      const pos = cartToIso(c, r);
+      const dx = Math.abs(pos.x - camCX);
+      const dy = Math.abs(pos.y - camCY);
+
+      // Viewport culling — skip tiles outside camera bounds
+      if (dx > viewW + TILE_WIDTH * margin || dy > viewH + TILE_HEIGHT * margin) continue;
+
+      // Erase the old tile by drawing fully transparent over it
+      this.fogLayer.fillStyle(0x000000, 0);
+      this.drawIsoTile(pos.x, pos.y);
+
+      // Redraw with new fog alpha
+      this.drawTileFog(c, r, playerCol, playerRow, pos);
+    }
+  }
+
+  /**
+   * Draw fog for a single tile at the given position.
+   * Shared by both full and incremental render paths.
+   */
+  private drawTileFog(c: number, r: number, playerCol: number, playerRow: number, pos: { x: number; y: number }): void {
+    const edgeBand = 3;
+    const innerEdge = this.core.viewRadius - edgeBand;
+    const dist = Math.sqrt((c - playerCol) ** 2 + (r - playerRow) ** 2);
+
+    if (dist > this.core.viewRadius) {
+      if (!this.core.isExplored(c, r)) {
+        this.fogLayer.fillStyle(0x000000, 0.85);
+        this.drawIsoTile(pos.x, pos.y);
+      } else {
+        const edgeFade = dist < this.core.viewRadius + edgeBand
+          ? 0.18 + (dist - this.core.viewRadius) / edgeBand * 0.15
+          : 0.35;
+        this.fogLayer.fillStyle(0x000000, edgeFade);
+        this.drawIsoTile(pos.x, pos.y);
+      }
+    } else if (dist > innerEdge) {
+      const t = (dist - innerEdge) / edgeBand;
+      const alpha = t * 0.15;
+      if (alpha > 0.01) {
+        this.fogLayer.fillStyle(0x000000, alpha);
+        this.drawIsoTile(pos.x, pos.y);
       }
     }
   }
@@ -108,6 +163,7 @@ export class FogOfWarSystem {
 
   loadExploredData(data: boolean[][]): void {
     this.core.loadExploredData(data);
+    this.hasRendered = false;
   }
 
   /** Expose gradient info for testing */

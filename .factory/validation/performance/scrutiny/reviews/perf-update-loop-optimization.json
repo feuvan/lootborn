@@ -1,0 +1,28 @@
+{
+  "featureId": "perf-update-loop-optimization",
+  "reviewedAt": "2026-03-26T11:42:59.724332+00:00",
+  "commitId": "cdffeb1608ec531f650beed0b53685457f0225a7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature landed most requested hot-path optimizations, but the equipment-stat cache is not invalidated for all equipment mutations, so socketing/unequipping can leave ZoneScene using stale combat stats until a later manual invalidation path runs.",
+    "issues": [
+      {
+        "file": "src/scenes/UIScene.ts",
+        "line": 3280,
+        "severity": "blocking",
+        "description": "The new long-lived getEquipStats() cache is only invalidated on gem socket/unsocket paths, but not on plain equip() or unequip(). This breaks the feature's expected behavior that stats recalculate when equipment changes: the inventory context menu equips an item then only calls refreshInventory(), and the socket panel's unequip button likewise omits invalidateEquipStats(). After this optimization, ZoneScene can continue using stale cached stats for combat, cooldown reduction, regen, etc. until another code path happens to invalidate the cache."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Equipment-stat cache invalidation is currently a manual cross-scene convention: UIScene must remember to call zone.invalidateEquipStats() after every inventory mutation. This requirement is not documented in AGENTS.md or .factory/library, and the missed equip/unequip callsites in this feature show it is easy to violate.",
+      "evidence": "src/scenes/UIScene.ts:3007-3016 equip path omits invalidateEquipStats(); src/scenes/UIScene.ts:3278-3283 unequip path omits it; only gem socket/unsocket paths call zone.invalidateEquipStats() at src/scenes/UIScene.ts:3180 and 3270. architecture.md mentions cached equipment stats but not the invalidation contract."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, commit diff, skill instructions, and shared-state docs. Found one blocking regression: the newly persistent equipment stat cache is not invalidated on all equipment changes, so equipped stats can stay stale after equip/unequip actions."
+}

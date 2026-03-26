@@ -1,0 +1,34 @@
+{
+  "featureId": "perf-integration-verification",
+  "reviewedAt": "2026-03-26T11:42:49.754816+00:00",
+  "commitId": "831e336",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature only adds tests, but the new integration tests do not verify the committed runtime integration they claim to cover. Two blocking gaps remain: the tests sidestep the real distanceSq implementation by duplicating it locally, and they never exercise actual zone-transition fog restoration/spawn-position behavior in ZoneScene.",
+    "issues": [
+      {
+        "file": "src/__tests__/PerformanceIntegration.test.ts",
+        "line": 5,
+        "severity": "blocking",
+        "description": "The test suite duplicates distanceSq locally instead of importing and exercising the production utility. If src/utils/IsometricUtils.ts distanceSq regresses or diverges from SpatialGrid expectations, this integration test still passes, so it does not satisfy the stated requirement to test 'SpatialGrid + distanceSq work together'."
+      },
+      {
+        "file": "src/__tests__/PerformanceIntegration.test.ts",
+        "line": 541,
+        "severity": "blocking",
+        "description": "The claimed zone-transition verification is only a hand-rolled simulation using FogOfWarCore and SpatialGrid instances. It never touches ZoneScene.changeZone(), saved fogData restoration, monster respawn/rebuild, or player target position restoration, so the feature does not cover the required 'verify zone transitions still work (fog state, monster spawns, player position)' behavior."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The systems-worker skill says to perform a manual sanity check in-browser if the dev server is running, but this worker's transcript contains no such check even though the feature description explicitly required verifying zone transitions still work. The skill may need clearer guidance that verification-only features involving scene transitions must exercise the real scene flow rather than only pure-logic tests.",
+      "evidence": "systems-worker SKILL.md step 7 requires a manual sanity check; handoff for commit 831e336 lists only vitest/tsc/build and the transcript skeleton contains no browser/service interaction."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed. Commit 831e336 adds only PerformanceIntegration.test.ts, but the new tests do not actually integrate against the production distanceSq utility or the real ZoneScene zone-transition flow that the feature required to verify."
+}

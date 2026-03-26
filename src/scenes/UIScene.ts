@@ -556,6 +556,7 @@ export class UIScene extends Phaser.Scene {
             this.openSocketPanel(slot as any);
           } else {
             this.zone.inventorySystem.unequip(slot as any);
+            this.zone.invalidateEquipStats();
             this.refreshInventory();
           }
         });
@@ -3002,6 +3003,7 @@ export class UIScene extends Phaser.Scene {
     if (base && base.slot) {
       actions.push({ label: '装备', callback: () => {
         this.zone.inventorySystem.equip(item.uid);
+        this.zone.invalidateEquipStats();
         this.hideContextPopup();
         this.refreshInventory();
       }});
@@ -3283,6 +3285,7 @@ export class UIScene extends Phaser.Scene {
     unequipBtn.on('pointerdown', () => {
       if (this.socketPanel) { this.socketPanel.destroy(); this.socketPanel = null; this.socketPanelSlot = null; }
       this.zone.inventorySystem.unequip(equipSlot);
+      this.zone.invalidateEquipStats();
       this.refreshInventory();
     });
     this.socketPanel.add(unequipBtn);
