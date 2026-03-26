@@ -46,19 +46,25 @@ describe('WanderingMerchantDrawer registration', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. SpriteGenerator — ensureEffect resolves the correct drawer by key
+// 3. Drawer contracts — keys match what the game code passes to ensure*()
+//    (We avoid importing the heavy SpriteGenerator module which pulls in 70+
+//    sprite files and can exceed the 5 s test timeout under load.)
 // ---------------------------------------------------------------------------
-describe('SpriteGenerator.ensureEffect resolution', () => {
-  it('recognises "decor_treasure_chest" as a valid effect key', async () => {
-    // Verify the key is registered in EFFECT_DRAWER_BY_KEY (indirectly via ensureEffect signature)
-    // We import the SpriteGenerator and check the static method exists
-    const { SpriteGenerator } = await import('../graphics/SpriteGenerator');
-    expect(typeof SpriteGenerator.ensureEffect).toBe('function');
+describe('Drawer key contracts for SpriteGenerator', () => {
+  it('"decor_treasure_chest" drawer has a valid key and drawFrame', async () => {
+    const { TreasureChestDrawer } = await import('../graphics/sprites/decorations/TreasureChest');
+    expect(TreasureChestDrawer.key).toBe('decor_treasure_chest');
+    expect(typeof TreasureChestDrawer.drawFrame).toBe('function');
+    expect(TreasureChestDrawer.frameW).toBeGreaterThan(0);
+    expect(TreasureChestDrawer.frameH).toBeGreaterThan(0);
   });
 
-  it('recognises "npc_wandering_merchant" as a valid effect key', async () => {
-    const { SpriteGenerator } = await import('../graphics/SpriteGenerator');
-    expect(typeof SpriteGenerator.ensureEffect).toBe('function');
+  it('"npc_wandering_merchant" drawer has a valid key and drawFrame', async () => {
+    const { WanderingMerchantDrawer } = await import('../graphics/sprites/npcs/WanderingMerchant');
+    expect(WanderingMerchantDrawer.key).toBe('npc_wandering_merchant');
+    expect(typeof WanderingMerchantDrawer.drawFrame).toBe('function');
+    expect(WanderingMerchantDrawer.frameW).toBeGreaterThan(0);
+    expect(WanderingMerchantDrawer.frameH).toBeGreaterThan(0);
   });
 });
 
