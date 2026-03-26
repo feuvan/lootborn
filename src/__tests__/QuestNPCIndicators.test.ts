@@ -93,14 +93,14 @@ describe('QuestNPCIndicators — computeNPCIndicator', () => {
     expect(result.visible).toBe(true);
   });
 
-  it('shows grey "!" for available side quest', () => {
+  it('shows yellow "!" for available side quest', () => {
     const npc = makeNPC({ quests: ['q1'] });
     const quest = makeQuest({ id: 'q1', category: 'side' });
     const questMap = new Map([['q1', quest]]);
     const progressMap = new Map<string, QuestProgress>();
     const result = computeNPCIndicator(npc, questMap, progressMap, 10);
     expect(result.text).toBe('!');
-    expect(result.color).toBe('#95a5a6');
+    expect(result.color).toBe('#f1c40f');
     expect(result.visible).toBe(true);
   });
 

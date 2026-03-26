@@ -26,10 +26,9 @@ export interface NPCIndicatorState {
  *
  * Priority:
  * 1. Completed quest ready for turn-in  → yellow '?'
- * 2. Available quest (main)             → yellow '!'
- * 3. Available quest (side)             → grey '!'
- * 4. Active quest (in-progress)         → dim grey '?'
- * 5. No relevant quests                 → hidden
+ * 2. Available quest (main or side)     → yellow '!'
+ * 3. Active quest (in-progress)         → dim grey '?'
+ * 4. No relevant quests                 → hidden
  */
 export function computeNPCIndicator(
   npcDef: NPCDefinition,
@@ -44,7 +43,6 @@ export function computeNPCIndicator(
   let hasCompletedQuest = false;
   let hasActiveQuest = false;
   let hasAvailableQuest = false;
-  let isMainQuest = false;
 
   for (const qid of npcDef.quests) {
     const prog = progressMap.get(qid);
@@ -72,14 +70,12 @@ export function computeNPCIndicator(
           if (!meetsPrereqs) continue;
         }
         hasAvailableQuest = true;
-        if (quest.category === 'main') isMainQuest = true;
         break;
       }
 
       // Failed + reacceptable
       if (prog.status === 'failed' && quest.reacceptable) {
         hasAvailableQuest = true;
-        if (quest.category === 'main') isMainQuest = true;
         break;
       }
     }
@@ -89,7 +85,7 @@ export function computeNPCIndicator(
     return { text: '?', color: '#f1c40f', visible: true };
   }
   if (hasAvailableQuest) {
-    return { text: '!', color: isMainQuest ? '#f1c40f' : '#95a5a6', visible: true };
+    return { text: '!', color: '#f1c40f', visible: true };
   }
   if (hasActiveQuest) {
     return { text: '?', color: '#888888', visible: true };

@@ -870,3 +870,77 @@ describe('QuestUXIntegration — edge cases', () => {
     expect(buildTrackerSignature(tracker)).toBe('');
   });
 });
+
+// ═══════════════════════════════════════
+// Scrutiny Fix Regression Tests
+// ═══════════════════════════════════════
+
+describe('QuestUXIntegration — scrutiny fix regressions', () => {
+  it('side quest NPC indicator is yellow, same as main quest', () => {
+    const mainQuest = makeQuest({ id: 'main_q', category: 'main' });
+    const sideQuest = makeQuest({ id: 'side_q', category: 'side' });
+    const mainNpc = makeNPC({ id: 'main_npc', quests: ['main_q'] });
+    const sideNpc = makeNPC({ id: 'side_npc', quests: ['side_q'] });
+    const questMap = new Map([['main_q', mainQuest], ['side_q', sideQuest]]);
+    const progressMap = new Map<string, QuestProgress>();
+
+    const mainIndicator = computeNPCIndicator(mainNpc, questMap, progressMap, 10);
+    const sideIndicator = computeNPCIndicator(sideNpc, questMap, progressMap, 10);
+
+    // Both should be yellow '!'
+    expect(mainIndicator.color).toBe('#f1c40f');
+    expect(sideIndicator.color).toBe('#f1c40f');
+    expect(mainIndicator.text).toBe('!');
+    expect(sideIndicator.text).toBe('!');
+  });
+
+  it('quest with item rewards includes items in reward summary', () => {
+    const quest = makeQuest({
+      id: 'item_reward_q',
+      name: '物品奖励测试',
+      rewards: { exp: 100, gold: 50, items: ['w_short_sword'] },
+    });
+    const entry: NpcQuestEntry = {
+      quest,
+      progress: undefined,
+      cardAction: 'accept',
+    };
+    const card = buildQuestCardData(entry, false);
+    expect(card.rewards.exp).toBe(100);
+    expect(card.rewards.gold).toBe(50);
+    // items field should be preserved in quest data
+    expect(quest.rewards.items).toEqual(['w_short_sword']);
+  });
+
+  it('NPC indicator transitions from active dim "?" to completed yellow "?" on quest completion', () => {
+    const quest = makeQuest({ id: 'comp_q', name: '完成测试' });
+    const npc = makeNPC({ quests: ['comp_q'] });
+    const questMap = new Map([['comp_q', quest]]);
+    const progressMap = new Map<string, QuestProgress>();
+
+    // Active: dim grey '?'
+    progressMap.set('comp_q', makeProgress('comp_q', 'active', [{ current: 5 }]));
+    const activeIndicator = computeNPCIndicator(npc, questMap, progressMap, 10);
+    expect(activeIndicator.text).toBe('?');
+    expect(activeIndicator.color).toBe('#888888');
+
+    // Completed: yellow '?' (this is what QUEST_COMPLETED event triggers)
+    progressMap.set('comp_q', makeProgress('comp_q', 'completed', [{ current: 10 }]));
+    const completedIndicator = computeNPCIndicator(npc, questMap, progressMap, 10);
+    expect(completedIndicator.text).toBe('?');
+    expect(completedIndicator.color).toBe('#f1c40f');
+  });
+
+  it('computeAllNPCIndicators gives yellow "!" for all available quests regardless of category', () => {
+    const npc1 = makeNPC({ id: 'npc1', quests: ['mq1'] });
+    const npc2 = makeNPC({ id: 'npc2', quests: ['sq1'] });
+    const mq = makeQuest({ id: 'mq1', category: 'main' });
+    const sq = makeQuest({ id: 'sq1', category: 'side' });
+    const questMap = new Map([['mq1', mq], ['sq1', sq]]);
+    const progressMap = new Map<string, QuestProgress>();
+
+    const allIndicators = computeAllNPCIndicators([npc1, npc2], questMap, progressMap, 10);
+    expect(allIndicators.get('npc1')?.color).toBe('#f1c40f');
+    expect(allIndicators.get('npc2')?.color).toBe('#f1c40f');
+  });
+});

@@ -2486,6 +2486,16 @@ export class UIScene extends Phaser.Scene {
               player.addExp(reward.exp);
               player.gold += reward.gold;
             }
+            // Grant item rewards
+            if (reward.items && reward.items.length > 0 && this.zone) {
+              for (const itemId of reward.items) {
+                const item = this.zone.lootSystem.createItem(itemId, player?.level ?? 1, 'normal');
+                if (item) {
+                  item.identified = true;
+                  this.zone.inventorySystem.addItem(item);
+                }
+              }
+            }
             if (reward.petReward && rawData.homesteadSystem) {
               rawData.homesteadSystem.addPet(reward.petReward);
             }

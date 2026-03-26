@@ -660,6 +660,7 @@ export class ZoneScene extends Phaser.Scene {
 
   private handleQuestCompleted(data: { questName: string }): void {
     this.showQuestCompleteBanner(data.questName);
+    this.updateNPCQuestMarkers();
   }
 
   private handleUiSkillClick(data: { index: number; skillId: string }): void {
