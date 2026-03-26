@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-shop-close-merchant-despawn",
+  "reviewedAt": "2026-03-26T14:01:42.866469+00:00",
+  "commitId": "558fc20632a32cb197a21fe1a77966f9be99a74e",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix narrows wandering-merchant cleanup to SHOP_CLOSE events carrying the merchant's own npcId, which directly addresses the prior regression without breaking the broader SHOP_CLOSE listeners used by normal NPC state transitions.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The SHOP_CLOSE contract now includes an optional `{ npcId }` payload and UIScene maintains `shopNpcId` so callers can distinguish which NPC shop actually closed, but this event-payload convention is not documented in shared library notes.",
+      "evidence": "src/scenes/UIScene.ts:647,656,669,4502 stores/emits `shopNpcId`; src/scenes/ZoneScene.ts:2144-2150 filters despawn on `data?.npcId === 'wandering_merchant'`; .factory/library/architecture.md documents EventBus generally but not the SHOP_CLOSE payload contract."
+    }
+  ],
+  "addressesFailureFrom": "/Users/feuvan/src/abyssfire/.factory/validation/misc-fixes-1/scrutiny/reviews/fix-sprite-blocks-and-merchant.json",
+  "summary": "Reviewed the prior failed feature, the fix feature handoff/transcript, both commits (`db607e0` and `558fc20632a32cb197a21fe1a77966f9be99a74e`), and the relevant source/tests. The new implementation correctly preserves the wandering merchant across unrelated panel closes by tagging SHOP_CLOSE with the closed shop's npcId and only despawning on the merchant's own close event. I found no remaining blocking issues in this fix."
+}

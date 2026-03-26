@@ -1,0 +1,73 @@
+{
+  "milestone": "misc-fixes-1",
+  "round": 2,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "npx vitest run",
+      "exitCode": 0,
+      "observation": "41 test files ran; all 2819 tests passed, including src/__tests__/cross-area-integration.test.ts and src/__tests__/ShopCloseMerchantDespawn.test.ts."
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "npx tsc --noEmit",
+      "exitCode": 0,
+      "observation": "TypeScript completed with no errors."
+    },
+    "lint": {
+      "passed": true,
+      "command": "npm run build",
+      "exitCode": 0,
+      "observation": "Build completed successfully via the repo's configured substitute validator; Vite emitted only the existing large-chunk warning after producing dist assets."
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": [
+      "perf-phaser-optimization-pass"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "perf-phaser-optimization-pass",
+      "severity": "blocking",
+      "description": "The feature required disabling physics on far monsters while keeping AI running, but the implementation instead skips monster.update() entirely for non-aggro monsters beyond 30 tiles. This changes gameplay semantics by freezing far idle monsters and does not implement the requested optimization target."
+    },
+    {
+      "featureId": "perf-phaser-optimization-pass",
+      "severity": "blocking",
+      "description": "The new pre-rendered fog renderer is not wired into the actual gameplay scene. ZoneScene continues to use its own exploredTiles/LightingSystem path and never constructs FogOfWarSystem, so the primary fog-rendering optimization described in the feature is not exercised in-game."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Documented that SHOP_CLOSE now carries an optional npcId payload and UIScene tracks shopNpcId so listeners can distinguish which NPC shop actually closed.",
+      "sourceFeature": "fix-shop-close-merchant-despawn"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "The systems-worker skill says to write tests first and cover expected behavior, but for scene/rendering fixes the worker ended up using contract-only tests that never exercised the modified ZoneScene/UIScene methods. The skill could explicitly distinguish when scene-level changes require lightweight integration seams or source-level assertions instead of pure module tests.",
+      "evidence": "src/__tests__/SpriteBlocksAndMerchant.test.ts only checks drawer keys and EventBus behavior; it does not call `spawnHiddenAreaRewardSprite()`, `handleWanderingMerchantEvent()`, or any UIScene close paths referenced in the feature.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "The worker skill says to write tests first and to run full verification cleanly, but the transcript shows implementation edits before tests and records `npx vitest run` as effectively passing despite a known failing test remaining. The skill/procedure may need to be stricter about treating existing failing validators as blockers unless the feature explicitly scopes them out.",
+      "evidence": "systems-worker SKILL.md steps 3 and 6 vs transcript skeleton for session 5d22c0f4-20ba-4346-8c1f-9fd3e07ed322 and handoff verification noting `2807 tests passed, 1 failed`.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "A key codebase fact is that `FogOfWarSystem` is currently not used by `ZoneScene`; gameplay fog relies on separate `exploredTiles` and `LightingSystem` logic. That architectural reality was discovered during implementation but is not captured in shared project knowledge, making future fog-related tasks easier to mis-scope.",
+      "reason": "ambiguous; useful architecture fact but not applied automatically during scrutiny because no existing library target was confirmed and this run is failing before follow-up fixes"
+    }
+  ],
+  "previousRound": "/Users/feuvan/src/abyssfire/.factory/validation/misc-fixes-1/scrutiny/synthesis.json"
+}

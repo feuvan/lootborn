@@ -28,6 +28,7 @@ Architectural decisions, patterns, and conventions discovered during the mission
 - **EventBus**: Central pub/sub with typed GameEvents enum (~30+ events)
 - **Direct references**: ZoneScene holds refs to all systems
 - **UI refresh**: EventBus `'ui:refresh'` on zone transitions
+- `SHOP_CLOSE` may carry an optional `{ npcId }` payload from `UIScene`, and `UIScene` tracks `shopNpcId` so runtime listeners (for example wandering-merchant cleanup in `ZoneScene`) can distinguish which NPC shop actually closed.
 
 ## Procedural Art Pipeline
 
