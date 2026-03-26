@@ -1,41 +1,46 @@
 import Phaser from 'phaser';
 import { TILE_WIDTH, TILE_HEIGHT } from '../config';
 import { cartToIso } from '../utils/IsometricUtils';
+import { FogOfWarCore } from './FogOfWarCore';
 
+// Re-export FogOfWarCore for consumers that need the pure-logic class
+export { FogOfWarCore } from './FogOfWarCore';
+
+/**
+ * Phaser-integrated fog of war renderer.
+ *
+ * Uses `FogOfWarCore` for the logic and a `Phaser.GameObjects.Graphics`
+ * layer for rendering.  Only triggers render when the player moves to a
+ * new tile (throttled via dirty-tile approach in the core).  Preserves
+ * the gradient edge band (3 tiles) and camera viewport culling.
+ */
 export class FogOfWarSystem {
   private scene: Phaser.Scene;
   private fogLayer: Phaser.GameObjects.Graphics;
-  private explored: boolean[][];
-  private cols: number;
-  private rows: number;
-  private viewRadius: number;
+  readonly core: FogOfWarCore;
 
   constructor(scene: Phaser.Scene, cols: number, rows: number, viewRadius = 10) {
     this.scene = scene;
-    this.cols = cols;
-    this.rows = rows;
-    this.viewRadius = viewRadius;
-    this.explored = Array.from({ length: rows }, () => Array(cols).fill(false));
+    this.core = new FogOfWarCore(cols, rows, viewRadius);
     this.fogLayer = scene.add.graphics();
     this.fogLayer.setDepth(1000);
   }
 
+  /** Convenience getters delegating to core */
+  get cols(): number { return this.core.cols; }
+  get rows(): number { return this.core.rows; }
+  get viewRadius(): number { return this.core.viewRadius; }
+
   update(playerCol: number, playerRow: number): void {
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        const dist = Math.sqrt((c - playerCol) ** 2 + (r - playerRow) ** 2);
-        if (dist <= this.viewRadius) {
-          this.explored[r][c] = true;
-        }
-      }
-    }
+    const changed = this.core.update(playerCol, playerRow);
+    if (!changed) return;
     this.render(playerCol, playerRow);
   }
 
   private render(playerCol: number, playerRow: number): void {
     this.fogLayer.clear();
 
-    // Only render fog for tiles within camera viewport + margin
+    // Camera viewport culling bounds
     const cam = this.scene.cameras.main;
     const camCX = cam.scrollX + cam.width / 2 / cam.zoom;
     const camCY = cam.scrollY + cam.height / 2 / cam.zoom;
@@ -43,35 +48,34 @@ export class FogOfWarSystem {
     const viewH = cam.height / cam.zoom / 2;
     const margin = 4;
 
-    // Gradient edge band: tiles within this range of the view radius get partial fog
+    const cols = this.core.cols;
+    const rows = this.core.rows;
     const edgeBand = 3;
-    const innerEdge = this.viewRadius - edgeBand;
+    const innerEdge = this.core.viewRadius - edgeBand;
 
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
         const pos = cartToIso(c, r);
         const dx = Math.abs(pos.x - camCX);
         const dy = Math.abs(pos.y - camCY);
 
+        // Viewport culling
         if (dx > viewW + TILE_WIDTH * margin || dy > viewH + TILE_HEIGHT * margin) continue;
 
         const dist = Math.sqrt((c - playerCol) ** 2 + (r - playerRow) ** 2);
 
-        if (dist > this.viewRadius) {
-          if (!this.explored[r][c]) {
-            // Unexplored: near-opaque
+        if (dist > this.core.viewRadius) {
+          if (!this.core.isExplored(c, r)) {
             this.fogLayer.fillStyle(0x000000, 0.85);
             this.drawIsoTile(pos.x, pos.y);
           } else {
-            // Explored but out of view: semi-transparent with gradient near edge
-            const edgeFade = dist < this.viewRadius + edgeBand
-              ? 0.18 + (dist - this.viewRadius) / edgeBand * 0.15
+            const edgeFade = dist < this.core.viewRadius + edgeBand
+              ? 0.18 + (dist - this.core.viewRadius) / edgeBand * 0.15
               : 0.35;
             this.fogLayer.fillStyle(0x000000, edgeFade);
             this.drawIsoTile(pos.x, pos.y);
           }
         } else if (dist > innerEdge) {
-          // Gradient edge: partial fog fading from 0 to light fog
           const t = (dist - innerEdge) / edgeBand;
           const alpha = t * 0.15;
           if (alpha > 0.01) {
@@ -95,17 +99,19 @@ export class FogOfWarSystem {
   }
 
   isExplored(col: number, row: number): boolean {
-    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
-    return this.explored[row][col];
+    return this.core.isExplored(col, row);
   }
 
   getExploredData(): boolean[][] {
-    return this.explored.map(row => [...row]);
+    return this.core.getExploredData();
   }
 
   loadExploredData(data: boolean[][]): void {
-    if (data.length === this.rows && data[0]?.length === this.cols) {
-      this.explored = data.map(row => [...row]);
-    }
+    this.core.loadExploredData(data);
+  }
+
+  /** Expose gradient info for testing */
+  getGradientInfo(playerCol: number, playerRow: number): { col: number; row: number; alpha: number }[] {
+    return this.core.getGradientInfo(playerCol, playerRow);
   }
 }
