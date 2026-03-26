@@ -1,0 +1,15 @@
+{
+  "featureId": "fix-quest-ux-scrutiny-issues",
+  "reviewedAt": "2026-03-26T15:17:07Z",
+  "commitId": "93ee8c9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed the fix commit, transcript skeleton, and affected files for the three genuine scrutiny failures. The fix now grants quest card item rewards through the same loot/inventory pipeline used elsewhere, makes all available quest indicators yellow regardless of category, and refreshes NPC quest markers immediately when QUEST_COMPLETED fires.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": "/Users/feuvan/src/abyssfire/.factory/validation/quest-ux/scrutiny/reviews/quest-compact-card-ui.json, /Users/feuvan/src/abyssfire/.factory/validation/quest-ux/scrutiny/reviews/quest-npc-indicators-and-mobile.json, /Users/feuvan/src/abyssfire/.factory/validation/quest-ux/scrutiny/reviews/quest-ux-integration-verification.json",
+  "summary": "Pass. Commit 93ee8c9 adequately resolves the three genuine prior blocking issues: UIScene turn-in now adds reward.items to inventory, QuestNPCIndicators now returns yellow '!' for all available quests, and ZoneScene.handleQuestCompleted immediately refreshes NPC markers so completed quests flip to yellow '?'. The remaining prior failures called out by the orchestrator were correctly not re-flagged."
+}
