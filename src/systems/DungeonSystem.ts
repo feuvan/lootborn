@@ -12,6 +12,7 @@
 import { MapGenerator } from './MapGenerator';
 import type { MapData, MapTheme, MonsterDefinition } from '../data/types';
 import { DungeonMonsterPool, DungeonBossDef, DungeonMidBossDef, DUNGEON_EXCLUSIVE_LEGENDARIES } from '../data/dungeonData';
+import { t } from '../i18n';
 
 /** Seeded RNG matching MapGenerator's SeededRandom */
 class SeededRandom {
@@ -231,7 +232,7 @@ export class DungeonSystem {
     // Create minimal MapData for MapGenerator
     const mapData: MapData = {
       id: `dungeon_floor_${config.floorNumber}`,
-      name: `深渊迷宫 - 第${config.floorNumber}层`,
+      name: t('zone.dungeon.floorName', { floor: config.floorNumber }),
       cols,
       rows,
       tiles: [],
@@ -298,12 +299,12 @@ export class DungeonSystem {
 
   /** Get the exit label for a non-final floor. */
   static getFloorExitLabel(nextFloor: number): string {
-    return `下一层: 第${nextFloor}层`;
+    return t('zone.dungeon.floorExitLabel', { floor: nextFloor });
   }
 
   /** Get the dungeon portal label. */
   static getDungeonPortalLabel(): string {
-    return '深渊迷宫入口';
+    return t('zone.dungeon.portalLabel');
   }
 
   /** Get the dungeon exclusive legendary IDs. */

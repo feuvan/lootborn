@@ -1807,6 +1807,134 @@ const en: LocaleData = {
   // UI — Mini-Boss Dialogue
   // ═══════════════════════════════════════════════════════════════════════
   'ui.miniBoss.fight': '[ Fight ]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ZONE SCENE — Combat Log & Messages
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ─── Zone Transitions ───
+  'zone.enterZone': 'Entering {zoneName} (Lv.{min}-{max})',
+  'zone.returnToAbyssRift': 'Return to Abyss Rift',
+
+  // ─── Death / Respawn ───
+  'zone.death.text': 'You Died',
+  'zone.death.logMessage': 'You died. Respawning at camp...',
+
+  // ─── Teleport ───
+  'zone.teleport.opening': 'Opening portal...',
+  'zone.teleport.toCamp': 'Teleported to camp.',
+  'zone.teleport.toDungeonExit': 'Teleported to floor exit.',
+  'zone.teleport.toSubDungeonEntrance': 'Teleported to dungeon entrance.',
+  'zone.teleport.alreadyAtCamp': 'You are already in camp. Cannot use portal.',
+  'zone.teleport.alreadyAtExit': 'You are already near the exit.',
+  'zone.teleport.blockedByCC': 'Cannot teleport: crowd controlled!',
+  'zone.teleport.unreachable': 'Teleport failed: target position unreachable!',
+
+  // ─── Level Up ───
+  'zone.levelUp.text': 'Level Up!',
+  'zone.levelUp.level': 'Level {level}',
+
+  // ─── Quest Completion ───
+  'zone.questComplete': 'Quest Complete!',
+
+  // ─── Monster Kill ───
+  'zone.monsterKill': 'Killed {monsterName}! +{exp}EXP +{gold}G',
+
+  // ─── Combat Log — Skill / Combat Messages ───
+  'zone.combat.autoCombat': 'Auto-combat: {state}',
+  'zone.combat.autoCombatOn': 'ON',
+  'zone.combat.autoCombatOff': 'OFF',
+  'zone.combat.manaInsufficient': 'Not enough mana!',
+  'zone.combat.freeCast': 'Free cast! No mana consumed',
+  'zone.combat.skillActivated': '{skillName} activated!',
+  'zone.combat.deathMarkApplied': '{skillName} marked {targetName}!',
+  'zone.combat.slowTrapHit': '{skillName} slowed {count} enemies!',
+  'zone.combat.tauntRoar': 'Taunt Roar affected {count} enemies',
+  'zone.combat.dodgeCounterReady': 'Dodge counter ready! Next attack guaranteed crit',
+  'zone.combat.dodgeCounterCrit': 'Dodge counter! Critical hit!',
+  'zone.combat.comboTrigger': 'Combo triggered!',
+  'zone.combat.doubleArrow': 'Double arrow!',
+  'zone.combat.freezeSlow': 'Frozen slow!',
+  'zone.combat.deathImmunity': 'Death immunity triggered! Restored 30% HP',
+  'zone.combat.unyieldingProc': 'Unyielding triggered! Damage reduction active',
+  'zone.combat.restoreHp': 'Restored {amount} HP',
+  'zone.combat.restoreMana': 'Restored {amount} MP',
+  'zone.combat.curseAura': 'Curse aura: stats reduced!',
+
+  // ─── Status Effects ───
+  'zone.statusEffect.expired': '{effectName} effect expired',
+
+  // ─── Random Events ───
+  'zone.event.treasureChest.label': 'Chest',
+  'zone.event.treasureChest.goldReward': 'Found {gold} gold in the chest',
+  'zone.event.merchant.label': 'Wandering Merchant',
+  'zone.event.merchant.announce': 'A wandering merchant appeared! Check out their goods.',
+  'zone.event.ambush.announce': 'Ambush!',
+  'zone.event.rescue.fallbackName': 'Stranded Traveler',
+  'zone.event.rescue.complete': 'You rescued {npcName}! Gained {gold} gold and {exp} EXP',
+  'zone.event.puzzle.prompt': 'Puzzle: {prompt}',
+  'zone.event.puzzle.label': 'Puzzle Device',
+  'zone.event.puzzle.leave': 'Leave',
+  'zone.event.puzzle.rewardGoldExp': 'Gained {gold} gold and {exp} EXP',
+  'zone.event.puzzle.left': 'You left the puzzle device.',
+
+  // ─── Hidden Area ───
+  'zone.hiddenArea.discovered': 'Discovered hidden area: {areaName}',
+  'zone.hiddenArea.rewardChest': 'Chest',
+  'zone.hiddenArea.rewardGoldPile': 'Gold Pile',
+  'zone.hiddenArea.rewardScroll': 'Scroll',
+  'zone.hiddenArea.gotItem': 'Found in chest: {itemName}',
+  'zone.hiddenArea.gotGold': 'Gained {amount} gold',
+  'zone.hiddenArea.gotScroll': 'Discovered an ancient scroll',
+
+  // ─── Pet Discovery ───
+  'zone.pet.voidButterfly.label': '✦ Void Butterfly',
+  'zone.pet.discovered': 'Discovered rare pet: {petName}! Sent to pet house.',
+
+  // ─── Lore Discovery ───
+  'zone.lore.discovered': 'Discovered lore: {loreName}',
+
+  // ─── Quest Explore / Investigate ───
+  'zone.quest.exploreFound': 'Discovered: {targetName}',
+  'zone.quest.clueFound': 'Found clue: {targetName}',
+
+  // ─── Dungeon System ───
+  'zone.dungeon.floorName': 'Abyss Maze - Floor {floor}',
+  'zone.dungeon.enter': 'Entering the Abyss Maze... ({floors} floors)',
+  'zone.dungeon.floorEnter': 'Entering floor {floor}...',
+  'zone.dungeon.exit': 'Leaving the Abyss Maze, returning to Abyss Rift...',
+  'zone.dungeon.floorExitLabel': 'Next: Floor {floor}',
+  'zone.dungeon.portalLabel': 'Abyss Maze Entrance',
+  'zone.dungeon.entranceBlocked': 'This entrance is temporarily inaccessible',
+
+  // ─── Sub-Dungeon System ───
+  'zone.subDungeon.enter': 'Entering {name}...',
+  'zone.subDungeon.exit': 'Leaving dungeon, returning to main map...',
+
+  // ─── Save Position Reset ───
+  'zone.save.positionReset': 'Save position unreachable, reset to camp',
+
+  // ─── Escort Quest ───
+  'zone.escort.npcAppeared': '{npcName} appeared! Escort target marked.',
+  'zone.escort.complete': 'Escort complete! {npcName} arrived safely.',
+  'zone.escort.npcDied': 'Escort target has died! Quest failed.',
+
+  // ─── Defend Quest ───
+  'zone.defend.targetNeedsProtection': '{targetName} needs protection! Prepare for enemy attack.',
+  'zone.defend.allWavesCleared': 'All waves repelled! Defense successful!',
+  'zone.defend.waveIncoming': 'Wave {current}/{total} incoming!',
+  'zone.defend.targetDestroyed': 'Defense target destroyed! Quest failed.',
+
+  // ─── Craft / Deliver Quest ───
+  'zone.craft.complete': 'Crafting complete: {targetName}',
+  'zone.deliver.complete': 'Delivery complete: {targetName}',
+
+  // ─── Mercenary Heal ───
+  'zone.mercenary.heal': '{mercName} healed you! +{amount} HP',
+
+  // ─── NPC Dialogue (ZoneScene fallback) ───
+  'zone.npc.questTurnedIn': 'Thanks for completing the quest!',
+  'zone.npc.acceptQuest': 'Accept: {questName}',
 };
 
 export default en;

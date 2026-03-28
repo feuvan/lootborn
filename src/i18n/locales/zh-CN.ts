@@ -1752,6 +1752,134 @@ const zhCN: LocaleData = {
   // UI — Mini-Boss Dialogue
   // ═══════════════════════════════════════════════════════════════════════
   'ui.miniBoss.fight': '[ 开战 ]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ZONE SCENE — Combat Log & Messages
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ─── Zone Transitions ───
+  'zone.enterZone': '进入 {zoneName} (Lv.{min}-{max})',
+  'zone.returnToAbyssRift': '返回深渊裂谷',
+
+  // ─── Death / Respawn ───
+  'zone.death.text': '你已死亡',
+  'zone.death.logMessage': '你已死亡，返回营地复活...',
+
+  // ─── Teleport ───
+  'zone.teleport.opening': '正在开启传送门...',
+  'zone.teleport.toCamp': '已传送回营地。',
+  'zone.teleport.toDungeonExit': '已传送至楼层出口。',
+  'zone.teleport.toSubDungeonEntrance': '已传送至副本入口。',
+  'zone.teleport.alreadyAtCamp': '你已在营地中，无法使用传送门。',
+  'zone.teleport.alreadyAtExit': '你已在出口附近。',
+  'zone.teleport.blockedByCC': '无法传送：被控制中!',
+  'zone.teleport.unreachable': '传送失败：目标位置不可到达!',
+
+  // ─── Level Up ───
+  'zone.levelUp.text': '升级!',
+  'zone.levelUp.level': '等级 {level}',
+
+  // ─── Quest Completion ───
+  'zone.questComplete': '任务完成!',
+
+  // ─── Monster Kill ───
+  'zone.monsterKill': '击杀 {monsterName}! +{exp}EXP +{gold}G',
+
+  // ─── Combat Log — Skill / Combat Messages ───
+  'zone.combat.autoCombat': '自动战斗: {state}',
+  'zone.combat.autoCombatOn': '开启',
+  'zone.combat.autoCombatOff': '关闭',
+  'zone.combat.manaInsufficient': '法力不足!',
+  'zone.combat.freeCast': '免费施法！法力未消耗',
+  'zone.combat.skillActivated': '{skillName} 激活!',
+  'zone.combat.deathMarkApplied': '{skillName} 标记了 {targetName}!',
+  'zone.combat.slowTrapHit': '{skillName} 减速了{count}个敌人!',
+  'zone.combat.tauntRoar': '嘲讽怒吼影响了{count}个敌人',
+  'zone.combat.dodgeCounterReady': '闪避反击就绪！下次攻击必定暴击',
+  'zone.combat.dodgeCounterCrit': '闪避反击！暴击！',
+  'zone.combat.comboTrigger': '连击触发！',
+  'zone.combat.doubleArrow': '双倍箭矢！',
+  'zone.combat.freezeSlow': '冰封减速！',
+  'zone.combat.deathImmunity': '死亡豁免触发！恢复30%生命',
+  'zone.combat.unyieldingProc': '不屈触发! 获得减伤效果',
+  'zone.combat.restoreHp': '恢复 {amount} 生命',
+  'zone.combat.restoreMana': '恢复 {amount} 法力',
+  'zone.combat.curseAura': '诅咒光环：属性降低！',
+
+  // ─── Status Effects ───
+  'zone.statusEffect.expired': '{effectName}效果已消失',
+
+  // ─── Random Events ───
+  'zone.event.treasureChest.label': '宝箱',
+  'zone.event.treasureChest.goldReward': '从宝箱中获得 {gold} 金币',
+  'zone.event.merchant.label': '流浪商人',
+  'zone.event.merchant.announce': '流浪商人出现了! 看看他的商品吧。',
+  'zone.event.ambush.announce': '伏兵出现!',
+  'zone.event.rescue.fallbackName': '被困的旅人',
+  'zone.event.rescue.complete': '你救出了{npcName}! 获得 {gold} 金币和 {exp} 经验',
+  'zone.event.puzzle.prompt': '谜题: {prompt}',
+  'zone.event.puzzle.label': '谜题装置',
+  'zone.event.puzzle.leave': '离开',
+  'zone.event.puzzle.rewardGoldExp': '获得 {gold} 金币和 {exp} 经验',
+  'zone.event.puzzle.left': '你离开了谜题装置。',
+
+  // ─── Hidden Area ───
+  'zone.hiddenArea.discovered': '发现隐藏区域: {areaName}',
+  'zone.hiddenArea.rewardChest': '宝箱',
+  'zone.hiddenArea.rewardGoldPile': '金币堆',
+  'zone.hiddenArea.rewardScroll': '卷轴',
+  'zone.hiddenArea.gotItem': '从宝箱中获得: {itemName}',
+  'zone.hiddenArea.gotGold': '获得 {amount} 金币',
+  'zone.hiddenArea.gotScroll': '发现远古卷轴',
+
+  // ─── Pet Discovery ───
+  'zone.pet.voidButterfly.label': '✦ 虚空蝶',
+  'zone.pet.discovered': '发现了稀有宠物: {petName}! 已收入宠物小屋。',
+
+  // ─── Lore Discovery ───
+  'zone.lore.discovered': '发现传说: {loreName}',
+
+  // ─── Quest Explore / Investigate ───
+  'zone.quest.exploreFound': '发现: {targetName}',
+  'zone.quest.clueFound': '发现线索: {targetName}',
+
+  // ─── Dungeon System ───
+  'zone.dungeon.floorName': '深渊迷宫 - 第{floor}层',
+  'zone.dungeon.enter': '进入深渊迷宫... (共{floors}层)',
+  'zone.dungeon.floorEnter': '进入第{floor}层...',
+  'zone.dungeon.exit': '离开深渊迷宫，返回深渊裂谷...',
+  'zone.dungeon.floorExitLabel': '下一层: 第{floor}层',
+  'zone.dungeon.portalLabel': '深渊迷宫入口',
+  'zone.dungeon.entranceBlocked': '此入口暂时无法进入',
+
+  // ─── Sub-Dungeon System ───
+  'zone.subDungeon.enter': '进入{name}...',
+  'zone.subDungeon.exit': '离开副本，返回主地图...',
+
+  // ─── Save Position Reset ───
+  'zone.save.positionReset': '存档位置不可达，已重置至营地',
+
+  // ─── Escort Quest ───
+  'zone.escort.npcAppeared': '{npcName} 出现了！护送目标已标记。',
+  'zone.escort.complete': '护送完成! {npcName}安全到达目的地。',
+  'zone.escort.npcDied': '护送目标已死亡! 任务失败。',
+
+  // ─── Defend Quest ───
+  'zone.defend.targetNeedsProtection': '{targetName} 需要保护！准备迎接敌袭。',
+  'zone.defend.allWavesCleared': '所有浪潮已击退！防守成功！',
+  'zone.defend.waveIncoming': '第 {current}/{total} 波敌人来袭!',
+  'zone.defend.targetDestroyed': '防守目标被摧毁! 任务失败。',
+
+  // ─── Craft / Deliver Quest ───
+  'zone.craft.complete': '制作完成: {targetName}',
+  'zone.deliver.complete': '交付完成: {targetName}',
+
+  // ─── Mercenary Heal ───
+  'zone.mercenary.heal': '{mercName} 治疗了你! +{amount} HP',
+
+  // ─── NPC Dialogue (ZoneScene fallback) ───
+  'zone.npc.questTurnedIn': '感谢你完成了任务！',
+  'zone.npc.acceptQuest': '接受: {questName}',
 };
 
 export default zhCN;

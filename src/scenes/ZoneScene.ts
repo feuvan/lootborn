@@ -3,6 +3,8 @@ import { TILE_WIDTH, TILE_HEIGHT, GAME_WIDTH, GAME_HEIGHT, TEXTURE_SCALE, DPR } 
 import { cartToIso, isoToCart, worldToTile, euclideanDistance, distanceSq } from '../utils/IsometricUtils';
 import { randomInt } from '../utils/MathUtils';
 import { EventBus, GameEvents } from '../utils/EventBus';
+import { t } from '../i18n';
+import { getMonsterName, getSkillName, getZoneName, getHiddenAreaName, getHiddenAreaDiscoveryText, getStatusEffectName, getEliteAffixName, getPetName, getLoreName, getQuestName, getQuestTargetName, getMercenaryName, getSubDungeonName, getRescueNpcName, getItemDisplayName as getLocalizedItemName, getNpcName, getSubDungeonEntranceName } from '../i18n/gameAccessors';
 import { Player } from '../entities/Player';
 import { Monster } from '../entities/Monster';
 import { NPC } from '../entities/NPC';
@@ -43,7 +45,7 @@ import type { MapData, ClassDefinition, ItemInstance, SaveData, HiddenArea, SubD
 import { AllSubDungeons, SubDungeonMiniBosses } from '../data/subDungeons';
 import { DungeonSystem } from '../systems/DungeonSystem';
 import type { DungeonRunState, DungeonFloorConfig } from '../systems/DungeonSystem';
-import { DifficultySystem, DIFFICULTY_UNLOCK_MESSAGES } from '../systems/DifficultySystem';
+import { DifficultySystem } from '../systems/DifficultySystem';
 import { SpatialGrid } from '../systems/SpatialGrid';
 import { DungeonBossDef, DungeonMidBossDef } from '../data/dungeonData';
 import { computeNPCIndicator } from '../ui/QuestNPCIndicators';
@@ -490,18 +492,86 @@ export class ZoneScene extends Phaser.Scene {
     // Update NPC quest indicators immediately when quest state changes
     EventBus.on(GameEvents.QUEST_ACCEPTED, this.updateNPCQuestMarkers, this);
     EventBus.on(GameEvents.QUEST_TURNED_IN, this.updateNPCQuestMarkers, this);
+    // React to locale changes for persistent UI elements
+    EventBus.on(GameEvents.LOCALE_CHANGED, this.handleLocaleChanged, this);
 
     this.exploredZones.add(this.currentMapId);
     this.achievementSystem.update('explore', this.currentMapId);
 
     EventBus.emit(GameEvents.ZONE_ENTERED, { mapId: this.currentMapId });
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `进入 ${this.mapData.name} (Lv.${this.mapData.levelRange[0]}-${this.mapData.levelRange[1]})`,
+      text: t('zone.enterZone', { zoneName: getZoneName(this.currentMapId, this.mapData.name), min: this.mapData.levelRange[0], max: this.mapData.levelRange[1] }),
       type: 'system',
     });
 
     this.showZoneBanner();
     this.autoSave();
+  }
+
+  /** Update persistent text labels when locale changes. */
+  private handleLocaleChanged(): void {
+    // Update sub-dungeon entrance labels
+    for (const se of this.subDungeonEntranceSprites) {
+      const container = se.sprite;
+      const children = container.list;
+      for (const child of children) {
+        if (child instanceof Phaser.GameObjects.Text && (child as Phaser.GameObjects.Text).style.color === '#CC88FF') {
+          (child as Phaser.GameObjects.Text).setText(getSubDungeonEntranceName(se.entrance.id, se.entrance.name));
+        }
+      }
+    }
+    // Update pet spawn labels
+    for (const ps of this.petSpawnSprites) {
+      const container = ps.sprite;
+      const children = container.list;
+      for (const child of children) {
+        if (child instanceof Phaser.GameObjects.Text) {
+          (child as Phaser.GameObjects.Text).setText(t('zone.pet.voidButterfly.label'));
+        }
+      }
+    }
+    // Update hidden area reward labels
+    for (const hs of this.hiddenAreaSprites) {
+      const reward = hs.area.rewards[hs.rewardIndex];
+      if (!reward) continue;
+      const container = hs.sprite;
+      const children = container.list;
+      for (const child of children) {
+        if (child instanceof Phaser.GameObjects.Text) {
+          (child as Phaser.GameObjects.Text).setText(
+            reward.type === 'chest' ? t('zone.hiddenArea.rewardChest') : reward.type === 'gold_pile' ? t('zone.hiddenArea.rewardGoldPile') : t('zone.hiddenArea.rewardScroll'),
+          );
+        }
+      }
+    }
+    // Mercenary name label
+    if (this.mercenaryNameLabel && this.mercenarySystem?.getMercenary()) {
+      const merc = this.mercenarySystem.getMercenary()!;
+      const def = MERCENARY_DEFS[merc.type];
+      this.mercenaryNameLabel.setText(`${getMercenaryName(merc.type, def.name)} Lv.${merc.level}`);
+    }
+    // Pet name label
+    if (this.petNameLabel && this.homesteadSystem) {
+      const petInst = this.homesteadSystem.getActivePetInstance();
+      if (petInst) {
+        const displayName = this.homesteadSystem.getPetDisplayName(petInst);
+        this.petNameLabel.setText(`${displayName} Lv.${petInst.level}`);
+      }
+    }
+    // Escort NPC name label
+    if (this.escortNpcNameLabel && this.escortQuestId) {
+      const quest = this.questSystem.quests.get(this.escortQuestId);
+      if (quest?.escortNpc) {
+        this.escortNpcNameLabel.setText(quest.escortNpc.name);
+      }
+    }
+    // Defend target name label
+    if (this.defendTargetNameLabel && this.defendQuestId) {
+      const quest = this.questSystem.quests.get(this.defendQuestId);
+      if (quest?.defendTarget) {
+        this.defendTargetNameLabel.setText(quest.defendTarget.name);
+      }
+    }
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -590,7 +660,7 @@ export class ZoneScene extends Phaser.Scene {
       this.vfx.deathBurst(this.player.sprite.x, this.player.sprite.y - 16, 0xcc2222);
     }
     const dp = this.screenPos(0.5, 0.4);
-    const deathText = this.add.text(dp.x, dp.y, '你已死亡', {
+    const deathText = this.add.text(dp.x, dp.y, t('zone.death.text'), {
       fontSize: fs(36), color: '#cc2222', fontFamily: '"Cinzel", serif',
       fontStyle: 'bold', stroke: '#000000', strokeThickness: Math.round(6 * DPR),
     }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_SCREEN_UI_DEPTH).setAlpha(0);
@@ -619,7 +689,7 @@ export class ZoneScene extends Phaser.Scene {
           EventBus.emit(GameEvents.SUBDUNGEON_EXIT, { mapId: parentMapId });
         }
 
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已死亡，返回营地复活...', type: 'system' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.death.logMessage'), type: 'system' });
         this.isTransitioning = true;
         this.scene.restart({
           classId: this.player.classData.id,
@@ -700,7 +770,7 @@ export class ZoneScene extends Phaser.Scene {
         this.player.buffs.push({ stat: 'damageReduction', value: buffValue, duration: buffDuration, startTime: time });
         this.player.skillCooldowns.set('unyielding', time + getSkillCooldown(unyieldingSkill, unyieldingLevel, eqStats.cooldownReduction));
         this.skillEffects.play('unyielding', this.player.sprite.x, this.player.sprite.y);
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '不屈触发! 获得减伤效果', type: 'combat' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.unyieldingProc'), type: 'combat' });
       }
     }
 
@@ -811,10 +881,10 @@ export class ZoneScene extends Phaser.Scene {
       if (distSq <= 4) {
         if (pot.type === 'hp') {
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + pot.amount);
-          EventBus.emit(GameEvents.LOG_MESSAGE, { text: `恢复 ${pot.amount} 生命`, type: 'combat' });
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.restoreHp', { amount: pot.amount }), type: 'combat' });
         } else {
           this.player.mana = Math.min(this.player.maxMana, this.player.mana + pot.amount);
-          EventBus.emit(GameEvents.LOG_MESSAGE, { text: `恢复 ${pot.amount} 法力`, type: 'info' });
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.restoreMana', { amount: pot.amount }), type: 'info' });
         }
         this.tweens.killTweensOf(pot.sprite);
         this.tweens.add({
@@ -1017,7 +1087,7 @@ export class ZoneScene extends Phaser.Scene {
               // Add floor label for dungeon exit portals
               if (this.isInDungeon && this.dungeonFloorConfig) {
                 const labelText = this.dungeonFloorConfig.isBossFloor
-                  ? '返回深渊裂谷'
+                  ? t('zone.returnToAbyssRift')
                   : DungeonSystem.getFloorExitLabel(this.dungeonFloorConfig.floorNumber + 1);
                 const exitLabel = this.add.text(pos.x, pos.y - 30 * DPR, labelText, {
                   fontSize: fs(9),
@@ -1347,7 +1417,7 @@ export class ZoneScene extends Phaser.Scene {
     if (!this.wasd) return;
     if (Phaser.Input.Keyboard.JustDown(this.wasd.TAB)) {
       this.player.autoCombat = !this.player.autoCombat;
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `自动战斗: ${this.player.autoCombat ? '开启' : '关闭'}`, type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.autoCombat', { state: this.player.autoCombat ? t('zone.combat.autoCombatOn') : t('zone.combat.autoCombatOff') }), type: 'system' });
     }
     if (Phaser.Input.Keyboard.JustDown(this.wasd.I)) {
       EventBus.emit(GameEvents.UI_TOGGLE_PANEL, { panel: 'inventory' });
@@ -1398,7 +1468,7 @@ export class ZoneScene extends Phaser.Scene {
     const level = this.player.getSkillLevel(skillId);
     const scaledManaCost = getSkillManaCost(skill, level);
     if (this.player.mana < scaledManaCost) {
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `法力不足!`, type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.manaInsufficient'), type: 'combat' });
       return;
     }
 
@@ -1417,7 +1487,7 @@ export class ZoneScene extends Phaser.Scene {
     if (eqFc.freeCast > 0 && this.combatSystem.checkFreeCast(eqFc.freeCast)) {
       // Refund the mana that was just spent
       this.player.mana = Math.min(this.player.maxMana, this.player.mana + scaledManaCost);
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '免费施法！法力未消耗', type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.freeCast'), type: 'combat' });
       EventBus.emit(GameEvents.PLAYER_MANA_CHANGED, { mana: this.player.mana, maxMana: this.player.maxMana });
     }
 
@@ -1437,7 +1507,7 @@ export class ZoneScene extends Phaser.Scene {
     if (skillId === 'teleport') {
       // Block while stunned or frozen
       if (this.statusEffects.isImmobilized('player')) {
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '无法传送：被控制中!', type: 'combat' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.teleport.blockedByCC'), type: 'combat' });
         return;
       }
       const pointer = this.input.activePointer;
@@ -1462,7 +1532,7 @@ export class ZoneScene extends Phaser.Scene {
         }
         // Abort teleport if no walkable tile found within search radius
         if (!found) {
-          EventBus.emit(GameEvents.LOG_MESSAGE, { text: '传送失败：目标位置不可到达!', type: 'combat' });
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.teleport.unreachable'), type: 'combat' });
           // Refund mana since teleport was already deducted
           this.player.mana = Math.min(this.player.maxMana, this.player.mana + scaledManaCost);
           return;
@@ -1474,7 +1544,7 @@ export class ZoneScene extends Phaser.Scene {
       this.player.path = [];
       this.player.attackTarget = null;
       this.skillEffects.play(skillId, origX, origY, this.player.sprite.x, this.player.sprite.y);
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.skillActivated', { skillName: getSkillName(skillId, skill.name) }), type: 'combat' });
       return;
     }
 
@@ -1505,7 +1575,7 @@ export class ZoneScene extends Phaser.Scene {
         this.player.buffs.push({ stat: skill.buff.stat, value: buffValue, duration: buffDuration, startTime: time });
       }
       this.skillEffects.play(skillId, origX, origY, this.player.sprite.x, this.player.sprite.y);
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.skillActivated', { skillName: getSkillName(skillId, skill.name) }), type: 'combat' });
       return;
     }
 
@@ -1524,7 +1594,7 @@ export class ZoneScene extends Phaser.Scene {
         if (!target.isAlive()) this.onMonsterKilled(target);
       }
       this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y, target.sprite.x, target.sprite.y);
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 标记了 ${target.definition.name}!`, type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.deathMarkApplied', { skillName: getSkillName(skillId, skill.name), targetName: getMonsterName(target.definition.id, target.definition.name) }), type: 'combat' });
       return;
     }
 
@@ -1549,7 +1619,7 @@ export class ZoneScene extends Phaser.Scene {
       }
       this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y, this.player.sprite.x, this.player.sprite.y);
       if (aoeTargets.length > 0) {
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 减速了${aoeTargets.length}个敌人!`, type: 'combat' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.slowTrapHit', { skillName: getSkillName(skillId, skill.name), count: aoeTargets.length }), type: 'combat' });
       }
       return;
     }
@@ -1558,7 +1628,7 @@ export class ZoneScene extends Phaser.Scene {
       const buffValue = getSkillBuffValue(skill, level);
       const buffDuration = getSkillBuffDuration(skill, level);
       this.player.buffs.push({ stat: skill.buff.stat, value: buffValue, duration: buffDuration, startTime: time });
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${skill.name} 激活!`, type: 'combat' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.skillActivated', { skillName: getSkillName(skillId, skill.name) }), type: 'combat' });
       this.skillEffects.play(skillId, this.player.sprite.x, this.player.sprite.y);
       if (this.vfx) {
         if (skill.buff.stat === 'hp' || skillId.includes('heal')) {
@@ -1582,7 +1652,7 @@ export class ZoneScene extends Phaser.Scene {
         }
         if (tauntTargets.length > 0) {
           EventBus.emit(GameEvents.LOG_MESSAGE, {
-            text: `嘲讽怒吼影响了${tauntTargets.length}个敌人`,
+            text: t('zone.combat.tauntRoar', { count: tauntTargets.length }),
             type: 'combat',
           });
         }
@@ -1680,7 +1750,7 @@ export class ZoneScene extends Phaser.Scene {
           const eqDc = this.getEquipStats();
           if (eqDc.dodgeCounter > 0) {
             this._dodgeCounterReady = true;
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '闪避反击就绪！下次攻击必定暴击', type: 'combat' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.dodgeCounterReady'), type: 'combat' });
           }
         } else {
           // Difficulty damage scaling is already applied at monster spawn time via DifficultySystem.scaleMonster
@@ -1744,7 +1814,7 @@ export class ZoneScene extends Phaser.Scene {
             // Frozen: chance to apply slow on hit
             if (affixStats.freezeChance > 0 && Math.random() < affixStats.freezeChance) {
               this.statusEffects.apply('player', 'slow', 30, 2500, monster.id, time);
-              EventBus.emit(GameEvents.LOG_MESSAGE, { text: '冰封减速！', type: 'combat' });
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.freezeSlow'), type: 'combat' });
             }
           }
 
@@ -1755,7 +1825,7 @@ export class ZoneScene extends Phaser.Scene {
               this.player.hp = Math.floor(this.player.maxHp * 0.3);
               this._deathSaveUsed = true;
               this.time.delayedCall(60000, () => { this._deathSaveUsed = false; });
-              EventBus.emit(GameEvents.LOG_MESSAGE, { text: '死亡豁免触发！恢复30%生命', type: 'system' });
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.deathImmunity'), type: 'system' });
               if (this.vfx) this.vfx.healBurst(this.player.sprite.x, this.player.sprite.y - 16, 20);
             } else {
               this.player.die(); break;
@@ -1781,7 +1851,7 @@ export class ZoneScene extends Phaser.Scene {
         const forceCrit = this._dodgeCounterReady;
         if (forceCrit) {
           this._dodgeCounterReady = false;
-          EventBus.emit(GameEvents.LOG_MESSAGE, { text: '闪避反击！暴击！', type: 'combat' });
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.dodgeCounterCrit'), type: 'combat' });
         }
 
         const result = this.combatSystem.calculateDamage(
@@ -1828,7 +1898,7 @@ export class ZoneScene extends Phaser.Scene {
             target.takeDamage(extraResult.damage, this.player.sprite.x, this.player.sprite.y);
             this.applySteal(extraResult);
             this.showDamageText(target.sprite.x, target.sprite.y - 20, extraResult.damage, extraResult.isCrit);
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '连击触发！', type: 'combat' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.comboTrigger'), type: 'combat' });
             if (this.vfx) this.vfx.hitSparks(target.sprite.x, target.sprite.y - 16, 8);
           }
         }
@@ -1842,7 +1912,7 @@ export class ZoneScene extends Phaser.Scene {
             target.takeDamage(extraResult.damage, this.player.sprite.x, this.player.sprite.y);
             this.applySteal(extraResult);
             this.showDamageText(target.sprite.x + 15, target.sprite.y - 15, extraResult.damage, extraResult.isCrit);
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '双倍箭矢！', type: 'combat' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.doubleArrow'), type: 'combat' });
             this.skillEffects.playAttack(this.player.sprite.x, this.player.sprite.y, target.sprite.x, target.sprite.y, true);
           }
         }
@@ -2060,7 +2130,7 @@ export class ZoneScene extends Phaser.Scene {
     // Create a fake elite monster definition for loot generation (guarantees better quality)
     const fakeDef = {
       id: 'treasure_cache',
-      name: '宝箱',
+      name: t('zone.event.treasureChest.label'),
       level: lootLevel,
       hp: 1, damage: 0, defense: 0, speed: 0,
       aggroRange: 0, attackRange: 0, attackSpeed: 1000,
@@ -2076,7 +2146,7 @@ export class ZoneScene extends Phaser.Scene {
     const goldMax = fakeDef.goldReward[1];
     const gold = randomInt(goldMin, goldMax);
     this.player.gold += gold;
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: `从宝箱中获得 ${gold} 金币`, type: 'info' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.event.treasureChest.goldReward', { gold }), type: 'info' });
 
     // Drop items near the event position
     for (const item of items) {
@@ -2114,7 +2184,7 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     // Name label
-    const nameLabel = this.add.text(0, 4 * DPR, '流浪商人', {
+    const nameLabel = this.add.text(0, 4 * DPR, t('zone.event.merchant.label'), {
       fontSize: fs(10),
       color: '#c0934a',
       fontFamily: '"Noto Sans SC", sans-serif',
@@ -2131,7 +2201,7 @@ export class ZoneScene extends Phaser.Scene {
       shopItems: merchantItems,
       type: 'merchant',
     });
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '流浪商人出现了! 看看他的商品吧。', type: 'info' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.event.merchant.announce'), type: 'info' });
 
     // Despawn the merchant sprite when the shop closes
     const despawnMerchant = () => {
@@ -2167,7 +2237,7 @@ export class ZoneScene extends Phaser.Scene {
     const monsterIds = event.context.monsterIds as string[] | undefined;
     const count = (event.context.monsterCount as number) ?? 2;
     const monsterDefs = MonstersByZone[this.currentMapId] || [];
-    const rescueNpcName = (event.context.rescueNpcName as string) ?? '被困的旅人';
+    const rescueNpcName = (event.context.rescueNpcName as string) ?? t('zone.event.rescue.fallbackName');
     const reward = event.context.reward as { gold: number; exp: number } | undefined;
 
     // Spawn a stranded NPC sprite at the event location
@@ -2185,10 +2255,10 @@ export class ZoneScene extends Phaser.Scene {
     const helpMark = this.add.text(0, -28 * DPR, '!', {
       fontSize: fs(14), color: '#ff4444', fontFamily: '"Noto Sans SC", sans-serif', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const nameLabel = this.add.text(0, 4 * DPR, rescueNpcName, {
+    const nameLabel2 = this.add.text(0, 4 * DPR, rescueNpcName, {
       fontSize: fs(10), color: '#aaddff', fontFamily: '"Noto Sans SC", sans-serif',
     }).setOrigin(0.5, 0);
-    rescueNpcSprite.add([body, helpMark, nameLabel]);
+    rescueNpcSprite.add([body, helpMark, nameLabel2]);
 
     // Spawn hostile monsters around the NPC
     const rescueMonsters: Monster[] = [];
@@ -2255,14 +2325,14 @@ export class ZoneScene extends Phaser.Scene {
   private completeRescueEvent(event: ActiveEvent): void {
     if (event.resolved) return;
     const reward = event.context.reward as { gold: number; exp: number } | undefined;
-    const rescueNpcName = (event.context.rescueNpcName as string) ?? '被困的旅人';
+    const rescueNpcName = (event.context.rescueNpcName as string) ?? t('zone.event.rescue.fallbackName');
 
     // Grant reward now that all hostiles are defeated
     if (reward) {
       this.player.gold += reward.gold;
       this.player.exp += reward.exp;
       EventBus.emit(GameEvents.LOG_MESSAGE, {
-        text: `你救出了${rescueNpcName}! 获得 ${reward.gold} 金币和 ${reward.exp} 经验`,
+        text: t('zone.event.rescue.complete', { npcName: rescueNpcName, gold: reward.gold, exp: reward.exp }),
         type: 'info',
       });
     }
@@ -2285,7 +2355,7 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     // Show puzzle prompt in combat log
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: `谜题: ${puzzle.prompt}`, type: 'info' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.event.puzzle.prompt', { prompt: puzzle.prompt }), type: 'info' });
 
     // Spawn an interactable puzzle object near the event position
     const walkable = RandomEventSystem.findWalkableTile(
@@ -2303,7 +2373,7 @@ export class ZoneScene extends Phaser.Scene {
     const icon = this.add.text(0, -14 * DPR, '?', {
       fontSize: fs(16), color: '#ffcc00', fontFamily: '"Noto Sans SC", sans-serif', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const label = this.add.text(0, 8 * DPR, '谜题装置', {
+    const label = this.add.text(0, 8 * DPR, t('zone.event.puzzle.label'), {
       fontSize: fs(10), color: '#ccaaff', fontFamily: '"Noto Sans SC", sans-serif',
     }).setOrigin(0.5, 0);
     puzzleSprite.add([glow, icon, label]);
@@ -2360,7 +2430,7 @@ export class ZoneScene extends Phaser.Scene {
     popup.add(correctBtn);
 
     // Wrong choice button
-    const wrongBtn = this.add.text(40 * DPR, 20 * DPR, '离开', {
+    const wrongBtn = this.add.text(40 * DPR, 20 * DPR, t('zone.event.puzzle.leave'), {
       fontSize: fs(10), color: '#ff4444', fontFamily: '"Noto Sans SC", sans-serif',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     popup.add(wrongBtn);
@@ -2372,7 +2442,7 @@ export class ZoneScene extends Phaser.Scene {
       this.player.gold += puzzle.rewardGold;
       this.player.exp += puzzle.rewardExp;
       EventBus.emit(GameEvents.LOG_MESSAGE, {
-        text: `获得 ${puzzle.rewardGold} 金币和 ${puzzle.rewardExp} 经验`,
+        text: t('zone.event.puzzle.rewardGoldExp', { gold: puzzle.rewardGold, exp: puzzle.rewardExp }),
         type: 'info',
       });
       popup.destroy();
@@ -2383,7 +2453,7 @@ export class ZoneScene extends Phaser.Scene {
 
     wrongBtn.on('pointerdown', () => {
       // Dismiss without reward; puzzle remains for retry
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你离开了谜题装置。', type: 'info' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.event.puzzle.left'), type: 'info' });
       popup.destroy();
     });
   }
@@ -2474,7 +2544,7 @@ export class ZoneScene extends Phaser.Scene {
           if (dist <= obj.location.radius) {
             this.questSystem.updateProgress('explore', obj.targetId);
             EventBus.emit(GameEvents.LOG_MESSAGE, {
-              text: `发现: ${obj.targetName}`,
+              text: t('zone.quest.exploreFound', { targetName: getQuestTargetName(obj.targetId, obj.targetName) }),
               type: 'system',
             });
           }
@@ -2487,7 +2557,7 @@ export class ZoneScene extends Phaser.Scene {
           if (dist <= obj.location.radius) {
             this.questSystem.updateProgress('investigate_clue', obj.targetId);
             EventBus.emit(GameEvents.LOG_MESSAGE, {
-              text: `发现线索: ${obj.targetName}`,
+              text: t('zone.quest.clueFound', { targetName: getQuestTargetName(obj.targetId, obj.targetName) }),
               type: 'system',
             });
           }
@@ -2560,8 +2630,8 @@ export class ZoneScene extends Phaser.Scene {
       this.autoSave();
       const unlocked = DifficultySystem.getNewlyUnlockedDifficulty(this.completedDifficulties);
       if (unlocked) {
-        const msg = DIFFICULTY_UNLOCK_MESSAGES[unlocked];
-        if (msg) {
+        const msg = t(`data.difficulty.${unlocked}.unlock`);
+        if (msg && msg !== `data.difficulty.${unlocked}.unlock`) {
           EventBus.emit(GameEvents.LOG_MESSAGE, { text: msg, type: 'system' });
           // Floating announcement text
           const cx = GAME_WIDTH * DPR / 2;
@@ -2632,7 +2702,7 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `击杀 ${monster.definition.name}! +${exp}EXP +${gold}G`,
+      text: t('zone.monsterKill', { monsterName: getMonsterName(monster.definition.id, monster.definition.name), exp, gold }),
       type: 'loot',
     });
 
@@ -2834,7 +2904,7 @@ export class ZoneScene extends Phaser.Scene {
           EventBus.emit(GameEvents.NPC_INTERACT, {
             npcId: def.id,
             npcName: def.name,
-            dialogue: turnedIn.length > 0 ? '感谢你完成了任务！' : '',
+            dialogue: turnedIn.length > 0 ? t('zone.npc.questTurnedIn') : '',
             actions: [],
             dialogueTree: def.dialogueTree,
             completedQuests,
@@ -2856,7 +2926,7 @@ export class ZoneScene extends Phaser.Scene {
             const prog = this.questSystem.progress.get(q.id);
             if (!prog || (prog.status === 'failed' && q.reacceptable)) {
               actions.push({
-                label: `接受: ${q.name}`,
+                label: t('zone.npc.acceptQuest', { questName: getQuestName(q.id, q.name) }),
                 callback: () => { this.questSystem.acceptQuest(q.id); },
               });
             }
@@ -2866,7 +2936,7 @@ export class ZoneScene extends Phaser.Scene {
         // Determine dialogue text
         let dialogueText = def.dialogue[0];
         if (turnedIn.length > 0) {
-          dialogueText = '感谢你完成了任务！';
+          dialogueText = t('zone.npc.questTurnedIn');
         } else if (actions.length === 0) {
           dialogueText = def.dialogue.length > 1 ? def.dialogue[1] : def.dialogue[0];
         }
@@ -3020,8 +3090,8 @@ export class ZoneScene extends Phaser.Scene {
       this.mapData.rows,
     );
     if (resetPos) {
-      console.log('存档位置不可达，已重置至营地');
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '存档位置不可达，已重置至营地', type: 'system' });
+      console.log(t('zone.save.positionReset'));
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.save.positionReset'), type: 'system' });
       this.player.moveTo(resetPos.col, resetPos.row);
     } else {
       this.player.moveTo(save.player.tileCol, save.player.tileRow);
@@ -3202,7 +3272,7 @@ export class ZoneScene extends Phaser.Scene {
       container.add(wing);
 
       // Floating label
-      const label = this.add.text(0, -22 * DPR, '✦ 虚空蝶', {
+      const label = this.add.text(0, -22 * DPR, t('zone.pet.voidButterfly.label'), {
         fontFamily: 'serif',
         fontSize: fs(10),
         color: '#cc88ff',
@@ -3245,7 +3315,7 @@ export class ZoneScene extends Phaser.Scene {
         const success = this.homesteadSystem.addPet(ps.petId);
         if (success) {
           EventBus.emit(GameEvents.LOG_MESSAGE, {
-            text: `发现了稀有宠物: 虚空蝶! 已收入宠物小屋。`,
+            text: t('zone.pet.discovered', { petName: getPetName(ps.petId, ps.petId) }),
             type: 'system',
           });
         }
@@ -3512,7 +3582,7 @@ export class ZoneScene extends Phaser.Scene {
         });
 
         EventBus.emit(GameEvents.LOG_MESSAGE, {
-          text: `发现传说: ${ls.entry.name}`,
+          text: t('zone.lore.discovered', { loreName: getLoreName(ls.entry.id, ls.entry.name) }),
           type: 'system',
         });
 
@@ -3615,13 +3685,13 @@ export class ZoneScene extends Phaser.Scene {
 
     // Show discovery floating text
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `发现隐藏区域: ${area.name}`,
+      text: t('zone.hiddenArea.discovered', { areaName: getHiddenAreaName(area.id, area.name) }),
       type: 'system',
     });
 
     // Show discovery text as banner
     const dp = this.screenPos(0.5, 0.3);
-    const discoveryBanner = this.add.text(dp.x, dp.y, area.discoveryText, {
+    const discoveryBanner = this.add.text(dp.x, dp.y, getHiddenAreaDiscoveryText(area.id, area.discoveryText), {
       fontSize: fs(14),
       color: '#FFD700',
       fontFamily: '"Cinzel", serif',
@@ -3684,7 +3754,7 @@ export class ZoneScene extends Phaser.Scene {
     }
 
     // Interactable label
-    const label = this.add.text(0, -30 * DPR, reward.type === 'chest' ? '宝箱' : reward.type === 'gold_pile' ? '金币堆' : '卷轴', {
+    const label = this.add.text(0, -30 * DPR, reward.type === 'chest' ? t('zone.hiddenArea.rewardChest') : reward.type === 'gold_pile' ? t('zone.hiddenArea.rewardGoldPile') : t('zone.hiddenArea.rewardScroll'), {
       fontSize: fs(9),
       color: '#FFD700',
       fontFamily: '"Noto Sans SC", sans-serif',
@@ -3722,7 +3792,7 @@ export class ZoneScene extends Phaser.Scene {
       if (item) {
         this.inventorySystem.addItem(item);
         EventBus.emit(GameEvents.LOG_MESSAGE, {
-          text: `从宝箱中获得: ${item.name}`,
+          text: t('zone.hiddenArea.gotItem', { itemName: getLocalizedItemName(item) }),
           type: 'loot',
         });
         EventBus.emit(GameEvents.INVENTORY_CHANGED, {});
@@ -3731,12 +3801,12 @@ export class ZoneScene extends Phaser.Scene {
       const goldAmount = parseInt(reward.value || '100', 10);
       this.player.gold += goldAmount;
       EventBus.emit(GameEvents.LOG_MESSAGE, {
-        text: `获得 ${goldAmount} 金币`,
+        text: t('zone.hiddenArea.gotGold', { amount: goldAmount }),
         type: 'loot',
       });
     } else if (reward.type === 'lore') {
       EventBus.emit(GameEvents.LOG_MESSAGE, {
-        text: `发现远古卷轴`,
+        text: t('zone.hiddenArea.gotScroll'),
         type: 'system',
       });
     }
@@ -3836,7 +3906,7 @@ export class ZoneScene extends Phaser.Scene {
     const floorConfig = DungeonSystem.getFloorConfig(run, 1);
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `进入深渊迷宫... (共${run.totalFloors}层)`,
+      text: t('zone.dungeon.enter', { floors: run.totalFloors }),
       type: 'system',
     });
     EventBus.emit(GameEvents.DUNGEON_ENTER, { totalFloors: run.totalFloors });
@@ -3884,7 +3954,7 @@ export class ZoneScene extends Phaser.Scene {
     const nextConfig = DungeonSystem.getFloorConfig(nextRun, nextFloor);
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `进入第${nextFloor}层...`,
+      text: t('zone.dungeon.floorEnter', { floor: nextFloor }),
       type: 'system',
     });
     EventBus.emit(GameEvents.DUNGEON_FLOOR_CHANGE, { floor: nextFloor, totalFloors: nextRun.totalFloors });
@@ -3928,7 +3998,7 @@ export class ZoneScene extends Phaser.Scene {
     this.isTransitioning = true;
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: '离开深渊迷宫，返回深渊裂谷...',
+      text: t('zone.dungeon.exit'),
       type: 'system',
     });
     EventBus.emit(GameEvents.DUNGEON_EXIT, {});
@@ -3999,7 +4069,7 @@ export class ZoneScene extends Phaser.Scene {
       this.tweens.add({ targets: portalRing, alpha: 0.6, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
       // Label
-      const label = this.add.text(0, -40 * DPR, entrance.name, {
+      const label = this.add.text(0, -40 * DPR, getSubDungeonEntranceName(entrance.id, entrance.name), {
         fontSize: fs(10),
         color: '#CC88FF',
         fontFamily: '"Noto Sans SC", sans-serif',
@@ -4033,7 +4103,7 @@ export class ZoneScene extends Phaser.Scene {
   private enterSubDungeon(entrance: SubDungeonEntrance): void {
     const subDungeonData = AllSubDungeons[entrance.targetSubDungeon];
     if (!subDungeonData) {
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '此入口暂时无法进入', type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.dungeon.entranceBlocked'), type: 'system' });
       return;
     }
     if (this.isTransitioning) return;
@@ -4041,7 +4111,7 @@ export class ZoneScene extends Phaser.Scene {
     this.autoSave();
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: `进入${subDungeonData.name}...`,
+      text: t('zone.subDungeon.enter', { name: getSubDungeonName(subDungeonData.id, subDungeonData.name) }),
       type: 'system',
     });
     EventBus.emit(GameEvents.SUBDUNGEON_ENTER, { dungeonId: subDungeonData.id, name: subDungeonData.name });
@@ -4089,7 +4159,7 @@ export class ZoneScene extends Phaser.Scene {
     this.isTransitioning = true;
 
     EventBus.emit(GameEvents.LOG_MESSAGE, {
-      text: '离开副本，返回主地图...',
+      text: t('zone.subDungeon.exit'),
       type: 'system',
     });
     EventBus.emit(GameEvents.SUBDUNGEON_EXIT, { mapId: this.parentZoneInfo.mapId });
@@ -4560,11 +4630,11 @@ export class ZoneScene extends Phaser.Scene {
       if (!exit) return;
       destCol = exit.col;
       destRow = exit.row;
-      arrivalMsg = this.isInSubDungeon ? '已传送至副本入口。' : '已传送至楼层出口。';
+      arrivalMsg = this.isInSubDungeon ? t('zone.teleport.toSubDungeonEntrance') : t('zone.teleport.toDungeonExit');
 
       // Already near exit?
       if (distanceSq(this.player.tileCol, this.player.tileRow, destCol, destRow) < 9) {
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已在出口附近。', type: 'system' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.teleport.alreadyAtExit'), type: 'system' });
         return;
       }
     } else {
@@ -4572,12 +4642,12 @@ export class ZoneScene extends Phaser.Scene {
       if (!camp) return;
       destCol = camp.col;
       destRow = camp.row;
-      arrivalMsg = '已传送回营地。';
+      arrivalMsg = t('zone.teleport.toCamp');
 
       // Already near camp?
       const safeRadius = this.mapData.safeZoneRadius ?? 9;
       if (distanceSq(this.player.tileCol, this.player.tileRow, destCol, destRow) < safeRadius * safeRadius) {
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: '你已在营地中，无法使用传送门。', type: 'system' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.teleport.alreadyAtCamp'), type: 'system' });
         return;
       }
     }
@@ -4587,7 +4657,7 @@ export class ZoneScene extends Phaser.Scene {
     this.player.isMoving = false;
     this.player.attackTarget = null;
 
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '正在开启传送门...', type: 'system' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.teleport.opening'), type: 'system' });
 
     // Portal VFX — expanding ring at player's feet
     const px = this.player.sprite.x;
@@ -4634,12 +4704,12 @@ export class ZoneScene extends Phaser.Scene {
 
   private showLevelUpBanner(level: number): void {
     const p = this.screenPos(0.5, 0.28);
-    const text = this.add.text(p.x, p.y, '升级!', {
+    const text = this.add.text(p.x, p.y, t('zone.levelUp.text'), {
       fontSize: fs(32), color: '#ffd700', fontFamily: '"Cinzel", serif',
       fontStyle: 'bold', stroke: '#000000', strokeThickness: Math.round(5 * DPR),
     }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_SCREEN_UI_DEPTH).setAlpha(0).setScale(0.5);
 
-    const lvlText = this.add.text(p.x, p.y + 38 * DPR / this.cameras.main.zoom, `等级 ${level}`, {
+    const lvlText = this.add.text(p.x, p.y + 38 * DPR / this.cameras.main.zoom, t('zone.levelUp.level', { level }), {
       fontSize: fs(20), color: '#ffcc00', fontFamily: '"Cinzel", serif',
       stroke: '#000000', strokeThickness: Math.round(3 * DPR),
     }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_SCREEN_UI_DEPTH).setAlpha(0);
@@ -4661,7 +4731,7 @@ export class ZoneScene extends Phaser.Scene {
   private showQuestCompleteBanner(questName: string): void {
     const p = this.screenPos(0.5, 0.22);
     const z = this.cameras.main.zoom;
-    const label = this.add.text(p.x, p.y, '任务完成!', {
+    const label = this.add.text(p.x, p.y, t('zone.questComplete'), {
       fontSize: fs(20), color: '#f1c40f', fontFamily: '"Cinzel", serif',
       fontStyle: 'bold', stroke: '#000000', strokeThickness: Math.round(4 * DPR),
     }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_SCREEN_UI_DEPTH).setAlpha(0);
@@ -4683,7 +4753,7 @@ export class ZoneScene extends Phaser.Scene {
   private showZoneBanner(): void {
     const p = this.screenPos(0.5, 0.32);
     const z = this.cameras.main.zoom;
-    const banner = this.add.text(p.x, p.y, this.mapData.name, {
+    const banner = this.add.text(p.x, p.y, getZoneName(this.currentMapId, this.mapData.name), {
       fontSize: fs(28), color: '#c0934a', fontFamily: '"Cinzel", serif',
       fontStyle: 'bold', stroke: '#000000', strokeThickness: Math.round(5 * DPR),
     }).setOrigin(0.5).setScrollFactor(0).setDepth(ZONE_SCREEN_UI_DEPTH).setAlpha(0);
@@ -4801,7 +4871,7 @@ export class ZoneScene extends Phaser.Scene {
           // Visual: purple tint on player periodically
           if (time - (curseAffix.lastCurseTickTime ?? 0) > 2000) {
             curseAffix.lastCurseTickTime = time;
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: '诅咒光环：属性降低！', type: 'combat' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.combat.curseAura'), type: 'combat' });
           }
         }
       }
@@ -4884,13 +4954,9 @@ export class ZoneScene extends Phaser.Scene {
       // Expire effects
       const expired = this.statusEffects.expire(entityId, time);
       if (expired.length > 0) {
-        const effectNames: Record<string, string> = {
-          burn: '灼烧', freeze: '冰冻', poison: '中毒',
-          bleed: '流血', slow: '减速', stun: '眩晕',
-        };
         for (const type of expired) {
           EventBus.emit(GameEvents.LOG_MESSAGE, {
-            text: `${effectNames[type] ?? type}效果已消失`,
+            text: t('zone.statusEffect.expired', { effectName: getStatusEffectName(type) }),
           });
         }
         // Clear all tints and re-apply remaining active effects' tints
@@ -5246,7 +5312,7 @@ export class ZoneScene extends Phaser.Scene {
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmount);
           EventBus.emit(GameEvents.PLAYER_HEALTH_CHANGED, { hp: this.player.hp, maxHp: this.player.maxHp });
           EventBus.emit(GameEvents.LOG_MESSAGE, {
-            text: `${MERCENARY_DEFS[merc.type].name} 治疗了你! +${healAmount} HP`,
+            text: t('zone.mercenary.heal', { mercName: getMercenaryName(merc.type, MERCENARY_DEFS[merc.type].name), amount: healAmount }),
             type: 'combat',
           });
           if (this.vfx) {
@@ -5379,7 +5445,7 @@ export class ZoneScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.escortNpcSprite.add(this.escortNpcNameLabel);
 
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${en.name} 出现了！护送目标已标记。`, type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.escort.npcAppeared', { npcName: en.name }), type: 'system' });
       break; // Only one escort quest at a time
     }
   }
@@ -5463,7 +5529,7 @@ export class ZoneScene extends Phaser.Scene {
               this.questSystem.updateProgress('escort', obj.targetId);
             }
           }
-          EventBus.emit(GameEvents.LOG_MESSAGE, { text: `护送完成! ${quest.escortNpc?.name ?? ''}安全到达目的地。`, type: 'system' });
+          EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.escort.complete', { npcName: quest.escortNpc?.name ?? '' }), type: 'system' });
         }
         this.destroyEscortNpc();
       }
@@ -5484,7 +5550,7 @@ export class ZoneScene extends Phaser.Scene {
     });
     // Fail the quest
     this.questSystem.failQuest(this.escortQuestId);
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '护送目标已死亡! 任务失败。', type: 'system' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.escort.npcDied'), type: 'system' });
   }
 
   // ---------------------------------------------------------------------------
@@ -5548,7 +5614,7 @@ export class ZoneScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.defendTargetSprite.add(this.defendTargetNameLabel);
 
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: `${dt.name} 需要保护！准备迎接敌袭。`, type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.defend.targetNeedsProtection', { targetName: dt.name }), type: 'system' });
       break;
     }
   }
@@ -5573,7 +5639,7 @@ export class ZoneScene extends Phaser.Scene {
     // Check if all waves are done
     if (this.defendCurrentWave >= this.defendTotalWaves && !this.defendWaveActive) {
       // All waves cleared, target still alive — quest complete!
-      EventBus.emit(GameEvents.LOG_MESSAGE, { text: '所有浪潮已击退！防守成功！', type: 'system' });
+      EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.defend.allWavesCleared'), type: 'system' });
       this.destroyDefendTarget();
       return;
     }
@@ -5590,7 +5656,7 @@ export class ZoneScene extends Phaser.Scene {
         this.spawnDefendWave(this.defendCurrentWave);
         this.defendWaveActive = true;
         this.defendWaveTimer = 0;
-        EventBus.emit(GameEvents.LOG_MESSAGE, { text: `第 ${this.defendCurrentWave + 1}/${this.defendTotalWaves} 波敌人来袭!`, type: 'system' });
+        EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.defend.waveIncoming', { current: this.defendCurrentWave + 1, total: this.defendTotalWaves }), type: 'system' });
       }
     }
 
@@ -5686,7 +5752,7 @@ export class ZoneScene extends Phaser.Scene {
     });
     // Fail the quest
     this.questSystem.failQuest(this.defendQuestId);
-    EventBus.emit(GameEvents.LOG_MESSAGE, { text: '防守目标被摧毁! 任务失败。', type: 'system' });
+    EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.defend.targetDestroyed'), type: 'system' });
   }
 
   // ---------------------------------------------------------------------------
@@ -5715,7 +5781,7 @@ export class ZoneScene extends Phaser.Scene {
             const craftIdx = quest.objectives.indexOf(craftObj);
             if (progress.objectives[craftIdx].current < craftObj.required) {
               this.questSystem.updateProgress('craft_craft', craftObj.targetId);
-              EventBus.emit(GameEvents.LOG_MESSAGE, { text: `制作完成: ${craftObj.targetName}`, type: 'system' });
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.craft.complete', { targetName: getQuestTargetName(craftObj.targetId, craftObj.targetName) }), type: 'system' });
             }
           }
         }
@@ -5735,7 +5801,7 @@ export class ZoneScene extends Phaser.Scene {
             const deliverIdx = quest.objectives.indexOf(deliverObj);
             if (progress.objectives[deliverIdx].current < deliverObj.required) {
               this.questSystem.updateProgress('craft_deliver', deliverObj.targetId);
-              EventBus.emit(GameEvents.LOG_MESSAGE, { text: `交付完成: ${deliverObj.targetName}`, type: 'system' });
+              EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('zone.deliver.complete', { targetName: getQuestTargetName(deliverObj.targetId, deliverObj.targetName) }), type: 'system' });
             }
           }
         }

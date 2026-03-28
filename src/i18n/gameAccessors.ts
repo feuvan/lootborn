@@ -337,3 +337,45 @@ export function getHiddenAreaName(areaId: string, fallbackName: string): string 
   const val = t(key);
   return val !== key ? val : fallbackName;
 }
+
+/** Get translated hidden area discovery text. */
+export function getHiddenAreaDiscoveryText(areaId: string, fallbackText: string): string {
+  const key = `data.hiddenArea.${areaId}.discovery`;
+  const val = t(key);
+  return val !== key ? val : fallbackText;
+}
+
+/** Get translated status effect name. */
+export function getStatusEffectName(effectType: string): string {
+  const key = `data.statusEffect.${effectType}`;
+  const val = t(key);
+  return val !== key ? val : effectType;
+}
+
+/** Get translated elite affix display name. */
+export function getEliteAffixName(affixId: string, fallbackName: string): string {
+  const key = `data.eliteAffix.${affixId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated sub-dungeon entrance name. */
+export function getSubDungeonEntranceName(entranceId: string, fallbackName: string): string {
+  const key = `data.subDungeonEntrance.${entranceId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated rescue NPC name for random events. */
+export function getRescueNpcName(zoneId: string, fallbackName: string): string {
+  const key = `data.randomEvent.rescueNpc.${zoneId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated sub-dungeon name. */
+export function getSubDungeonName(dungeonId: string, fallbackName: string): string {
+  const key = `data.subDungeon.${dungeonId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
