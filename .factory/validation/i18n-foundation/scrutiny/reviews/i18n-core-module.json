@@ -1,0 +1,44 @@
+{
+  "featureId": "i18n-core-module",
+  "reviewedAt": "2026-03-28T06:57:27Z",
+  "commitId": "8a17fec9cbe8600e03f92687621d689ae1f7744a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds the core i18n API, locale persistence, event emission, tests, and font loading, but it does not fully satisfy the zh-TW portion of the contract: the converter table is malformed and the production zh-TW locale is a static snapshot that has already drifted from both zh-CN and the converter.",
+    "issues": [
+      {
+        "file": "src/i18n/converter.ts",
+        "line": 12,
+        "severity": "blocking",
+        "description": "The zh-CN/zh-TW mapping tables are indexed by position, but `SC` and `TC` are not the same length (`1305` vs `1308`). Because `buildMap()` pairs them strictly by index, common characters are mapped to the wrong Traditional forms (for example, `潜→誌`, `菜单→綠單`, `翠绿→翠潛`). That breaks the required zh-TW auto-converter and would corrupt any regenerated locale data."
+      },
+      {
+        "file": "src/i18n/index.ts",
+        "line": 11,
+        "severity": "blocking",
+        "description": "Production never auto-generates zh-TW from zh-CN: `index.ts` imports a static `locales/zh-TW.ts` snapshot, and `convertToTraditional()` is only referenced in tests. The committed zh-TW file has already drifted from converter output on multiple keys (for example `menu.help`, `menu.classSelect.rogue.desc`, `menu.helpPanel.cat.ui`, `menu.helpPanel.ui.escape`), so the feature does not actually implement the promised \"auto-generated zh-TW.ts\" workflow and violates the mission rule that zh-TW must not be hand-edited."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The mission docs say zh-TW must be auto-generated from zh-CN, but they do not record any concrete regeneration command or script. In practice, the only production files are `src/i18n/converter.ts` and the checked-in `src/i18n/locales/zh-TW.ts`, and `convertToTraditional()` is only used in tests, which left the worker to manually inspect/edit zh-TW values.",
+      "evidence": "AGENTS.md says \"zh-TW: NEVER hand-edit zh-TW locale. Always auto-generate from zh-CN via converter.\"; `.factory/library/architecture.md:126-149` documents zh-TW auto-conversion; `rg \"convertToTraditional\\(\" /Users/feuvan/src/abyssfire/src` only finds `src/i18n/converter.ts` and `src/__tests__/i18n.test.ts`."
+    },
+    {
+      "area": "skills",
+      "observation": "The `i18n-worker` procedure is too UI-centric for core-module features. It requires agent-browser manual verification even when the feature is only the i18n foundation module, and the worker's own handoff says that browser verification was not meaningful here.",
+      "evidence": "`.factory/skills/i18n-worker/SKILL.md:49-51` requires agent-browser verification; the handoff `2026-03-28T06-22-25-946Z__i18n-core-module__8a73cbec-670b-4ff1-ba53-f5790a1abbfc.json` has `skillFeedback.suggestedChanges` noting that browser verification should be clarified for core-module features."
+    },
+    {
+      "area": "conventions",
+      "observation": "The workflow guidance should explicitly warn workers not to blanket-stage `.factory/`. This feature's transcript stages `.factory/` wholesale, and the resulting commit pulled in unrelated validation artifacts that are not part of the i18n core implementation.",
+      "evidence": "Transcript skeleton shows `git add index.html src/utils/EventBus.ts src/__tests__/i18n.test.ts src/i18n/ .factory/`; `git show --stat 8a17fec9cbe8600e03f92687621d689ae1f7744a` includes unrelated files such as `.factory/validation/misc-fixes-1/...` and `.factory/validation/quest-ux/...`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed the handoff, transcript skeleton, mission/shared-state docs, and commit `8a17fec9cbe8600e03f92687621d689ae1f7744a`. The basic i18n module landed, but this review fails because the zh-TW converter is internally inconsistent and production zh-TW is not actually auto-generated from zh-CN."
+}

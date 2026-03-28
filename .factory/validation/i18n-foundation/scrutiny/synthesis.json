@@ -1,0 +1,91 @@
+{
+  "milestone": "i18n-foundation",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "npx vitest run",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "npx tsc --noEmit",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "echo \"no linter configured\"",
+      "exitCode": 0,
+      "note": "Repository lint command in .factory/services.yaml is a no-op placeholder."
+    },
+    "build": {
+      "passed": true,
+      "command": "npm run build",
+      "exitCode": 0,
+      "note": "Additional validation run per repository instructions."
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "i18n-core-module",
+      "i18n-menu-scene"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "i18n-core-module",
+      "severity": "blocking",
+      "description": "src/i18n/converter.ts pairs SC and TC strings of unequal lengths (1305 vs 1308), producing corrupted zh-TW conversions such as `潜 -> 誌`, `菜单 -> 綠單`, and `翠绿 -> 翠潛`."
+    },
+    {
+      "featureId": "i18n-core-module",
+      "severity": "blocking",
+      "description": "src/i18n/index.ts imports a static locales/zh-TW.ts snapshot; production never generates zh-TW from zh-CN via convertToTraditional(), and the checked-in file has already drifted from converter output."
+    },
+    {
+      "featureId": "i18n-menu-scene",
+      "severity": "blocking",
+      "description": "src/scenes/MenuScene.ts builds the Continue label from AllClasses[save.classId].name, so English and zh-TW continue buttons still show Simplified Chinese class names (`战士`/`法师`/`盗贼`)."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document a concrete zh-TW regeneration workflow (script/command) or a sanctioned post-generation fixup step instead of only saying zh-TW must never be hand-edited.",
+      "evidence": "Both `i18n-core-module` and `i18n-menu-scene` reviews found that workers manually corrected or drifted `src/i18n/locales/zh-TW.ts` because the repo has no production regeneration step beyond the converter module.",
+      "isSystemic": true
+    },
+    {
+      "target": "i18n-worker skill",
+      "suggestion": "Make TDD and agent-browser verification conditional on feature type, separating core-module work from scene/UI extraction so validators can rely on existing unit coverage and code inspection when browser checks are not meaningful.",
+      "evidence": "Both reviewed worker sessions deviated from the current skill: the core-module feature never needed scene-level browser interaction, and the menu-scene feature completed without agent-browser despite the skill making it mandatory.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add an explicit rule to stage only feature-owned files and never blanket-stage `.factory/` or other shared validation directories.",
+      "evidence": "Transcript session `8a73cbec-670b-4ff1-ba53-f5790a1abbfc` staged `.factory/` wholesale, and commit `8a17fec9cbe8600e03f92687621d689ae1f7744a` included unrelated validation artifacts from other milestones.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Update `.factory/library` now to describe the current manual zh-TW correction process.",
+      "reason": "rejected because the current workflow is under scrutiny failure and belongs in orchestrator guidance or a future fix feature, not stable reference material."
+    },
+    {
+      "observation": "Treat the menu-scene review's zh-TW workflow mismatch as a separate guidance item from the core-module regeneration-gap note.",
+      "reason": "duplicate of the broader zh-TW workflow guidance recommendation already captured above."
+    },
+    {
+      "observation": "Treat the menu-scene 'skill over-specifies verification' note as separate from the core-module 'UI-centric skill' note.",
+      "reason": "duplicate of the combined i18n-worker skill recommendation above."
+    }
+  ],
+  "previousRound": null
+}

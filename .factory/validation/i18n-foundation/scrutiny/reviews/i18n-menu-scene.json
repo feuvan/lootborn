@@ -1,0 +1,39 @@
+{
+  "featureId": "i18n-menu-scene",
+  "reviewedAt": "2026-03-28T06:57:55Z",
+  "commitId": "cd87294",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds the language selector, locale keys, and LOCALE_CHANGED re-rendering, but it does not fully satisfy the menu i18n contract: the Continue button still interpolates zh-CN class names in non-zh-CN locales, and the help panel still contains hardcoded English control labels.",
+    "issues": [
+      {
+        "file": "src/scenes/MenuScene.ts",
+        "line": 376,
+        "severity": "blocking",
+        "description": "`showMainMenu()` builds the Continue label from `AllClasses[save.classId].name`, which is stored as Simplified Chinese in `src/data/classes/{warrior,mage,rogue}.ts`. After switching to `en` or `zh-TW`, the button text changes to the new locale but the interpolated class name stays `战士`/`法师`/`盗贼`, so VAL-MENU-010 and the feature's expected localized continue text are not met."
+      },
+      {
+        "file": "src/scenes/MenuScene.ts",
+        "line": 603,
+        "severity": "non_blocking",
+        "description": "The help panel still hardcodes `Mouse LMB` (line 603) and `R / RMB` (line 611) instead of routing them through locale data. That leaves residual player-facing English in `MenuScene.ts`, so the scene is not completely free of hardcoded UI strings and zh-CN no longer restores the original control labels for those rows."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The documented zh-TW workflow does not match reality. Mission guidance and the file header say `zh-TW.ts` must be auto-generated and never hand-edited, but the worker handoff says the file was manually corrected for context-dependent characters. The shared state should document the required post-generation fixup process or update the guidance to reflect the converter's limitations.",
+      "evidence": "Mission AGENTS.md:22 says 'NEVER hand-edit zh-TW locale'; `src/i18n/locales/zh-TW.ts` header says 'AUTO-GENERATED ... DO NOT EDIT MANUALLY'; handoff JSON line 11 says 'Regenerated zh-TW.ts with manually corrected Traditional Chinese for context-dependent characters.'"
+    },
+    {
+      "area": "skills",
+      "observation": "The `i18n-worker` skill over-specifies verification for string-extraction work. It requires both TDD and `agent-browser` manual verification, but this worker session skipped test-first work and never invoked `agent-browser`, relying on existing i18n tests plus grep/typecheck/build instead. The skill should clarify when those steps are mandatory versus when existing coverage + code inspection is sufficient.",
+      "evidence": "`.factory/skills/i18n-worker/SKILL.md` lines 21, 29, and 49 require `agent-browser` and 'Write tests first (TDD)'; `worker-transcripts.jsonl` has no `agent-browser` invocation for session `a2c07ca0-cd6e-4a30-aeda-ba9dd8dbbe27`; handoff JSON line 58 records the explicit TDD deviation."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit `cd87294` for `i18n-menu-scene`. The main localization wiring is in place, but the feature should not pass as-is because the Continue button still shows Simplified Chinese class names outside zh-CN. I also noted one residual hardcoded help-panel label issue and two shared-state/documentation gaps around zh-TW generation and the i18n worker skill."
+}
