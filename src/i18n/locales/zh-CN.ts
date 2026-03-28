@@ -1565,6 +1565,193 @@ const zhCN: LocaleData = {
   'ui.compass.northwest': '西北',
   'ui.compass.north': '北',
   'ui.compass.northeast': '东北',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Skill Tree Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.skillTree.title': '技 能 树',
+  'ui.skillTree.skillPoints': '{className} · 剩余技能点: {points}',
+  'ui.skillTree.footer': '按 K 关闭 · 悬停查看详情 · 滚轮翻页',
+  'ui.skillTree.synergy': '协同',
+  'ui.skillTree.tooltip.damage': '伤害: {value}% {type}',
+  'ui.skillTree.tooltip.cost': '消耗: {value} MP',
+  'ui.skillTree.tooltip.cooldown': '冷却: {value}s',
+  'ui.skillTree.tooltip.range': '范围: {value}格',
+  'ui.skillTree.tooltip.aoeRadius': 'AOE半径: {value}格',
+  'ui.skillTree.tooltip.critBonus': '暴击加成: +{value}%',
+  'ui.skillTree.tooltip.stun': '眩晕: {value}s',
+  'ui.skillTree.tooltip.buff': '增益: {stat} +{value}% ({duration}s)',
+  'ui.skillTree.tooltip.synergyHeader': '─ 协同增益 ─',
+  'ui.skillTree.tooltip.synergyLine': '{name}: +{perLevel}%/级 (当前+{bonus}%)',
+  'ui.skillTree.tooltip.nextLevel': '─ 下一级 (Lv{level}) ─',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — World Map Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.worldMap.title': '渊火',
+  'ui.worldMap.closeHint': '按 M 关闭',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Tracker HUD
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questTracker.header': '任务追踪',
+  'ui.questTracker.scrollIndicator': '▼ 还有 {count} 个任务',
+  'ui.questTracker.mainTag': '[主线]',
+  'ui.questTracker.sideTag': '[支线]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Log Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questLog.title': '任务日志',
+  'ui.questLog.tab.active': '进行中',
+  'ui.questLog.tab.completed': '已完成',
+  'ui.questLog.tab.lore': '传说',
+  'ui.questLog.mainTag': '[主]',
+  'ui.questLog.sideTag': '[支]',
+  'ui.questLog.noActive': '暂无进行中的任务',
+  'ui.questLog.noCompleted': '暂无已完成的任务',
+  'ui.questLog.prevPage': '◀ 上一页',
+  'ui.questLog.nextPage': '下一页 ▶',
+  'ui.questLog.mainQuest': '主线任务',
+  'ui.questLog.sideQuest': '支线任务',
+  'ui.questLog.typeLabel': '类型: {type}',
+  'ui.questLog.clueProgress': '线索 {found}/{total}',
+  'ui.questLog.waveProgress': '浪潮 {current}/{total}',
+  'ui.questLog.craftPhase': '当前阶段: {phase}',
+  'ui.questLog.objectives': '目标:',
+  'ui.questLog.rewards': '奖励:',
+  'ui.questLog.rewardExp': '经验 +{exp}',
+  'ui.questLog.rewardGold': '金币 +{gold}',
+  'ui.questLog.rewardItems': '物品 x{count}',
+  'ui.questLog.prereqs': '前置任务: {names}',
+  'ui.questLog.loreCollected': '{count}/{total} 收集',
+  'ui.questLog.loreUndiscovered': '未发现',
+  'ui.questLog.noLore': '尚未发现任何传说',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Card Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questCard.mainBadge': '【主线】',
+  'ui.questCard.sideBadge': '【支线】',
+  'ui.questCard.objectives': '目标:',
+  'ui.questCard.rewards': '奖励:',
+  'ui.questCard.accept': '接受',
+  'ui.questCard.turnIn': '交付',
+  'ui.questCard.viewStory': '查看故事',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Homestead Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.homestead.title': '家 园',
+  'ui.homestead.buildingsHeader': '── 建筑 ──',
+  'ui.homestead.petsHeader': '── 宠物 ({count} 只) ──',
+  'ui.homestead.maxLevel': '已满级',
+  'ui.homestead.upgrade': '升级 {cost}G',
+  'ui.homestead.noPets': '暂无宠物\n击杀Boss·完成任务·稀有刷新可获得',
+  'ui.homestead.footer': '按 H 关闭 · 建筑提供家园加成',
+  'ui.homestead.petStat.expBonus': '经验',
+  'ui.homestead.petStat.damage': '攻击',
+  'ui.homestead.petStat.magicFind': '掉宝',
+  'ui.homestead.petStat.critRate': '暴击',
+  'ui.homestead.petStat.hpRegen': '回血',
+  'ui.homestead.petStat.attackSpeed': '攻速',
+  'ui.homestead.petStat.defense': '防御',
+  'ui.homestead.petStat.manaRegen': '回蓝',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — NPC Dialogue Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.dialogue.subtitle': '─ 对话 ─',
+  'ui.dialogue.closeHint': '点击外部关闭',
+  'ui.dialogue.continue': '继续',
+  'ui.dialogue.back': '← 返回',
+  'ui.dialogue.leave': '离开',
+  'ui.dialogue.scrollHint': '滚轮滚动查看更多',
+  'ui.dialogue.inProgress': '（进行中）',
+  'ui.dialogue.turnInPrefix': '感谢你完成了任务！接下来还有事情要做...',
+  'ui.dialogue.gotGold': '获得 {gold} 金币',
+  'ui.dialogue.gotExp': '获得 {exp} 经验',
+  'ui.dialogue.gotItem': '获得物品: {name}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Achievement Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.achievement.title': '成 就',
+  'ui.achievement.currentTitle': '当前称号: {title}',
+  'ui.achievement.unlocked': '已解锁: {count}/{total}',
+  'ui.achievement.footer': '按 V 关闭',
+  'ui.achievement.titleReward': '称号: {title}',
+  'ui.achievement.toastUnlock': '成就解锁: {name}',
+  'ui.achievement.toastTitle': '称号: {title}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Companion Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.companion.title': '伙伴系统',
+  'ui.companion.mercHeader': '─ 佣兵 ─',
+  'ui.companion.noMerc': '在营地NPC处雇佣佣兵 (详见佣兵面板)',
+  'ui.companion.mercStatus': '{name} ({type}) Lv.{level}  HP:{hp}/{maxHp}',
+  'ui.companion.mercDead': '{name} ({type}) Lv.{level}  [阵亡]',
+  'ui.companion.footer': '按 P 关闭',
+  'ui.companion.hireHeader': '─ 可雇佣佣兵 ─',
+  'ui.companion.needCamp': '需要在营地NPC附近才能雇佣佣兵',
+  'ui.companion.hire': '雇佣',
+  'ui.companion.dismiss': '解雇',
+  'ui.companion.revive': '复活 ({cost}G)',
+  'ui.companion.reviveAtCamp': '在营地NPC处复活佣兵',
+  'ui.companion.mercType.tank': '坦克',
+  'ui.companion.mercType.melee': '近战输出',
+  'ui.companion.mercType.ranged': '远程输出',
+  'ui.companion.mercType.healer': '治疗',
+  'ui.companion.mercType.mage': '法师',
+  'ui.companion.statRow': 'HP:{hp}  伤害:{damage}  防御:{defense}  范围:{range}',
+  'ui.companion.alive': '存活',
+  'ui.companion.dead': '阵亡',
+  'ui.companion.status': 'Lv.{level}  状态: {status}',
+  'ui.companion.attributes': '─ 属性 ─',
+  'ui.companion.equipment': '─ 装备 ─',
+  'ui.companion.weapon': '武器',
+  'ui.companion.armor': '护甲',
+  'ui.companion.exp': '经验: {exp}/{needed}',
+  'ui.companion.petHeader': '─ 宠物 ({count} 只) ─',
+  'ui.companion.noPets': '暂无宠物。可通过击杀BOSS、完成任务或探索获得。',
+  'ui.companion.activate': '[激活]',
+  'ui.companion.deactivate': '[取消]',
+  'ui.companion.feed': '[喂养]',
+  'ui.companion.feedNeeded': '需要 {item} 来喂养宠物!',
+  'ui.companion.evoAwakened': '觉醒',
+  'ui.companion.evoSupreme': '至尊',
+  'ui.companion.primaryStats': '力:{str}  敏:{dex}  体:{vit}  智:{int}  精:{spi}  幸:{lck}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Gem Socketing Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.socket.title': '宝石镶嵌',
+  'ui.socket.slotCount': '插槽 ({filled}/{max})',
+  'ui.socket.emptySlot': '空插槽',
+  'ui.socket.remove': '[取出]',
+  'ui.socket.gemsInBag': '背包中的宝石',
+  'ui.socket.noGems': '没有宝石',
+  'ui.socket.unequip': '[卸下装备]',
+  'ui.socket.gemLabel.g_ruby': '红',
+  'ui.socket.gemLabel.g_sapphire': '蓝',
+  'ui.socket.gemLabel.g_emerald': '绿',
+  'ui.socket.gemLabel.g_topaz': '黄',
+  'ui.socket.gemLabel.g_diamond': '钻',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Audio Settings Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.audio.title': '音频设置',
+  'ui.audio.bgm': '背景音乐',
+  'ui.audio.sfx': '音效',
+  'ui.audio.muted': '[静音]',
+  'ui.audio.unmuted': '[开启]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Mini-Boss Dialogue
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.miniBoss.fight': '[ 开战 ]',
 };
 
 export default zhCN;

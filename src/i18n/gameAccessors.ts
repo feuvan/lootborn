@@ -169,3 +169,171 @@ export function getDirection(dc: number, dr: number): string {
   if (angle >= -112.5 && angle < -67.5) return t('ui.compass.north');
   return t('ui.compass.northeast');
 }
+
+/** Get translated skill name. */
+export function getSkillName(skillId: string, fallbackName: string): string {
+  const key = `data.skill.${skillId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated skill description. */
+export function getSkillDesc(skillId: string, fallbackDesc: string): string {
+  const key = `data.skill.${skillId}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated skill tree branch name. */
+export function getSkillTreeName(treeId: string, fallbackName: string): string {
+  const key = `data.skillTree.${treeId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated damage type name. */
+export function getDamageTypeName(damageType: string): string {
+  const key = `data.damageType.${damageType}`;
+  const val = t(key);
+  return val !== key ? val : damageType;
+}
+
+/** Get translated quest name. */
+export function getQuestName(questId: string, fallbackName: string): string {
+  const key = `data.quest.${questId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated quest description. */
+export function getQuestDesc(questId: string, fallbackDesc: string): string {
+  const key = `data.quest.${questId}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated zone name. */
+export function getZoneName(zoneId: string, fallbackName?: string): string {
+  const key = `data.zone.${zoneId}`;
+  const val = t(key);
+  return val !== key ? val : (fallbackName ?? zoneId);
+}
+
+/** Get translated mercenary name. */
+export function getMercenaryName(mercType: string, fallbackName: string): string {
+  const key = `data.mercenary.${mercType}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated mercenary description. */
+export function getMercenaryDesc(mercType: string, fallbackDesc: string): string {
+  const key = `data.mercenary.${mercType}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated mercenary type label. */
+export function getMercenaryTypeLabel(mercType: string): string {
+  const key = `ui.companion.mercType.${mercType}`;
+  const val = t(key);
+  return val !== key ? val : mercType;
+}
+
+/** Get translated homestead building name. */
+export function getBuildingName(buildingId: string, fallbackName: string): string {
+  const key = `data.homestead.${buildingId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated homestead building description. */
+export function getBuildingDesc(buildingId: string, fallbackDesc: string): string {
+  const key = `data.homestead.${buildingId}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated pet name. */
+export function getPetName(petId: string, fallbackName: string): string {
+  const key = `data.pet.${petId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated pet description. */
+export function getPetDesc(petId: string, fallbackDesc: string): string {
+  const key = `data.pet.${petId}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated achievement name. */
+export function getAchievementName(achId: string, fallbackName: string): string {
+  const key = `data.achievement.${achId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated achievement description. */
+export function getAchievementDesc(achId: string, fallbackDesc: string): string {
+  const key = `data.achievement.${achId}.desc`;
+  const val = t(key);
+  return val !== key ? val : fallbackDesc;
+}
+
+/** Get translated achievement title. */
+export function getAchievementTitle(achId: string, fallbackTitle: string): string {
+  const key = `data.achievement.${achId}.title`;
+  const val = t(key);
+  return val !== key ? val : fallbackTitle;
+}
+
+/** Get translated lore entry name. */
+export function getLoreName(loreId: string, fallbackName: string): string {
+  const key = `data.lore.${loreId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated lore entry text. */
+export function getLoreText(loreId: string, fallbackText: string): string {
+  const key = `data.lore.${loreId}.text`;
+  const val = t(key);
+  return val !== key ? val : fallbackText;
+}
+
+/** Get translated NPC name. */
+export function getNpcName(npcId: string, fallbackName: string): string {
+  const key = `data.npc.${npcId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated quest objective target name. */
+export function getQuestTargetName(targetId: string, fallbackName: string): string {
+  const key = `data.questTarget.${targetId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated monster name. */
+export function getMonsterName(monsterId: string, fallbackName: string): string {
+  const key = `data.monster.${monsterId}`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}
+
+/** Get translated pet stat label for homestead. */
+export function getPetStatLabel(statKey: string): string {
+  const key = `ui.homestead.petStat.${statKey}`;
+  const val = t(key);
+  return val !== key ? val : statKey;
+}
+
+/** Get translated hidden area name. */
+export function getHiddenAreaName(areaId: string, fallbackName: string): string {
+  const key = `data.hiddenArea.${areaId}.name`;
+  const val = t(key);
+  return val !== key ? val : fallbackName;
+}

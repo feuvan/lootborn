@@ -1620,6 +1620,193 @@ const en: LocaleData = {
   'ui.compass.northwest': 'NW',
   'ui.compass.north': 'N',
   'ui.compass.northeast': 'NE',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Skill Tree Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.skillTree.title': 'Skill Tree',
+  'ui.skillTree.skillPoints': '{className} · Skill Points: {points}',
+  'ui.skillTree.footer': 'Press K to close · Hover for details · Scroll to navigate',
+  'ui.skillTree.synergy': 'Synergy',
+  'ui.skillTree.tooltip.damage': 'Damage: {value}% {type}',
+  'ui.skillTree.tooltip.cost': 'Cost: {value} MP',
+  'ui.skillTree.tooltip.cooldown': 'Cooldown: {value}s',
+  'ui.skillTree.tooltip.range': 'Range: {value} tiles',
+  'ui.skillTree.tooltip.aoeRadius': 'AOE Radius: {value} tiles',
+  'ui.skillTree.tooltip.critBonus': 'Crit Bonus: +{value}%',
+  'ui.skillTree.tooltip.stun': 'Stun: {value}s',
+  'ui.skillTree.tooltip.buff': 'Buff: {stat} +{value}% ({duration}s)',
+  'ui.skillTree.tooltip.synergyHeader': '─ Synergy Bonuses ─',
+  'ui.skillTree.tooltip.synergyLine': '{name}: +{perLevel}%/lvl (current +{bonus}%)',
+  'ui.skillTree.tooltip.nextLevel': '─ Next Level (Lv{level}) ─',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — World Map Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.worldMap.title': 'Abyssfire',
+  'ui.worldMap.closeHint': 'Press M to close',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Tracker HUD
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questTracker.header': 'Quest Tracker',
+  'ui.questTracker.scrollIndicator': '▼ {count} more quests',
+  'ui.questTracker.mainTag': '[Main]',
+  'ui.questTracker.sideTag': '[Side]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Log Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questLog.title': 'Quest Log',
+  'ui.questLog.tab.active': 'Active',
+  'ui.questLog.tab.completed': 'Completed',
+  'ui.questLog.tab.lore': 'Lore',
+  'ui.questLog.mainTag': '[M]',
+  'ui.questLog.sideTag': '[S]',
+  'ui.questLog.noActive': 'No active quests',
+  'ui.questLog.noCompleted': 'No completed quests',
+  'ui.questLog.prevPage': '◀ Prev',
+  'ui.questLog.nextPage': 'Next ▶',
+  'ui.questLog.mainQuest': 'Main Quest',
+  'ui.questLog.sideQuest': 'Side Quest',
+  'ui.questLog.typeLabel': 'Type: {type}',
+  'ui.questLog.clueProgress': 'Clues {found}/{total}',
+  'ui.questLog.waveProgress': 'Wave {current}/{total}',
+  'ui.questLog.craftPhase': 'Current Phase: {phase}',
+  'ui.questLog.objectives': 'Objectives:',
+  'ui.questLog.rewards': 'Rewards:',
+  'ui.questLog.rewardExp': 'EXP +{exp}',
+  'ui.questLog.rewardGold': 'Gold +{gold}',
+  'ui.questLog.rewardItems': 'Items x{count}',
+  'ui.questLog.prereqs': 'Prerequisite: {names}',
+  'ui.questLog.loreCollected': '{count}/{total} collected',
+  'ui.questLog.loreUndiscovered': 'Undiscovered',
+  'ui.questLog.noLore': 'No lore discovered yet',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Quest Card Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.questCard.mainBadge': '[Main]',
+  'ui.questCard.sideBadge': '[Side]',
+  'ui.questCard.objectives': 'Objectives:',
+  'ui.questCard.rewards': 'Rewards:',
+  'ui.questCard.accept': 'Accept',
+  'ui.questCard.turnIn': 'Turn In',
+  'ui.questCard.viewStory': 'View Story',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Homestead Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.homestead.title': 'Homestead',
+  'ui.homestead.buildingsHeader': '── Buildings ──',
+  'ui.homestead.petsHeader': '── Pets ({count}) ──',
+  'ui.homestead.maxLevel': 'MAX',
+  'ui.homestead.upgrade': 'Upgrade {cost}G',
+  'ui.homestead.noPets': 'No pets yet\nDefeat bosses · Complete quests · Rare spawns',
+  'ui.homestead.footer': 'Press H to close · Buildings provide bonuses',
+  'ui.homestead.petStat.expBonus': 'EXP',
+  'ui.homestead.petStat.damage': 'ATK',
+  'ui.homestead.petStat.magicFind': 'MF',
+  'ui.homestead.petStat.critRate': 'Crit',
+  'ui.homestead.petStat.hpRegen': 'HP Regen',
+  'ui.homestead.petStat.attackSpeed': 'ASPD',
+  'ui.homestead.petStat.defense': 'DEF',
+  'ui.homestead.petStat.manaRegen': 'MP Regen',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — NPC Dialogue Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.dialogue.subtitle': '─ Dialogue ─',
+  'ui.dialogue.closeHint': 'Click outside to close',
+  'ui.dialogue.continue': 'Continue',
+  'ui.dialogue.back': '← Back',
+  'ui.dialogue.leave': 'Leave',
+  'ui.dialogue.scrollHint': 'Scroll for more',
+  'ui.dialogue.inProgress': ' (In Progress)',
+  'ui.dialogue.turnInPrefix': 'Thanks for completing the quest! There is more to do...',
+  'ui.dialogue.gotGold': 'Gained {gold} gold',
+  'ui.dialogue.gotExp': 'Gained {exp} EXP',
+  'ui.dialogue.gotItem': 'Gained item: {name}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Achievement Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.achievement.title': 'Achievements',
+  'ui.achievement.currentTitle': 'Current Title: {title}',
+  'ui.achievement.unlocked': 'Unlocked: {count}/{total}',
+  'ui.achievement.footer': 'Press V to close',
+  'ui.achievement.titleReward': 'Title: {title}',
+  'ui.achievement.toastUnlock': 'Achievement Unlocked: {name}',
+  'ui.achievement.toastTitle': 'Title: {title}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Companion Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.companion.title': 'Companions',
+  'ui.companion.mercHeader': '─ Mercenary ─',
+  'ui.companion.noMerc': 'Hire a mercenary at the camp NPC',
+  'ui.companion.mercStatus': '{name} ({type}) Lv.{level}  HP:{hp}/{maxHp}',
+  'ui.companion.mercDead': '{name} ({type}) Lv.{level}  [Dead]',
+  'ui.companion.footer': 'Press P to close',
+  'ui.companion.hireHeader': '─ Available Mercenaries ─',
+  'ui.companion.needCamp': 'Must be near camp NPC to hire',
+  'ui.companion.hire': 'Hire',
+  'ui.companion.dismiss': 'Dismiss',
+  'ui.companion.revive': 'Revive ({cost}G)',
+  'ui.companion.reviveAtCamp': 'Revive mercenary at camp NPC',
+  'ui.companion.mercType.tank': 'Tank',
+  'ui.companion.mercType.melee': 'Melee DPS',
+  'ui.companion.mercType.ranged': 'Ranged DPS',
+  'ui.companion.mercType.healer': 'Healer',
+  'ui.companion.mercType.mage': 'Mage',
+  'ui.companion.statRow': 'HP:{hp}  Dmg:{damage}  Def:{defense}  Range:{range}',
+  'ui.companion.alive': 'Alive',
+  'ui.companion.dead': 'Dead',
+  'ui.companion.status': 'Lv.{level}  Status: {status}',
+  'ui.companion.attributes': '─ Attributes ─',
+  'ui.companion.equipment': '─ Equipment ─',
+  'ui.companion.weapon': 'Weapon',
+  'ui.companion.armor': 'Armor',
+  'ui.companion.exp': 'EXP: {exp}/{needed}',
+  'ui.companion.petHeader': '─ Pets ({count}) ─',
+  'ui.companion.noPets': 'No pets yet. Obtain through bosses, quests, or exploration.',
+  'ui.companion.activate': '[Activate]',
+  'ui.companion.deactivate': '[Deactivate]',
+  'ui.companion.feed': '[Feed]',
+  'ui.companion.feedNeeded': 'Need {item} to feed pet!',
+  'ui.companion.evoAwakened': 'Awakened',
+  'ui.companion.evoSupreme': 'Supreme',
+  'ui.companion.primaryStats': 'STR:{str}  DEX:{dex}  VIT:{vit}  INT:{int}  SPI:{spi}  LCK:{lck}',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Gem Socketing Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.socket.title': 'Gem Socketing',
+  'ui.socket.slotCount': 'Sockets ({filled}/{max})',
+  'ui.socket.emptySlot': 'Empty Socket',
+  'ui.socket.remove': '[Remove]',
+  'ui.socket.gemsInBag': 'Gems in Bag',
+  'ui.socket.noGems': 'No Gems',
+  'ui.socket.unequip': '[Unequip]',
+  'ui.socket.gemLabel.g_ruby': 'R',
+  'ui.socket.gemLabel.g_sapphire': 'B',
+  'ui.socket.gemLabel.g_emerald': 'G',
+  'ui.socket.gemLabel.g_topaz': 'Y',
+  'ui.socket.gemLabel.g_diamond': 'D',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Audio Settings Panel
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.audio.title': 'Audio Settings',
+  'ui.audio.bgm': 'Music',
+  'ui.audio.sfx': 'SFX',
+  'ui.audio.muted': '[Muted]',
+  'ui.audio.unmuted': '[On]',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // UI — Mini-Boss Dialogue
+  // ═══════════════════════════════════════════════════════════════════════
+  'ui.miniBoss.fight': '[ Fight ]',
 };
 
 export default en;

@@ -22,7 +22,7 @@ import type { MercenaryState } from '../systems/MercenarySystem';
 import { LoreByZone, AllLoreEntries, getLoreCountByZone } from '../data/loreCollectibles';
 import type { LoreEntry } from '../data/loreCollectibles';
 import { t, getLocale } from '../i18n';
-import { getItemDisplayName, getItemBaseName, getItemBaseDesc, getAffixName, getStatLabel, isStatPercent, getQualityLabel, getSetName, getSetBonusDesc, getClassName, getDirection as getLocalizedDirection } from '../i18n/gameAccessors';
+import { getItemDisplayName, getItemBaseName, getItemBaseDesc, getAffixName, getStatLabel, isStatPercent, getQualityLabel, getSetName, getSetBonusDesc, getClassName, getDirection as getLocalizedDirection, getSkillName, getSkillDesc, getSkillTreeName, getDamageTypeName, getQuestName, getQuestDesc, getZoneName, getMercenaryName, getMercenaryDesc, getMercenaryTypeLabel, getBuildingName, getBuildingDesc, getPetName, getPetDesc, getAchievementName, getAchievementDesc, getAchievementTitle, getLoreName, getLoreText, getNpcName, getQuestTargetName, getPetStatLabel } from '../i18n/gameAccessors';
 
 const FONT = '"Noto Sans SC", sans-serif';
 const TITLE_FONT = '"Cinzel", "Noto Sans SC", serif';
@@ -110,7 +110,7 @@ export class UIScene extends Phaser.Scene {
   private questTrackerState: TrackerState | null = null;
   /** Background rectangle for the tracker panel. */
   private questTrackerBg: Phaser.GameObjects.Rectangle | null = null;
-  /** Scroll indicator text (e.g. "▼ 还有 3 个任务"). */
+  /** Scroll indicator text (e.g. "▼ 3 more quests"). */
   private questTrackerScrollText: Phaser.GameObjects.Text | null = null;
   private zoneLabel!: Phaser.GameObjects.Text;
 
@@ -320,7 +320,7 @@ export class UIScene extends Phaser.Scene {
         container.add(this.add.image(0, px(-2), iconKey)
           .setDisplaySize(slotSize - px(6), slotSize - px(6)));
       } else {
-        container.add(this.add.text(0, px(-6), skill.name.substring(0, 2), {
+        container.add(this.add.text(0, px(-6), getSkillName(skill.id, skill.name).substring(0, 2), {
           fontSize: fs(16), color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
         }).setOrigin(0.5));
       }
@@ -418,8 +418,8 @@ export class UIScene extends Phaser.Scene {
       .setOrigin(0, 0).setDepth(2999);
     this.questTrackerBg.setVisible(false);
 
-    // Header text "任务追踪"
-    const header = this.add.text(0, 0, '任务追踪', {
+    // Header text
+    const header = this.add.text(0, 0, t('ui.questTracker.header'), {
       fontFamily: FONT, fontSize: fs(12), color: '#c0934a', fontStyle: 'bold',
     }).setOrigin(0, 0);
     this.questTracker.add(header);
@@ -518,11 +518,33 @@ export class UIScene extends Phaser.Scene {
     if (this.inventoryPanel) { this.refreshInventory(); }
     // Refresh character panel if open
     if (this.charPanel) { this.toggleCharacter(); this.toggleCharacter(); }
-    // Refresh shop panel — requires reopening since it needs data
-    // (shop is backdrop-modal, complex to refresh in-place; re-open is acceptable)
     // Refresh quest tracker
     this.lastQuestTrackerSignature = '';
     this.nextQuestTrackerRefreshAt = 0;
+    // Refresh skill tree panel if open (toggle off then on)
+    if (this.skillPanel) { this.toggleSkillTree(); this.toggleSkillTree(); }
+    // Refresh homestead panel if open
+    if (this.homesteadPanel) { this.toggleHomestead(); this.toggleHomestead(); }
+    // Refresh quest log panel if open
+    if (this.questLogPanel) { this.toggleQuestLog(); this.toggleQuestLog(); }
+    // Refresh companion panel if open
+    if (this.companionPanel) { this.toggleCompanion(); this.toggleCompanion(); }
+    // Refresh achievement panel if open
+    if (this.achievementPanel) { this.toggleAchievement(); this.toggleAchievement(); }
+    // Refresh socket panel if open (close — needs equipped item context)
+    if (this.socketPanel) {
+      this.socketPanel.destroy();
+      this.socketPanel = null;
+    }
+    // Refresh audio panel if open
+    if (this.audioPanel) { this.toggleAudioSettings(); this.toggleAudioSettings(); }
+    // Refresh map panel if open
+    if (this.mapPanel) { this.toggleMap(); this.toggleMap(); }
+    // Refresh dialogue panel if open (close since it needs NPC context)
+    if (this.dialoguePanel) {
+      this.dialoguePanel.destroy();
+      this.dialoguePanel = null;
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -964,7 +986,7 @@ export class UIScene extends Phaser.Scene {
     this.mapPanel = this.add.container(panelX, panelY).setDepth(PANEL_STYLE.depth.panel);
     this.animatePanelOpen(this.mapPanel);
     this.mapPanel.add(this.createPanelBg(pw, ph));
-    this.mapPanel.add(this.createPanelTitle(pw, '渊火'));
+    this.mapPanel.add(this.createPanelTitle(pw, t('ui.worldMap.title')));
     this.mapPanel.add(this.createPanelCloseBtn(pw, () => this.toggleMap()));
 
     MapOrder.forEach((mapId, i) => {
@@ -974,7 +996,7 @@ export class UIScene extends Phaser.Scene {
       const color = isCurrent ? 0x27ae60 : 0x1a1a2e;
       this.mapPanel!.add(this.add.rectangle(x, y, px(72), px(44), color)
         .setStrokeStyle(isCurrent ? Math.round(2 * DPR) : Math.round(1 * DPR), isCurrent ? 0x27ae60 : 0x444455));
-      this.mapPanel!.add(this.add.text(x, y, map.name.substring(0, 4), {
+      this.mapPanel!.add(this.add.text(x, y, getZoneName(mapId, map.name).substring(0, 4), {
         fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT,
       }).setOrigin(0.5));
       this.mapPanel!.add(this.add.text(x, y + px(28), `Lv.${map.levelRange[0]}-${map.levelRange[1]}`, {
@@ -986,7 +1008,7 @@ export class UIScene extends Phaser.Scene {
         }).setOrigin(0.5));
       }
     });
-    this.mapPanel.add(this.add.text(pw / 2, ph - px(20), '按 M 关闭', {
+    this.mapPanel.add(this.add.text(pw / 2, ph - px(20), t('ui.worldMap.closeHint'), {
       fontSize: fs(12), color: '#555', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -1011,9 +1033,9 @@ export class UIScene extends Phaser.Scene {
     }
     this.closeAllPanels();
     const TREE_NAMES: Record<string, string> = {
-      combat_master: '战斗大师', guardian: '守护者', berserker: '狂战士',
-      fire: '烈焰', frost: '冰霜', arcane: '奥术',
-      assassination: '刺杀', archery: '箭术', traps: '陷阱',
+      combat_master: getSkillTreeName('combat_master', '战斗大师'), guardian: getSkillTreeName('guardian', '守护者'), berserker: getSkillTreeName('berserker', '狂战士'),
+      fire: getSkillTreeName('fire', '烈焰'), frost: getSkillTreeName('frost', '冰霜'), arcane: getSkillTreeName('arcane', '奥术'),
+      assassination: getSkillTreeName('assassination', '刺杀'), archery: getSkillTreeName('archery', '箭术'), traps: getSkillTreeName('traps', '陷阱'),
     };
     const TREE_COLORS: Record<string, number> = {
       combat_master: 0xd4a017, guardian: 0xf1c40f, berserker: 0xcc3333,
@@ -1025,8 +1047,8 @@ export class UIScene extends Phaser.Scene {
       lightning: 0x5dade2, poison: 0x33cc33, arcane: 0xbb77ff,
     };
     const DMG_NAMES: Record<string, string> = {
-      physical: '物理', fire: '火焰', ice: '冰霜',
-      lightning: '闪电', poison: '毒素', arcane: '奥术',
+      physical: getDamageTypeName('physical'), fire: getDamageTypeName('fire'), ice: getDamageTypeName('ice'),
+      lightning: getDamageTypeName('lightning'), poison: getDamageTypeName('poison'), arcane: getDamageTypeName('arcane'),
     };
 
     const pw = px(660), ph = px(520);
@@ -1046,9 +1068,9 @@ export class UIScene extends Phaser.Scene {
     headerBg.fillRect(px(4), px(4), pw - px(8), headerH);
     this.skillPanel.add(headerBg);
 
-    this.skillPanel.add(this.createPanelTitle(pw, '技 能 树'));
+    this.skillPanel.add(this.createPanelTitle(pw, t('ui.skillTree.title')));
     const spColor = this.player.freeSkillPoints > 0 ? '#f1c40f' : '#555566';
-    this.skillPanel.add(this.add.text(pw / 2, px(33), `${this.player.classData.name}  ·  剩余技能点: ${this.player.freeSkillPoints}`, {
+    this.skillPanel.add(this.add.text(pw / 2, px(33), t('ui.skillTree.skillPoints', { className: getClassName(this.player.classData.id ?? 'warrior'), points: String(this.player.freeSkillPoints) }), {
       fontSize: fs(13), color: spColor, fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -1286,7 +1308,7 @@ export class UIScene extends Phaser.Scene {
 
         // Skill name
         const nameColor = isMaxed ? '#f1c40f' : (isLearned ? '#e8e0d0' : (canLevel ? '#aabbcc' : '#555566'));
-        scrollContainer.add(this.add.text(textX, cardY + px(8), skill.name, {
+        scrollContainer.add(this.add.text(textX, cardY + px(8), getSkillName(skill.id, skill.name), {
           fontSize: fs(14), color: nameColor, fontFamily: FONT, fontStyle: 'bold',
         }));
 
@@ -1348,7 +1370,7 @@ export class UIScene extends Phaser.Scene {
             synBadge.fillStyle(0x7766cc, 0.6);
             synBadge.fillRoundedRect(cardX + cardW - px(40), cardY + cardH - px(18), px(35), px(14), px(3));
             scrollContainer.add(synBadge);
-            scrollContainer.add(this.add.text(cardX + cardW - px(22), cardY + cardH - px(11), '协同', {
+            scrollContainer.add(this.add.text(cardX + cardW - px(22), cardY + cardH - px(11), t('ui.skillTree.synergy'), {
               fontSize: fs(8), color: '#aa99ee', fontFamily: FONT,
             }).setOrigin(0.5));
           }
@@ -1506,7 +1528,7 @@ export class UIScene extends Phaser.Scene {
     renderTab(this.skillTreeActiveTab);
 
     // Footer
-    this.skillPanel.add(this.add.text(pw / 2, ph - px(14), '按 K 关闭  ·  悬停查看详情  ·  滚轮翻页', {
+    this.skillPanel.add(this.add.text(pw / 2, ph - px(14), t('ui.skillTree.footer'), {
       fontSize: fs(10), color: '#3a3a4a', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -1526,46 +1548,46 @@ export class UIScene extends Phaser.Scene {
     const dmgName = DMG_NAMES[skill.damageType] ?? skill.damageType;
 
     const lines: string[] = [];
-    lines.push(skill.description);
+    lines.push(getSkillDesc(skill.id, skill.description));
     lines.push('');
-    if (skill.damageMultiplier > 0) lines.push(`伤害: ${Math.round(scaledDmg * 100)}% ${dmgName}`);
-    lines.push(`消耗: ${scaledMana} MP`);
-    lines.push(`冷却: ${(scaledCD / 1000).toFixed(1)}s`);
-    lines.push(`范围: ${skill.range}格`);
-    if (skill.aoe && scaledAoe > 0) lines.push(`AOE半径: ${scaledAoe.toFixed(1)}格`);
-    if (skill.critBonus) lines.push(`暴击加成: +${skill.critBonus}%`);
-    if (skill.stunDuration) lines.push(`眩晕: ${(skill.stunDuration / 1000).toFixed(1)}s`);
+    if (skill.damageMultiplier > 0) lines.push(t('ui.skillTree.tooltip.damage', { value: String(Math.round(scaledDmg * 100)), type: dmgName }));
+    lines.push(t('ui.skillTree.tooltip.cost', { value: String(scaledMana) }));
+    lines.push(t('ui.skillTree.tooltip.cooldown', { value: (scaledCD / 1000).toFixed(1) }));
+    lines.push(t('ui.skillTree.tooltip.range', { value: String(skill.range) }));
+    if (skill.aoe && scaledAoe > 0) lines.push(t('ui.skillTree.tooltip.aoeRadius', { value: scaledAoe.toFixed(1) }));
+    if (skill.critBonus) lines.push(t('ui.skillTree.tooltip.critBonus', { value: String(skill.critBonus) }));
+    if (skill.stunDuration) lines.push(t('ui.skillTree.tooltip.stun', { value: (skill.stunDuration / 1000).toFixed(1) }));
     if (skill.buff) {
       const buffVal = getSkillBuffValue(skill, level);
       const buffDur = getSkillBuffDuration(skill, level);
-      lines.push(`增益: ${skill.buff.stat} +${Math.round(buffVal * 100)}% (${(buffDur / 1000).toFixed(0)}s)`);
+      lines.push(t('ui.skillTree.tooltip.buff', { stat: skill.buff.stat, value: String(Math.round(buffVal * 100)), duration: (buffDur / 1000).toFixed(0) }));
     }
 
     if (skill.synergies && skill.synergies.length > 0) {
       lines.push('');
-      lines.push('─ 协同增益 ─');
+      lines.push(t('ui.skillTree.tooltip.synergyHeader'));
       for (const syn of skill.synergies) {
         const synSkill = this.player.classData.skills.find(s => s.id === syn.skillId);
         const synLv = this.player.getSkillLevel(syn.skillId);
         if (synSkill) {
           const bonus = Math.round(syn.damagePerLevel * synLv * 100);
-          lines.push(`${synSkill.name}: +${syn.damagePerLevel * 100}%/级 (当前+${bonus}%)`);
+          lines.push(t('ui.skillTree.tooltip.synergyLine', { name: getSkillName(synSkill.id, synSkill.name), perLevel: String(syn.damagePerLevel * 100), bonus: String(bonus) }));
         }
       }
     }
 
     if (level < skill.maxLevel) {
       lines.push('');
-      lines.push(`─ 下一级 (Lv${level + 1}) ─`);
+      lines.push(t('ui.skillTree.tooltip.nextLevel', { level: String(level + 1) }));
       const nextDmg = getSkillDamageMultiplier(skill, level + 1);
       const nextMana = getSkillManaCost(skill, level + 1);
       const nextCD = getSkillCooldown(skill, level + 1);
       if (skill.damageMultiplier > 0) {
         const delta = Math.round((nextDmg - scaledDmg) * 100);
-        lines.push(`伤害: ${Math.round(nextDmg * 100)}% (+${delta}%)`);
+        lines.push(t('ui.skillTree.tooltip.damage', { value: String(Math.round(nextDmg * 100)), type: `(+${delta}%)` }));
       }
-      if (nextMana !== scaledMana) lines.push(`消耗: ${nextMana} MP`);
-      if (nextCD !== scaledCD) lines.push(`冷却: ${(nextCD / 1000).toFixed(1)}s`);
+      if (nextMana !== scaledMana) lines.push(t('ui.skillTree.tooltip.cost', { value: String(nextMana) }));
+      if (nextCD !== scaledCD) lines.push(t('ui.skillTree.tooltip.cooldown', { value: (nextCD / 1000).toFixed(1) }));
     }
 
     const tipW = px(280);
@@ -1573,7 +1595,7 @@ export class UIScene extends Phaser.Scene {
     const wrapW = tipW - tipPad * 2;
     const tipText = lines.join('\n');
 
-    const tipHeader = this.add.text(0, 0, `${skill.name} (${skill.nameEn})`, {
+    const tipHeader = this.add.text(0, 0, `${getSkillName(skill.id, skill.name)} (${skill.nameEn})`, {
       fontSize: fs(PANEL_STYLE.tooltip.titleSize), color: '#f0e8d0', fontFamily: PANEL_STYLE.tooltip.font, fontStyle: 'bold',
       wordWrap: { width: wrapW, useAdvancedWrap: true },
     });
@@ -1816,16 +1838,16 @@ export class UIScene extends Phaser.Scene {
     epic: 0xd35400,
   };
 
-  /** Pet bonus stat icon emojis (display text) */
+  /** Pet bonus stat icon emojis (display text) — now resolved via locale */
   private static readonly PET_STAT_LABELS: Record<string, string> = {
-    expBonus: '经验',
-    damage: '攻击',
-    magicFind: '掉宝',
-    critRate: '暴击',
-    hpRegen: '回血',
-    attackSpeed: '攻速',
-    defense: '防御',
-    manaRegen: '回蓝',
+    expBonus: 'expBonus',
+    damage: 'damage',
+    magicFind: 'magicFind',
+    critRate: 'critRate',
+    hpRegen: 'hpRegen',
+    attackSpeed: 'attackSpeed',
+    defense: 'defense',
+    manaRegen: 'manaRegen',
   };
 
   private toggleHomestead(): void {
@@ -1835,7 +1857,7 @@ export class UIScene extends Phaser.Scene {
     this.homesteadPanel = this.add.container(panelX, panelY).setDepth(PANEL_STYLE.depth.panel);
     this.animatePanelOpen(this.homesteadPanel);
     this.homesteadPanel.add(this.createPanelBg(pw, ph));
-    this.homesteadPanel.add(this.createPanelTitle(pw, '家 园'));
+    this.homesteadPanel.add(this.createPanelTitle(pw, t('ui.homestead.title')));
     this.homesteadPanel.add(this.createPanelCloseBtn(pw, () => this.toggleHomestead()));
 
     const hs = this.zone.homesteadSystem;
@@ -1847,7 +1869,7 @@ export class UIScene extends Phaser.Scene {
     divider1.fillStyle(0xc0934a, 0.3);
     divider1.fillRect(px(14), sectionHeaderY, pw - px(28), px(1));
     this.homesteadPanel.add(divider1);
-    this.homesteadPanel.add(this.add.text(px(14), sectionHeaderY + px(4), '── 建筑 ──', {
+    this.homesteadPanel.add(this.add.text(px(14), sectionHeaderY + px(4), t('ui.homestead.buildingsHeader'), {
       fontSize: fs(12), color: '#c0934a', fontFamily: FONT, fontStyle: 'bold',
     }));
 
@@ -1891,10 +1913,10 @@ export class UIScene extends Phaser.Scene {
 
       // Text area
       const textX = iconX + iconAreaSize + px(10);
-      this.homesteadPanel!.add(this.add.text(textX, sy + px(6), b.name, {
+      this.homesteadPanel!.add(this.add.text(textX, sy + px(6), getBuildingName(b.id, b.name), {
         fontSize: fs(13), color: maxed ? '#c0934a' : '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
       }));
-      this.homesteadPanel!.add(this.add.text(textX, sy + px(22), b.description, {
+      this.homesteadPanel!.add(this.add.text(textX, sy + px(22), getBuildingDesc(b.id, b.description), {
         fontSize: fs(10), color: '#666680', fontFamily: FONT,
       }));
 
@@ -1931,7 +1953,7 @@ export class UIScene extends Phaser.Scene {
         badgeGfx.lineStyle(Math.round(1 * DPR), 0xc0934a, 0.4);
         badgeGfx.strokeRoundedRect(badgeX - px(20), badgeY - px(10), px(40), px(20), px(4));
         this.homesteadPanel!.add(badgeGfx);
-        this.homesteadPanel!.add(this.add.text(badgeX, badgeY, '已满级', {
+        this.homesteadPanel!.add(this.add.text(badgeX, badgeY, t('ui.homestead.maxLevel'), {
           fontSize: fs(10), color: '#c0934a', fontFamily: FONT, fontStyle: 'bold',
         }).setOrigin(0.5));
       } else {
@@ -1948,7 +1970,7 @@ export class UIScene extends Phaser.Scene {
         btnGfx.strokeRoundedRect(btnX, btnY, btnW, btnH, px(4));
         this.homesteadPanel!.add(btnGfx);
 
-        const btnText = this.add.text(btnX + btnW / 2, btnY + btnH / 2, `升级 ${cost}G`, {
+        const btnText = this.add.text(btnX + btnW / 2, btnY + btnH / 2, t('ui.homestead.upgrade', { cost: String(cost) }), {
           fontSize: fs(11), color: canUpgrade ? '#27ae60' : '#555566', fontFamily: FONT,
         }).setOrigin(0.5);
         this.homesteadPanel!.add(btnText);
@@ -1990,7 +2012,7 @@ export class UIScene extends Phaser.Scene {
     this.homesteadPanel.add(divider2);
 
     const petCapacity = 1 + hs.getBuildingLevel('pet_house');
-    this.homesteadPanel.add(this.add.text(px(14), petSectionY + px(4), `── 宠物 (${hs.pets.length} 只) ──`, {
+    this.homesteadPanel.add(this.add.text(px(14), petSectionY + px(4), t('ui.homestead.petsHeader', { count: String(hs.pets.length) }), {
       fontSize: fs(12), color: '#c0934a', fontFamily: FONT, fontStyle: 'bold',
     }));
 
@@ -2001,7 +2023,7 @@ export class UIScene extends Phaser.Scene {
     const petIconSize = px(34);
 
     if (pets.length === 0) {
-      this.homesteadPanel.add(this.add.text(pw / 2, petStartY + px(10), '暂无宠物\n击杀Boss·完成任务·稀有刷新可获得', {
+      this.homesteadPanel.add(this.add.text(pw / 2, petStartY + px(10), t('ui.homestead.noPets'), {
         fontSize: fs(11), color: '#444458', fontFamily: FONT, align: 'center',
       }).setOrigin(0.5, 0));
     }
@@ -2050,7 +2072,7 @@ export class UIScene extends Phaser.Scene {
 
       // Pet name + evolution suffix
       const evolvedStages = hs.getEvolutionStages();
-      let displayName = pd.name;
+      let displayName = getPetName(pd.id, pd.name);
       if (p.evolved > 0 && evolvedStages[p.evolved - 1]) {
         displayName += evolvedStages[p.evolved - 1].nameSuffix;
       }
@@ -2062,7 +2084,7 @@ export class UIScene extends Phaser.Scene {
       }));
 
       // Bonus stat label
-      const statLabel = UIScene.PET_STAT_LABELS[pd.bonusStat] ?? pd.bonusStat;
+      const statLabel = getPetStatLabel(pd.bonusStat);
       const currentBonus = pd.bonusValue + pd.bonusPerLevel * p.level;
       this.homesteadPanel!.add(this.add.text(petTextX, py + px(19), `${statLabel} +${currentBonus.toFixed(1)}`, {
         fontSize: fs(9), color: '#888899', fontFamily: FONT,
@@ -2101,7 +2123,7 @@ export class UIScene extends Phaser.Scene {
     });
 
     // Footer
-    this.homesteadPanel.add(this.add.text(pw / 2, ph - px(14), '按 H 关闭  ·  建筑提供家园加成', {
+    this.homesteadPanel.add(this.add.text(pw / 2, ph - px(14), t('ui.homestead.footer'), {
       fontSize: fs(10), color: '#3a3a4a', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -2289,7 +2311,7 @@ export class UIScene extends Phaser.Scene {
     });
 
     // Close hint
-    this.dialoguePanel.add(this.add.text(pw / 2, ph - px(16), '点击外部关闭', {
+    this.dialoguePanel.add(this.add.text(pw / 2, ph - px(16), t('ui.dialogue.closeHint'), {
       fontSize: fs(12), color: '#555', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -2353,7 +2375,7 @@ export class UIScene extends Phaser.Scene {
 
       // ── Header ──
       // Category badge
-      const catBadge = cardData.category === 'main' ? '【主线】' : '【支线】';
+      const catBadge = cardData.category === 'main' ? t('ui.questCard.mainBadge') : t('ui.questCard.sideBadge');
       const catColor = cardData.category === 'main' ? '#f1c40f' : '#8e8e8e';
       this.questCardPanel.add(this.add.text(px(14), px(8), catBadge, {
         fontSize: fs(11), color: catColor, fontFamily: FONT, fontStyle: 'bold',
@@ -2383,7 +2405,7 @@ export class UIScene extends Phaser.Scene {
       curY += descH;
 
       // ── Objectives ──
-      const objSectionLabel = this.add.text(px(14), curY, '目标:', {
+      const objSectionLabel = this.add.text(px(14), curY, t('ui.questCard.objectives'), {
         fontSize: fs(11), color: '#888', fontFamily: FONT, fontStyle: 'bold',
       });
       this.questCardPanel.add(objSectionLabel);
@@ -2404,7 +2426,7 @@ export class UIScene extends Phaser.Scene {
 
       // ── Rewards ──
       const rewardText = formatRewardSummary(entries[currentIndex].quest.rewards);
-      this.questCardPanel.add(this.add.text(px(14), curY, '奖励:', {
+      this.questCardPanel.add(this.add.text(px(14), curY, t('ui.questCard.rewards'), {
         fontSize: fs(11), color: '#888', fontFamily: FONT, fontStyle: 'bold',
       }));
       this.questCardPanel.add(this.add.text(px(52), curY, rewardText, {
@@ -2457,7 +2479,7 @@ export class UIScene extends Phaser.Scene {
 
       // ── Action Button ──
       const isAccept = cardData.cardAction === 'accept';
-      const btnLabel = isAccept ? '接受' : '交付';
+      const btnLabel = isAccept ? t('ui.questCard.accept') : t('ui.questCard.turnIn');
       const btnColor = isAccept ? 0x1a2a1a : 0x2a1a1a;
       const btnStroke = isAccept ? 0x27ae60 : 0xc0934a;
       const btnTextColor = isAccept ? '#27ae60' : '#c0934a';
@@ -2530,7 +2552,7 @@ export class UIScene extends Phaser.Scene {
         const loreBg = this.add.rectangle(pw / 2, curY + loreBtnH / 2, loreBtnW, loreBtnH, 0x1a1a2e, 0.8)
           .setStrokeStyle(Math.round(1 * DPR), 0x555566)
           .setInteractive({ useHandCursor: true });
-        const loreText = this.add.text(pw / 2, curY + loreBtnH / 2, '查看故事', {
+        const loreText = this.add.text(pw / 2, curY + loreBtnH / 2, t('ui.questCard.viewStory'), {
           fontSize: fs(11), color: '#8888aa', fontFamily: FONT,
         }).setOrigin(0.5);
 
@@ -2617,7 +2639,7 @@ export class UIScene extends Phaser.Scene {
 
     // Show turn-in text first if any quests were turned in
     if (turnedIn.length > 0) {
-      this.renderDialogueTreeNode(tree, tree.nodes[tree.startNodeId], npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state, '感谢你完成了任务！接下来还有事情要做...');
+      this.renderDialogueTreeNode(tree, tree.nodes[tree.startNodeId], npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state, t('ui.dialogue.turnInPrefix'));
     } else {
       this.renderDialogueTreeNode(tree, tree.nodes[tree.startNodeId], npcId, npcName, completedQuests, questSystem, player, homesteadSystem, achievementSystem, state);
     }
@@ -2722,7 +2744,7 @@ export class UIScene extends Phaser.Scene {
     }).setOrigin(0.5, 0));
 
     // NPC type subtitle
-    this.dialoguePanel.add(this.add.text(pw / 2, px(32), '─ 对话 ─', {
+    this.dialoguePanel.add(this.add.text(pw / 2, px(32), t('ui.dialogue.subtitle'), {
       fontSize: fs(11), color: '#555566', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -2797,7 +2819,7 @@ export class UIScene extends Phaser.Scene {
       const textColor = questAlreadyActive ? '#556688' : '#27ae60';
       const hoverBg = questAlreadyActive ? 0x222233 : 0x224422;
       const hoverText = questAlreadyActive ? '#7799bb' : '#44dd44';
-      const labelText = questAlreadyActive ? `${choice.text}（进行中）` : choice.text;
+      const labelText = questAlreadyActive ? `${choice.text}${t('ui.dialogue.inProgress')}` : choice.text;
 
       const btnBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, btnColor)
         .setStrokeStyle(Math.round(1 * DPR), btnStroke).setInteractive({ useHandCursor: true });
@@ -2835,11 +2857,11 @@ export class UIScene extends Phaser.Scene {
         if (choice.reward) {
           if (choice.reward.gold && player) {
             player.gold += choice.reward.gold;
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得 ${choice.reward.gold} 金币`, type: 'loot' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('ui.dialogue.gotGold', { gold: String(choice.reward.gold) }), type: 'loot' });
           }
           if (choice.reward.exp && player) {
             player.addExp(choice.reward.exp);
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得 ${choice.reward.exp} 经验`, type: 'loot' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('ui.dialogue.gotExp', { exp: String(choice.reward.exp) }), type: 'loot' });
           }
           if (choice.reward.items && this.zone) {
             for (const itemId of choice.reward.items) {
@@ -2847,7 +2869,7 @@ export class UIScene extends Phaser.Scene {
               if (item) {
                 item.identified = true;
                 this.zone.inventorySystem.addItem(item);
-                EventBus.emit(GameEvents.LOG_MESSAGE, { text: `获得物品: ${item.name}`, type: 'loot' });
+                EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('ui.dialogue.gotItem', { name: item.name }), type: 'loot' });
               }
             }
           }
@@ -2872,7 +2894,7 @@ export class UIScene extends Phaser.Scene {
       const by = btnStartY + btnIdx * (btnH + btnGap);
       const continueBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a2e)
         .setStrokeStyle(Math.round(1 * DPR), 0x5dade2).setInteractive({ useHandCursor: true });
-      const continueText = this.add.text(pw / 2, by + btnH / 2, '继续', {
+      const continueText = this.add.text(pw / 2, by + btnH / 2, t('ui.dialogue.continue'), {
         fontSize: fs(13), color: '#5dade2', fontFamily: FONT,
       }).setOrigin(0.5);
       continueBg.on('pointerover', () => { continueBg.setFillStyle(0x1a2a3a); continueText.setColor('#88ccff'); });
@@ -2895,7 +2917,7 @@ export class UIScene extends Phaser.Scene {
       const by = btnStartY + btnIdx * (btnH + btnGap);
       const backBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a2e)
         .setStrokeStyle(Math.round(1 * DPR), 0xc0934a).setInteractive({ useHandCursor: true });
-      const backText = this.add.text(pw / 2, by + btnH / 2, '← 返回', {
+      const backText = this.add.text(pw / 2, by + btnH / 2, t('ui.dialogue.back'), {
         fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
       }).setOrigin(0.5);
       backBg.on('pointerover', () => { backBg.setFillStyle(0x2a2a1a); backText.setColor('#ddbb66'); });
@@ -2914,7 +2936,7 @@ export class UIScene extends Phaser.Scene {
       const by = btnStartY + btnIdx * (btnH + btnGap);
       const leaveBg = this.add.rectangle(pw / 2, by + btnH / 2, pw - px(40), btnH, 0x1a1a1a)
         .setStrokeStyle(Math.round(1 * DPR), 0x666680).setInteractive({ useHandCursor: true });
-      const leaveText = this.add.text(pw / 2, by + btnH / 2, '离开', {
+      const leaveText = this.add.text(pw / 2, by + btnH / 2, t('ui.dialogue.leave'), {
         fontSize: fs(13), color: '#888', fontFamily: FONT,
       }).setOrigin(0.5);
       leaveBg.on('pointerover', () => { leaveBg.setFillStyle(0x222222); leaveText.setColor('#aaa'); });
@@ -2925,7 +2947,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Footer hint
-    this.dialoguePanel.add(this.add.text(pw / 2, ph - px(14), needsScroll ? '滚轮滚动查看更多' : '', {
+    this.dialoguePanel.add(this.add.text(pw / 2, ph - px(14), needsScroll ? t('ui.dialogue.scrollHint') : '', {
       fontSize: fs(10), color: '#444455', fontFamily: FONT,
     }).setOrigin(0.5));
 
@@ -2964,7 +2986,7 @@ export class UIScene extends Phaser.Scene {
     this.questLogPanel.add(this.createPanelBg(pw, ph));
 
     // Title
-    this.questLogPanel.add(this.createPanelTitle(pw, '任务日志'));
+    this.questLogPanel.add(this.createPanelTitle(pw, t('ui.questLog.title')));
 
     // Close button
     this.questLogPanel.add(this.createPanelCloseBtn(pw, () => this.toggleQuestLog()));
@@ -2975,7 +2997,7 @@ export class UIScene extends Phaser.Scene {
       .setStrokeStyle(Math.round(1 * DPR), 0x2471a3).setInteractive({ useHandCursor: true });
     activeTab.on('pointerdown', () => { this.questLogTab = 'active'; this.questLogLoreTab = false; this.questLogPage = 0; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
     this.questLogPanel.add(activeTab);
-    this.questLogPanel.add(this.add.text(px(80), tabY, '进行中', {
+    this.questLogPanel.add(this.add.text(px(80), tabY, t('ui.questLog.tab.active'), {
       fontSize: fs(14), color: this.questLogTab === 'active' && !this.questLogLoreTab ? '#5dade2' : '#666', fontFamily: FONT,
     }).setOrigin(0.5));
 
@@ -2983,7 +3005,7 @@ export class UIScene extends Phaser.Scene {
       .setStrokeStyle(Math.round(1 * DPR), 0x2471a3).setInteractive({ useHandCursor: true });
     completedTab.on('pointerdown', () => { this.questLogTab = 'completed'; this.questLogLoreTab = false; this.questLogPage = 0; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
     this.questLogPanel.add(completedTab);
-    this.questLogPanel.add(this.add.text(px(220), tabY, '已完成', {
+    this.questLogPanel.add(this.add.text(px(220), tabY, t('ui.questLog.tab.completed'), {
       fontSize: fs(14), color: this.questLogTab === 'completed' && !this.questLogLoreTab ? '#5dade2' : '#666', fontFamily: FONT,
     }).setOrigin(0.5));
 
@@ -2991,7 +3013,7 @@ export class UIScene extends Phaser.Scene {
       .setStrokeStyle(Math.round(1 * DPR), 0xDAA520).setInteractive({ useHandCursor: true });
     loreTab.on('pointerdown', () => { this.questLogLoreTab = true; this.refreshQuestLog(); });
     this.questLogPanel.add(loreTab);
-    this.questLogPanel.add(this.add.text(px(360), tabY, '传说', {
+    this.questLogPanel.add(this.add.text(px(360), tabY, t('ui.questLog.tab.lore'), {
       fontSize: fs(14), color: this.questLogLoreTab ? '#DAA520' : '#666', fontFamily: FONT,
     }).setOrigin(0.5));
 
@@ -3054,7 +3076,7 @@ export class UIScene extends Phaser.Scene {
       this.questLogPanel!.add(listBg);
 
       const tagColor = entry.quest.category === 'main' ? '#c0934a' : '#95a5a6';
-      const tag = entry.quest.category === 'main' ? '[主]' : '[支]';
+      const tag = entry.quest.category === 'main' ? t('ui.questLog.mainTag') : t('ui.questLog.sideTag');
       this.questLogPanel!.add(this.add.text(px(12), y + px(5), tag, {
         fontSize: fs(12), color: tagColor, fontFamily: FONT, fontStyle: 'bold',
       }));
@@ -3087,7 +3109,7 @@ export class UIScene extends Phaser.Scene {
     if (totalPages > 1) {
       const pageY = listStartY + maxItems * itemH + px(4);
       if (this.questLogPage > 0) {
-        const prevBtn = this.add.text(px(40), pageY, '\u25C0 上一页', {
+        const prevBtn = this.add.text(px(40), pageY, t('ui.questLog.prevPage'), {
           fontSize: fs(12), color: '#5dade2', fontFamily: FONT,
         }).setInteractive({ useHandCursor: true });
         prevBtn.on('pointerdown', () => { this.questLogPage--; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
@@ -3097,7 +3119,7 @@ export class UIScene extends Phaser.Scene {
         fontSize: fs(12), color: '#666', fontFamily: FONT,
       }));
       if (this.questLogPage < totalPages - 1) {
-        const nextBtn = this.add.text(px(160), pageY, '下一页 \u25B6', {
+        const nextBtn = this.add.text(px(160), pageY, t('ui.questLog.nextPage'), {
           fontSize: fs(12), color: '#5dade2', fontFamily: FONT,
         }).setInteractive({ useHandCursor: true });
         nextBtn.on('pointerdown', () => { this.questLogPage++; this.questLogSelectedIndex = 0; this.refreshQuestLog(); });
@@ -3107,7 +3129,7 @@ export class UIScene extends Phaser.Scene {
 
     // No quests message
     if (pageQuests.length === 0) {
-      this.questLogPanel.add(this.add.text(px(120), px(120), this.questLogTab === 'active' ? '暂无进行中的任务' : '暂无已完成的任务', {
+      this.questLogPanel.add(this.add.text(px(120), px(120), this.questLogTab === 'active' ? t('ui.questLog.noActive') : t('ui.questLog.noCompleted'), {
         fontSize: fs(14), color: '#555', fontFamily: FONT,
       }).setOrigin(0.5, 0));
       return;
@@ -3126,22 +3148,18 @@ export class UIScene extends Phaser.Scene {
     dy += px(24);
 
     // Category + Level + Zone
-    const zoneNames: Record<string, string> = {
-      emerald_plains: '翡翠平原', twilight_forest: '暮色森林',
-      anvil_mountains: '铁砧山脉', scorching_desert: '灼热沙漠', abyss_rift: '深渊裂隙',
-    };
-    const catText = selected.quest.category === 'main' ? '主线任务' : '支线任务';
+    const catText = selected.quest.category === 'main' ? t('ui.questLog.mainQuest') : t('ui.questLog.sideQuest');
     const catColor = selected.quest.category === 'main' ? '#c0934a' : '#95a5a6';
     const questTypeLabel = QUEST_TYPE_LABELS[selected.quest.type] ?? '';
     const typeDisplay = ['escort', 'defend', 'investigate', 'craft'].includes(selected.quest.type)
-      ? `  |  类型: ${questTypeLabel}` : '';
-    this.questLogPanel.add(this.add.text(detailX + px(5), dy, `${catText}  |  Lv.${selected.quest.level}  |  ${zoneNames[selected.quest.zone] ?? selected.quest.zone}${typeDisplay}`, {
+      ? `  |  ${t('ui.questLog.typeLabel', { type: questTypeLabel })}` : '';
+    this.questLogPanel.add(this.add.text(detailX + px(5), dy, `${catText}  |  Lv.${selected.quest.level}  |  ${getZoneName(selected.quest.zone)}${typeDisplay}`, {
       fontSize: fs(12), color: catColor, fontFamily: FONT,
     }));
     dy += px(20);
 
     // Description
-    this.questLogPanel.add(this.add.text(detailX + px(5), dy, selected.quest.description, {
+    this.questLogPanel.add(this.add.text(detailX + px(5), dy, getQuestDesc(selected.quest.id, selected.quest.description), {
       fontSize: fs(13), color: '#bbb', fontFamily: FONT, wordWrap: { width: detailW - px(20), useAdvancedWrap: true },
     }));
     dy += px(40);
@@ -3152,7 +3170,7 @@ export class UIScene extends Phaser.Scene {
       const foundClues = selected.quest.objectives
         .map((o, i) => o.type === 'investigate_clue' && (selected.progress.objectives[i]?.current ?? 0) >= o.required ? 1 : 0)
         .reduce((a: number, b: number) => a + b, 0);
-      this.questLogPanel.add(this.add.text(detailX + px(5), dy, `线索 ${foundClues}/${totalClues}`, {
+      this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.clueProgress', { found: String(foundClues), total: String(totalClues) }), {
         fontSize: fs(13), color: '#9b59b6', fontFamily: FONT, fontStyle: 'bold',
       }));
       dy += px(18);
@@ -3160,7 +3178,7 @@ export class UIScene extends Phaser.Scene {
       const waveObj = selected.quest.objectives.find(o => o.type === 'defend_wave');
       const waveIdx = waveObj ? selected.quest.objectives.indexOf(waveObj) : -1;
       const curWave = waveIdx >= 0 ? (selected.progress.objectives[waveIdx]?.current ?? 0) : 0;
-      this.questLogPanel.add(this.add.text(detailX + px(5), dy, `浪潮 ${curWave}/${selected.quest.defendTarget.totalWaves}`, {
+      this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.waveProgress', { current: String(curWave), total: String(selected.quest.defendTarget.totalWaves) }), {
         fontSize: fs(13), color: '#e74c3c', fontFamily: FONT, fontStyle: 'bold',
       }));
       dy += px(18);
@@ -3169,7 +3187,7 @@ export class UIScene extends Phaser.Scene {
       const qs = this.zone?.questSystem;
       if (qs) {
         const phaseLabel = qs.getCraftPhaseLabel(selected.quest, selected.progress);
-        this.questLogPanel.add(this.add.text(detailX + px(5), dy, `当前阶段: ${phaseLabel}`, {
+        this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.craftPhase', { phase: phaseLabel }), {
           fontSize: fs(13), color: '#1abc9c', fontFamily: FONT, fontStyle: 'bold',
         }));
         dy += px(18);
@@ -3177,7 +3195,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Objectives header
-    this.questLogPanel.add(this.add.text(detailX + px(5), dy, '目标:', {
+    this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.objectives'), {
       fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
     }));
     dy += px(18);
@@ -3207,16 +3225,16 @@ export class UIScene extends Phaser.Scene {
     dy += px(8);
 
     // Rewards
-    this.questLogPanel.add(this.add.text(detailX + px(5), dy, '奖励:', {
+    this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.rewards'), {
       fontSize: fs(13), color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
     }));
     dy += px(18);
 
     const rewardParts: string[] = [];
-    rewardParts.push(`经验 +${selected.quest.rewards.exp}`);
-    rewardParts.push(`金币 +${selected.quest.rewards.gold}`);
+    rewardParts.push(t('ui.questLog.rewardExp', { exp: String(selected.quest.rewards.exp) }));
+    rewardParts.push(t('ui.questLog.rewardGold', { gold: String(selected.quest.rewards.gold) }));
     if (selected.quest.rewards.items) {
-      rewardParts.push(`物品 x${selected.quest.rewards.items.length}`);
+      rewardParts.push(t('ui.questLog.rewardItems', { count: String(selected.quest.rewards.items.length) }));
     }
     this.questLogPanel.add(this.add.text(detailX + px(15), dy, rewardParts.join('  |  '), {
       fontSize: fs(12), color: '#f1c40f', fontFamily: FONT,
@@ -3230,7 +3248,7 @@ export class UIScene extends Phaser.Scene {
         const pq = this.zone!.questSystem.quests.get(pid);
         return pq ? pq.name : pid;
       });
-      this.questLogPanel.add(this.add.text(detailX + px(5), dy, `前置任务: ${prereqNames.join(', ')}`, {
+      this.questLogPanel.add(this.add.text(detailX + px(5), dy, t('ui.questLog.prereqs', { names: prereqNames.join(', ') }), {
         fontSize: fs(12), color: '#666', fontFamily: FONT,
       }));
     }
@@ -3476,7 +3494,7 @@ export class UIScene extends Phaser.Scene {
     this.socketPanel.add(this.createPanelBg(pw, ph));
 
     // Title
-    this.socketPanel.add(this.createPanelTitle(pw, '宝石镶嵌'));
+    this.socketPanel.add(this.createPanelTitle(pw, t('ui.socket.title')));
 
     // Close button
     this.socketPanel.add(this.createPanelCloseBtn(pw, () => {
@@ -3498,7 +3516,7 @@ export class UIScene extends Phaser.Scene {
     const totalW = maxSockets * sockSize + (maxSockets - 1) * sockGap;
     const sockStartX = (pw - totalW) / 2;
 
-    this.socketPanel.add(this.add.text(pw / 2, sockStartY, `插槽 (${equipItem.sockets.length}/${maxSockets})`, {
+    this.socketPanel.add(this.add.text(pw / 2, sockStartY, t('ui.socket.slotCount', { filled: String(equipItem.sockets.length), max: String(maxSockets) }), {
       fontSize: fs(13), color: '#aaa', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -3506,7 +3524,7 @@ export class UIScene extends Phaser.Scene {
       g_ruby: 0xcc3333, g_sapphire: 0x3366cc, g_emerald: 0x33aa33, g_topaz: 0xccaa33, g_diamond: 0xaaddff,
     };
     const GEM_LABELS: Record<string, string> = {
-      g_ruby: '红', g_sapphire: '蓝', g_emerald: '绿', g_topaz: '黄', g_diamond: '钻',
+      g_ruby: t('ui.socket.gemLabel.g_ruby'), g_sapphire: t('ui.socket.gemLabel.g_sapphire'), g_emerald: t('ui.socket.gemLabel.g_emerald'), g_topaz: t('ui.socket.gemLabel.g_topaz'), g_diamond: t('ui.socket.gemLabel.g_diamond'),
     };
 
     for (let i = 0; i < maxSockets; i++) {
@@ -3543,7 +3561,7 @@ export class UIScene extends Phaser.Scene {
         }).setOrigin(0.5, 0));
 
         // Remove button
-        const removeBtn = this.add.text(sx + sockSize / 2, sy + sockSize + px(18), '[取出]', {
+        const removeBtn = this.add.text(sx + sockSize / 2, sy + sockSize + px(18), t('ui.socket.remove'), {
           fontSize: fs(11), color: '#e74c3c', fontFamily: FONT,
         }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
         const socketIndex = i;
@@ -3561,7 +3579,7 @@ export class UIScene extends Phaser.Scene {
         }).setOrigin(0.5));
 
         // Empty label below
-        this.socketPanel!.add(this.add.text(sx + sockSize / 2, sy + sockSize + px(4), '空插槽', {
+        this.socketPanel!.add(this.add.text(sx + sockSize / 2, sy + sockSize + px(4), t('ui.socket.emptySlot'), {
           fontSize: fs(10), color: '#555', fontFamily: FONT,
         }).setOrigin(0.5, 0));
       }
@@ -3572,7 +3590,7 @@ export class UIScene extends Phaser.Scene {
     this.socketPanel.add(this.add.rectangle(pw / 2, divY, pw - px(20), Math.round(1 * DPR), 0x333344));
 
     // Available gems from inventory
-    this.socketPanel.add(this.add.text(pw / 2, divY + px(8), '背包中的宝石', {
+    this.socketPanel.add(this.add.text(pw / 2, divY + px(8), t('ui.socket.gemsInBag'), {
       fontSize: fs(14), color: '#c0934a', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -3588,7 +3606,7 @@ export class UIScene extends Phaser.Scene {
     const hasEmptySlots = equipItem.sockets.length < maxSockets;
 
     if (gemsInInventory.length === 0) {
-      this.socketPanel.add(this.add.text(pw / 2, gemGridY + px(20), '没有宝石', {
+      this.socketPanel.add(this.add.text(pw / 2, gemGridY + px(20), t('ui.socket.noGems'), {
         fontSize: fs(13), color: '#555', fontFamily: FONT,
       }).setOrigin(0.5));
     } else {
@@ -3649,7 +3667,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Unequip button at bottom
-    const unequipBtn = this.add.text(pw / 2, ph - px(22), '[卸下装备]', {
+    const unequipBtn = this.add.text(pw / 2, ph - px(22), t('ui.socket.unequip'), {
       fontSize: fs(13), color: '#e74c3c', fontFamily: FONT,
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
     unequipBtn.on('pointerdown', () => {
@@ -3692,7 +3710,7 @@ export class UIScene extends Phaser.Scene {
     this.companionPanel.add(this.createPanelBg(pw, ph));
 
     // Title
-    this.companionPanel.add(this.createPanelTitle(pw, '伙伴系统'));
+    this.companionPanel.add(this.createPanelTitle(pw, t('ui.companion.title')));
 
     // Close button
     this.companionPanel.add(this.createPanelCloseBtn(pw, () => this.toggleCompanion()));
@@ -3703,24 +3721,21 @@ export class UIScene extends Phaser.Scene {
     const merc = mercSys.getMercenary();
 
     // Mercenary section header
-    this.companionPanel.add(this.add.text(px(14), px(36), '─ 佣兵 ─', {
+    this.companionPanel.add(this.add.text(px(14), px(36), t('ui.companion.mercHeader'), {
       fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
     }));
 
     if (!merc) {
       // No mercenary — compact hire hint
-      this.companionPanel.add(this.add.text(px(14), px(56), '在营地NPC处雇佣佣兵 (详见佣兵面板)', {
+      this.companionPanel.add(this.add.text(px(14), px(56), t('ui.companion.noMerc'), {
         fontSize: fs(12), color: '#888', fontFamily: FONT,
       }));
     } else {
       // Has mercenary — show compact info
       const def = MERCENARY_DEFS[merc.type];
-      const typeNames: Record<string, string> = {
-        tank: '坦克', melee: '近战输出', ranged: '远程输出', healer: '治疗', mage: '法师',
-      };
       const statusText = merc.alive
-        ? `${def.name} (${typeNames[merc.type]}) Lv.${merc.level}  HP:${Math.ceil(merc.hp)}/${merc.maxHp}`
-        : `${def.name} (${typeNames[merc.type]}) Lv.${merc.level}  [阵亡]`;
+        ? t('ui.companion.mercStatus', { name: getMercenaryName(merc.type, def.name), type: getMercenaryTypeLabel(merc.type), level: String(merc.level), hp: String(Math.ceil(merc.hp)), maxHp: String(merc.maxHp) })
+        : t('ui.companion.mercDead', { name: getMercenaryName(merc.type, def.name), type: getMercenaryTypeLabel(merc.type), level: String(merc.level) });
       this.companionPanel.add(this.add.text(px(14), px(56), statusText, {
         fontSize: fs(12), color: merc.alive ? '#e0d8cc' : '#e74c3c', fontFamily: FONT,
       }));
@@ -3730,7 +3745,7 @@ export class UIScene extends Phaser.Scene {
     this.renderPetSection(pw, ph);
 
     // Footer
-    this.companionPanel.add(this.add.text(pw / 2, ph - px(14), '按 P 关闭', {
+    this.companionPanel.add(this.add.text(pw / 2, ph - px(14), t('ui.companion.footer'), {
       fontSize: fs(10), color: '#3a3a4a', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -3738,7 +3753,7 @@ export class UIScene extends Phaser.Scene {
   private renderHirePanel(pw: number, ph: number, mercSys: MercenarySystem): void {
     if (!this.companionPanel) return;
 
-    this.companionPanel.add(this.add.text(pw / 2, px(36), '─ 可雇佣佣兵 ─', {
+    this.companionPanel.add(this.add.text(pw / 2, px(36), t('ui.companion.hireHeader'), {
       fontSize: fs(14), color: '#c0934a', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -3756,14 +3771,14 @@ export class UIScene extends Phaser.Scene {
     }
 
     if (!isNearCamp) {
-      this.companionPanel.add(this.add.text(pw / 2, px(60), '需要在营地NPC附近才能雇佣佣兵', {
+      this.companionPanel.add(this.add.text(pw / 2, px(60), t('ui.companion.needCamp'), {
         fontSize: fs(13), color: '#888', fontFamily: FONT,
       }).setOrigin(0.5, 0));
       return;
     }
 
     const typeNames: Record<string, string> = {
-      tank: '坦克', melee: '近战输出', ranged: '远程输出', healer: '治疗', mage: '法师',
+      tank: getMercenaryTypeLabel('tank'), melee: getMercenaryTypeLabel('melee'), ranged: getMercenaryTypeLabel('ranged'), healer: getMercenaryTypeLabel('healer'), mage: getMercenaryTypeLabel('mage'),
     };
     const roleColors: Record<string, number> = {
       tank: 0x2471a3, melee: 0xc0392b, ranged: 0x27ae60, healer: 0xf1c40f, mage: 0x8e44ad,
@@ -3788,18 +3803,18 @@ export class UIScene extends Phaser.Scene {
         this.add.rectangle(px(16), cy + cardH / 2, px(6), cardH - px(8), roleColor).setOrigin(0, 0.5)
       );
 
-      // Type name + Chinese label
-      this.companionPanel!.add(this.add.text(px(30), cy + px(6), `${def.name} (${typeNames[type]})`, {
+      // Type name + label
+      this.companionPanel!.add(this.add.text(px(30), cy + px(6), `${getMercenaryName(type, def.name)} (${typeNames[type]})`, {
         fontSize: fs(14), color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
       }));
 
       // Description
-      this.companionPanel!.add(this.add.text(px(30), cy + px(24), def.description, {
+      this.companionPanel!.add(this.add.text(px(30), cy + px(24), getMercenaryDesc(type, def.description), {
         fontSize: fs(11), color: '#888', fontFamily: FONT, wordWrap: { width: pw - px(180), useAdvancedWrap: true },
       }));
 
       // Stats preview
-      const statsStr = `HP:${def.baseHp}  伤害:${def.baseDamage}  防御:${def.baseDefense}  范围:${def.attackRange}`;
+      const statsStr = t('ui.companion.statRow', { hp: String(def.baseHp), damage: String(def.baseDamage), defense: String(def.baseDefense), range: String(def.attackRange) });
       this.companionPanel!.add(this.add.text(px(30), cy + px(42), statsStr, {
         fontSize: fs(10), color: '#666', fontFamily: FONT,
       }));
@@ -3813,7 +3828,7 @@ export class UIScene extends Phaser.Scene {
         .setStrokeStyle(Math.round(1 * DPR), canAfford ? 0x27ae60 : 0x333333);
       this.companionPanel!.add(hireBtnBg);
 
-      const hireBtnText = this.add.text(pw - px(80), cy + px(38), '雇佣', {
+      const hireBtnText = this.add.text(pw - px(80), cy + px(38), t('ui.companion.hire'), {
         fontSize: fs(13), color: canAfford ? '#27ae60' : '#555', fontFamily: FONT,
       }).setOrigin(0.5);
       this.companionPanel!.add(hireBtnText);
@@ -3848,30 +3863,31 @@ export class UIScene extends Phaser.Scene {
       tank: 0x2471a3, melee: 0xc0392b, ranged: 0x27ae60, healer: 0xf1c40f, mage: 0x8e44ad,
     };
     const typeNames: Record<string, string> = {
-      tank: '坦克', melee: '近战输出', ranged: '远程输出', healer: '治疗', mage: '法师',
+      tank: getMercenaryTypeLabel('tank'), melee: getMercenaryTypeLabel('melee'), ranged: getMercenaryTypeLabel('ranged'), healer: getMercenaryTypeLabel('healer'), mage: getMercenaryTypeLabel('mage'),
     };
     const roleColor = roleColors[merc.type] ?? 0x888888;
 
     // Merc name + level
-    this.companionPanel.add(this.add.text(pw / 2, px(36), `${def.name} (${typeNames[merc.type]})`, {
+    this.companionPanel.add(this.add.text(pw / 2, px(36), `${getMercenaryName(merc.type, def.name)} (${typeNames[merc.type]})`, {
       fontSize: fs(16), color: '#e0d8cc', fontFamily: FONT, fontStyle: 'bold',
     }).setOrigin(0.5, 0));
 
     // Alive/dead status
-    const statusText = merc.alive ? `Lv.${merc.level}  状态: 存活` : `Lv.${merc.level}  状态: 阵亡`;
+    const statusLabel = merc.alive ? t('ui.companion.alive') : t('ui.companion.dead');
+    const statusText = t('ui.companion.status', { level: String(merc.level), status: statusLabel });
     const statusColor = merc.alive ? '#27ae60' : '#e74c3c';
     this.companionPanel.add(this.add.text(pw / 2, px(56), statusText, {
       fontSize: fs(13), color: statusColor, fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
     // Description
-    this.companionPanel.add(this.add.text(px(14), px(80), def.description, {
+    this.companionPanel.add(this.add.text(px(14), px(80), getMercenaryDesc(merc.type, def.description), {
       fontSize: fs(12), color: '#888', fontFamily: FONT,
     }));
 
     // Stats section
     let sy = px(102);
-    this.companionPanel.add(this.add.text(px(14), sy, '─ 属性 ─', {
+    this.companionPanel.add(this.add.text(px(14), sy, t('ui.companion.attributes'), {
       fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
     }));
     sy += px(20);
@@ -3918,31 +3934,27 @@ export class UIScene extends Phaser.Scene {
 
     // EXP
     const expNeeded = mercSys.expToNextLevel(merc.level);
-    this.companionPanel.add(this.add.text(px(14), sy, `经验: ${merc.exp}/${expNeeded}`, {
+    this.companionPanel.add(this.add.text(px(14), sy, t('ui.companion.exp', { exp: String(merc.exp), needed: String(expNeeded) }), {
       fontSize: fs(11), color: '#b08cce', fontFamily: FONT,
     }));
     sy += px(18);
 
     // Base stats
-    const statRow = [
-      `攻击: ${merc.baseDamage}`,
-      `防御: ${merc.defense}`,
-      `范围: ${merc.attackRange}`,
-    ].join('  |  ');
-    this.companionPanel.add(this.add.text(px(14), sy, statRow, {
+    const statRow2 = t('ui.companion.statRow', { hp: String(Math.ceil(merc.hp)), damage: String(merc.baseDamage), defense: String(merc.defense), range: String(merc.attackRange) });
+    this.companionPanel.add(this.add.text(px(14), sy, statRow2, {
       fontSize: fs(11), color: '#aaa', fontFamily: FONT,
     }));
     sy += px(18);
 
     // Primary stats
-    const primaryStats = `力:${Math.floor(merc.stats.str)}  敏:${Math.floor(merc.stats.dex)}  体:${Math.floor(merc.stats.vit)}  智:${Math.floor(merc.stats.int)}  精:${Math.floor(merc.stats.spi)}  幸:${Math.floor(merc.stats.lck)}`;
+    const primaryStats = t('ui.companion.primaryStats', { str: String(Math.floor(merc.stats.str)), dex: String(Math.floor(merc.stats.dex)), vit: String(Math.floor(merc.stats.vit)), int: String(Math.floor(merc.stats.int)), spi: String(Math.floor(merc.stats.spi)), lck: String(Math.floor(merc.stats.lck)) });
     this.companionPanel.add(this.add.text(px(14), sy, primaryStats, {
       fontSize: fs(11), color: '#888', fontFamily: FONT,
     }));
     sy += px(22);
 
     // Equipment section
-    this.companionPanel.add(this.add.text(px(14), sy, '─ 装备 ─', {
+    this.companionPanel.add(this.add.text(px(14), sy, t('ui.companion.equipment'), {
       fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
     }));
     sy += px(20);
@@ -3955,7 +3967,7 @@ export class UIScene extends Phaser.Scene {
       weaponItem ? this.getQualityColorNum(weaponItem.quality) : 0x222233)
       .setStrokeStyle(Math.round(1 * DPR), roleColor, 0.5);
     this.companionPanel.add(weaponBg);
-    this.companionPanel.add(this.add.text(px(14) + slotSize / 2, sy + slotSize + px(2), '武器', {
+    this.companionPanel.add(this.add.text(px(14) + slotSize / 2, sy + slotSize + px(2), t('ui.companion.weapon'), {
       fontSize: fs(10), color: '#777788', fontFamily: FONT,
     }).setOrigin(0.5, 0));
     if (weaponItem) {
@@ -3970,7 +3982,7 @@ export class UIScene extends Phaser.Scene {
       armorItem ? this.getQualityColorNum(armorItem.quality) : 0x222233)
       .setStrokeStyle(Math.round(1 * DPR), roleColor, 0.5);
     this.companionPanel.add(armorBg);
-    this.companionPanel.add(this.add.text(px(14) + slotSize * 2, sy + slotSize + px(2), '护甲', {
+    this.companionPanel.add(this.add.text(px(14) + slotSize * 2, sy + slotSize + px(2), t('ui.companion.armor'), {
       fontSize: fs(10), color: '#777788', fontFamily: FONT,
     }).setOrigin(0.5, 0));
     if (armorItem) {
@@ -3999,7 +4011,7 @@ export class UIScene extends Phaser.Scene {
         this.buildCompanionPanel();
       });
       this.companionPanel.add(dismissBg);
-      this.companionPanel.add(this.add.text(px(60), btnY, '解雇', {
+      this.companionPanel.add(this.add.text(px(60), btnY, t('ui.companion.dismiss'), {
         fontSize: fs(13), color: '#e74c3c', fontFamily: FONT,
       }).setOrigin(0.5));
     } else {
@@ -4021,14 +4033,14 @@ export class UIScene extends Phaser.Scene {
       }
 
       if (!isNearCamp) {
-        this.companionPanel.add(this.add.text(pw / 2, btnY, '在营地NPC处复活佣兵', {
+        this.companionPanel.add(this.add.text(pw / 2, btnY, t('ui.companion.reviveAtCamp'), {
           fontSize: fs(12), color: '#888', fontFamily: FONT,
         }).setOrigin(0.5));
       } else {
         const reviveBg = this.add.rectangle(px(100), btnY, px(160), px(26), canRevive ? 0x1a3a1a : 0x1a1a1a)
           .setStrokeStyle(Math.round(1 * DPR), canRevive ? 0x27ae60 : 0x333333);
         this.companionPanel.add(reviveBg);
-        this.companionPanel.add(this.add.text(px(100), btnY, `复活 (${reviveCost}G)`, {
+        this.companionPanel.add(this.add.text(px(100), btnY, t('ui.companion.revive', { cost: String(reviveCost) }), {
           fontSize: fs(13), color: canRevive ? '#27ae60' : '#555', fontFamily: FONT,
         }).setOrigin(0.5));
 
@@ -4066,7 +4078,7 @@ export class UIScene extends Phaser.Scene {
         this.buildCompanionPanel();
       });
       this.companionPanel.add(dismissBg2);
-      this.companionPanel.add(this.add.text(pw - px(80), btnY, '解雇', {
+      this.companionPanel.add(this.add.text(pw - px(80), btnY, t('ui.companion.dismiss'), {
         fontSize: fs(13), color: '#e74c3c', fontFamily: FONT,
       }).setOrigin(0.5));
     }
@@ -4081,12 +4093,12 @@ export class UIScene extends Phaser.Scene {
     const petStartY = px(82);
     const maxSlots = hs.getMaxPetSlots();
 
-    this.companionPanel.add(this.add.text(px(14), petStartY, `─ 宠物 (${hs.pets.length} 只) ─`, {
+    this.companionPanel.add(this.add.text(px(14), petStartY, t('ui.companion.petHeader', { count: String(hs.pets.length) }), {
       fontSize: fs(13), color: '#c0934a', fontFamily: FONT,
     }));
 
     if (hs.pets.length === 0) {
-      this.companionPanel.add(this.add.text(px(14), petStartY + px(22), '暂无宠物。可通过击杀BOSS、完成任务或探索获得。', {
+      this.companionPanel.add(this.add.text(px(14), petStartY + px(22), t('ui.companion.noPets'), {
         fontSize: fs(11), color: '#888', fontFamily: FONT,
         wordWrap: { width: pw - px(28), useAdvancedWrap: true },
       }));
@@ -4132,7 +4144,7 @@ export class UIScene extends Phaser.Scene {
       }));
 
       // Description
-      this.companionPanel!.add(this.add.text(px(32), cy + px(20), def.description, {
+      this.companionPanel!.add(this.add.text(px(32), cy + px(20), getPetDesc(pet.petId, def.description), {
         fontSize: fs(10), color: '#888', fontFamily: FONT,
         wordWrap: { width: pw - px(200), useAdvancedWrap: true },
       }));
@@ -4158,7 +4170,7 @@ export class UIScene extends Phaser.Scene {
 
       // Evolution badge
       if (pet.evolved > 0) {
-        const evoBadge = pet.evolved >= 2 ? '至尊' : '觉醒';
+        const evoBadge = pet.evolved >= 2 ? t('ui.companion.evoSupreme') : t('ui.companion.evoAwakened');
         this.companionPanel!.add(this.add.text(barX + barW + px(44), barY - px(1), `[${evoBadge}]`, {
           fontSize: fs(9), color: '#f1c40f', fontFamily: FONT,
         }));
@@ -4174,7 +4186,7 @@ export class UIScene extends Phaser.Scene {
 
       // Activate button
       if (!isActive) {
-        const actBtn = this.add.text(pw - px(60), cy + px(22), '[激活]', {
+        const actBtn = this.add.text(pw - px(60), cy + px(22), t('ui.companion.activate'), {
           fontSize: fs(12), color: '#27ae60', fontFamily: FONT,
         }).setInteractive({ useHandCursor: true });
         actBtn.on('pointerdown', () => {
@@ -4188,7 +4200,7 @@ export class UIScene extends Phaser.Scene {
         });
         this.companionPanel!.add(actBtn);
       } else {
-        const deactBtn = this.add.text(pw - px(60), cy + px(22), '[取消]', {
+        const deactBtn = this.add.text(pw - px(60), cy + px(22), t('ui.companion.deactivate'), {
           fontSize: fs(12), color: '#888', fontFamily: FONT,
         }).setInteractive({ useHandCursor: true });
         deactBtn.on('pointerdown', () => {
@@ -4204,7 +4216,7 @@ export class UIScene extends Phaser.Scene {
       }
 
       // Feed button
-      const feedBtn = this.add.text(pw - px(110), cy + px(36), '[喂养]', {
+      const feedBtn = this.add.text(pw - px(110), cy + px(36), t('ui.companion.feed'), {
         fontSize: fs(11), color: pet.level >= def.maxLevel ? '#555' : '#5dade2', fontFamily: FONT,
       });
       if (pet.level < def.maxLevel) {
@@ -4215,7 +4227,7 @@ export class UIScene extends Phaser.Scene {
           if (!inv) return;
           const feedItemIdx = inv.inventory.findIndex(it => it.baseId === def.feedItem);
           if (feedItemIdx === -1) {
-            EventBus.emit(GameEvents.LOG_MESSAGE, { text: `需要 ${def.feedItem} 来喂养宠物!`, type: 'system' });
+            EventBus.emit(GameEvents.LOG_MESSAGE, { text: t('ui.companion.feedNeeded', { item: def.feedItem }), type: 'system' });
             return;
           }
           // Consume feed item
@@ -4277,7 +4289,7 @@ export class UIScene extends Phaser.Scene {
     }).setOrigin(0, 0.5));
 
     // Achievement name and description
-    toast.add(this.add.text(px(42), px(10), `成就解锁: ${ach.name}`, {
+    toast.add(this.add.text(px(42), px(10), t('ui.achievement.toastUnlock', { name: ach.name }), {
       fontSize: fs(14), color: '#f1c40f', fontFamily: FONT, fontStyle: 'bold',
     }));
     const rewardParts: string[] = [];
@@ -4286,7 +4298,7 @@ export class UIScene extends Phaser.Scene {
       const label = statDisp ? statDisp.label : ach.reward.stat;
       rewardParts.push(`${label}+${ach.reward.value}`);
     }
-    if (ach.title) rewardParts.push(`称号: ${ach.title}`);
+    if (ach.title) rewardParts.push(t('ui.achievement.titleReward', { title: ach.title }));
     const subText = rewardParts.length > 0 ? `${ach.description}  |  ${rewardParts.join('  ')}` : ach.description;
     toast.add(this.add.text(px(42), px(32), subText, {
       fontSize: fs(11), color: '#e0d8cc', fontFamily: FONT,
@@ -4329,7 +4341,7 @@ export class UIScene extends Phaser.Scene {
     this.achievementPanel.add(this.createPanelBg(pw, ph));
 
     // Title
-    this.achievementPanel.add(this.createPanelTitle(pw, '成 就'));
+    this.achievementPanel.add(this.createPanelTitle(pw, t('ui.achievement.title')));
 
     // Close button
     this.achievementPanel.add(this.createPanelCloseBtn(pw, () => this.toggleAchievement()));
@@ -4340,14 +4352,14 @@ export class UIScene extends Phaser.Scene {
     const achievements = achSystem.getAll();
     const unlockedTitles = achievements.filter(a => a.isUnlocked && a.title).map(a => a.title!);
     if (unlockedTitles.length > 0) {
-      this.achievementPanel.add(this.add.text(pw / 2, px(34), `当前称号: ${unlockedTitles[unlockedTitles.length - 1]}`, {
+      this.achievementPanel.add(this.add.text(pw / 2, px(34), t('ui.achievement.currentTitle', { title: unlockedTitles[unlockedTitles.length - 1] }), {
         fontSize: fs(12), color: '#f1c40f', fontFamily: FONT,
       }).setOrigin(0.5, 0));
     }
 
     // Summary line
     const unlocked = achievements.filter(a => a.isUnlocked).length;
-    this.achievementPanel.add(this.add.text(pw / 2, px(48), `已解锁: ${unlocked}/${achievements.length}`, {
+    this.achievementPanel.add(this.add.text(pw / 2, px(48), t('ui.achievement.unlocked', { count: String(unlocked), total: String(achievements.length) }), {
       fontSize: fs(12), color: '#888', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -4408,7 +4420,7 @@ export class UIScene extends Phaser.Scene {
     }
 
     // Footer
-    this.achievementPanel.add(this.add.text(pw / 2, ph - px(14), '按 V 关闭', {
+    this.achievementPanel.add(this.add.text(pw / 2, ph - px(14), t('ui.achievement.footer'), {
       fontSize: fs(10), color: '#3a3a4a', fontFamily: FONT,
     }).setOrigin(0.5));
   }
@@ -4500,7 +4512,7 @@ export class UIScene extends Phaser.Scene {
       const label = statDisp ? statDisp.label : ach.reward.stat;
       rewardParts.push(`${label}+${ach.reward.value}`);
     }
-    if (ach.title) rewardParts.push(`称号: ${ach.title}`);
+    if (ach.title) rewardParts.push(t('ui.achievement.titleReward', { title: ach.title }));
     if (rewardParts.length > 0) {
       const rewardColor = isUnlocked ? '#8be9fd' : '#444455';
       this.achievementPanel.add(this.add.text(barX + barW / 2, barY + barH + px(14), rewardParts.join('  '), {
@@ -4522,7 +4534,7 @@ export class UIScene extends Phaser.Scene {
     this.audioPanel = this.add.container(panelX, panelY).setDepth(PANEL_STYLE.depth.panel);
     this.animatePanelOpen(this.audioPanel);
     this.audioPanel.add(this.createPanelBg(pw, ph));
-    this.audioPanel.add(this.createPanelTitle(pw, '音频设置'));
+    this.audioPanel.add(this.createPanelTitle(pw, t('ui.audio.title')));
 
     const settings = audioManager.getSettings();
     const sliderW = px(160), sliderH = px(10), sliderX = px(90), labelX = px(14);
@@ -4560,23 +4572,23 @@ export class UIScene extends Phaser.Scene {
       this.audioPanelInputCleanup.push(() => this.input.off('pointerup', pointerUpHandler));
 
       // Mute button
-      const muteBtn = this.add.text(sliderX + sliderW + px(42), y, muted ? '[静音]' : '[开启]', {
+      const muteBtn = this.add.text(sliderX + sliderW + px(42), y, muted ? t('ui.audio.muted') : t('ui.audio.unmuted'), {
         fontSize: fs(12), color: muted ? '#c0392b' : '#27ae60', fontFamily: FONT,
       }).setInteractive({ useHandCursor: true });
       muteBtn.on('pointerdown', () => {
         const nowMuted = onMute();
-        muteBtn.setText(nowMuted ? '[静音]' : '[开启]').setColor(nowMuted ? '#c0392b' : '#27ae60');
+        muteBtn.setText(nowMuted ? t('ui.audio.muted') : t('ui.audio.unmuted')).setColor(nowMuted ? '#c0392b' : '#27ae60');
       });
       this.audioPanel!.add(muteBtn);
     };
 
     // BGM slider
-    makeSlider(px(46), '背景音乐', settings.bgmVolume, settings.bgmMuted,
+    makeSlider(px(46), t('ui.audio.bgm'), settings.bgmVolume, settings.bgmMuted,
       (v) => audioManager.setMusicVolume(v),
       () => { audioManager.toggleMusicMute(); return audioManager.getSettings().bgmMuted; });
 
     // SFX slider
-    makeSlider(px(90), '音效', settings.sfxVolume, settings.sfxMuted,
+    makeSlider(px(90), t('ui.audio.sfx'), settings.sfxVolume, settings.sfxMuted,
       (v) => audioManager.setSFXVolume(v),
       () => { audioManager.toggleSFXMute(); return audioManager.getSettings().sfxMuted; });
 
@@ -4641,7 +4653,7 @@ export class UIScene extends Phaser.Scene {
 
     // Dismiss button
     const btnY = ph - px(30);
-    const btn = this.add.text(pw / 2, btnY, '[ 开战 ]', {
+    const btn = this.add.text(pw / 2, btnY, t('ui.miniBoss.fight'), {
       fontSize: fs(16), color: '#e74c3c', fontFamily: FONT, fontStyle: 'bold',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     btn.on('pointerover', () => btn.setColor('#ff6666'));
@@ -4698,11 +4710,7 @@ export class UIScene extends Phaser.Scene {
     }).setOrigin(0.5, 0));
 
     // Zone name
-    const zoneNames: Record<string, string> = {
-      emerald_plains: '翡翠平原', twilight_forest: '暮色森林',
-      anvil_mountains: '铁砧山脉', scorching_desert: '灼热沙漠', abyss_rift: '深渊裂隙',
-    };
-    this.loreTextPanel.add(this.add.text(pw / 2, px(36), zoneNames[entry.zone] ?? entry.zone, {
+    this.loreTextPanel.add(this.add.text(pw / 2, px(36), getZoneName(entry.zone), {
       fontSize: fs(11), color: '#888', fontFamily: FONT,
     }).setOrigin(0.5, 0));
 
@@ -4739,10 +4747,6 @@ export class UIScene extends Phaser.Scene {
     if (!this.questLogPanel || !this.zone) return;
 
     const pw = px(700);
-    const zoneNames: Record<string, string> = {
-      emerald_plains: '翡翠平原', twilight_forest: '暮色森林',
-      anvil_mountains: '铁砧山脉', scorching_desert: '灼热沙漠', abyss_rift: '深渊裂隙',
-    };
     const zoneOrder = ['emerald_plains', 'twilight_forest', 'anvil_mountains', 'scorching_desert', 'abyss_rift'];
 
     const collected = this.zone.getLoreCollected();
@@ -4755,11 +4759,11 @@ export class UIScene extends Phaser.Scene {
 
       const discoveredCount = zoneLore.filter(l => collected.has(l.id)).length;
       const totalCount = zoneLore.length;
-      const zoneName = zoneNames[zoneId] ?? zoneId;
+      const zoneName = getZoneName(zoneId);
       const progressColor = discoveredCount >= totalCount ? '#27ae60' : '#c0934a';
 
       // Zone header with progress
-      this.questLogPanel.add(this.add.text(px(20), dy, `${zoneName}  —  ${discoveredCount}/${totalCount} 收集`, {
+      this.questLogPanel.add(this.add.text(px(20), dy, `${zoneName}  —  ${t('ui.questLog.loreCollected', { count: String(discoveredCount), total: String(totalCount) })}`, {
         fontSize: fs(15), color: progressColor, fontFamily: TITLE_FONT, fontStyle: 'bold',
       }));
       dy += px(24);
@@ -4778,7 +4782,7 @@ export class UIScene extends Phaser.Scene {
       for (const entry of zoneLore) {
         const found = collected.has(entry.id);
         const icon = found ? '✦' : '?';
-        const nameText = found ? entry.name : '未发现';
+        const nameText = found ? entry.name : t('ui.questLog.loreUndiscovered');
         const color = found ? '#e0d8cc' : '#444';
 
         this.questLogPanel.add(this.add.text(px(30), dy, `${icon}  ${nameText}`, {
@@ -4803,7 +4807,7 @@ export class UIScene extends Phaser.Scene {
 
     // No lore message
     if (collected.size === 0) {
-      this.questLogPanel.add(this.add.text(pw / 2, px(120), '尚未发现任何传说', {
+      this.questLogPanel.add(this.add.text(pw / 2, px(120), t('ui.questLog.noLore'), {
         fontSize: fs(14), color: '#555', fontFamily: FONT,
       }).setOrigin(0.5, 0));
     }
@@ -5049,7 +5053,7 @@ export class UIScene extends Phaser.Scene {
       const isExpanded = this.questTrackerExpanded.has(entry.questId);
 
       // Quest title line
-      const tag = entry.category === 'main' ? '[主线]' : '[支线]';
+      const tag = entry.category === 'main' ? t('ui.questTracker.mainTag') : t('ui.questTracker.sideTag');
       const completionMark = entry.isCompleted ? ' ✓' : '';
       const titleText = `${tag} ${entry.name}${completionMark}`;
 
@@ -5136,7 +5140,7 @@ export class UIScene extends Phaser.Scene {
     // Scroll indicator
     if (state.hasMore && this.questTrackerScrollText) {
       const remaining = state.totalCount - state.visibleCount;
-      this.questTrackerScrollText.setText(`▼ 还有 ${remaining} 个任务`);
+      this.questTrackerScrollText.setText(t('ui.questTracker.scrollIndicator', { count: String(remaining) }));
       this.questTrackerScrollText.setY(y);
       this.questTrackerScrollText.setVisible(true);
       y += px(14);
