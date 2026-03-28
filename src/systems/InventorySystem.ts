@@ -4,6 +4,7 @@ import { SetDefinitions } from '../data/items/sets';
 import { DUNGEON_EXCLUSIVE_SETS } from '../data/dungeonData';
 import type { ItemInstance, EquipSlot, WeaponBase, ArmorBase, GemInstance } from '../data/types';
 import { emptyEquipStats, type EquipStats } from './CombatSystem';
+import * as crypto from 'crypto';
 
 const MAX_INVENTORY = 100;
 const MAX_STASH = 80;
@@ -346,7 +347,7 @@ export class InventorySystem {
     // Create an inventory item for the gem
     const gemBase = getItemBase(gem.gemId);
     const gemItem: ItemInstance = {
-      uid: `gem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      uid: `gem_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       baseId: gem.gemId,
       name: gem.name,
       quality: 'normal',
